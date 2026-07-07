@@ -22,10 +22,12 @@ body {
 
 .schedule-panel {
   color: #102225;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(20, 34, 36, 0.12);
+  box-shadow: 0 18px 60px rgba(10, 20, 22, 0.18);
 }
 
-.schedule-panel h1,
-.schedule-panel [role="tab"] {
+.schedule-panel h1 {
   color: #102225;
 }
 
@@ -33,13 +35,40 @@ body {
   color: #415256;
 }
 
-.schedule-panel [role="tab"][data-active] {
+.schedule-panel [data-variant="default"] [role="tab"] {
+  color: #102225;
+}
+
+.schedule-panel [data-variant="default"] [role="tab"][data-active] {
   color: #064e55;
 }
 
 .schedule-controls label {
   color: #102225;
   font-weight: 650;
+}
+
+.ending-filter {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(17, 34, 37, 0.26);
+}
+
+.ending-filter-control {
+  background: transparent;
+}
+
+.ending-filter-indicator {
+  background: #075b64;
+  box-shadow: none;
+}
+
+.ending-filter-label {
+  color: #102225 !important;
+  font-weight: 650;
+}
+
+.ending-filter-label[data-active] {
+  color: #ffffff !important;
 }
 
 .schedule-controls input {

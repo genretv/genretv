@@ -16,6 +16,9 @@ export function RootLayout() {
             <Anchor href="/" size="sm">
               Schedule
             </Anchor>
+            <Anchor href="/manage" size="sm">
+              Shows
+            </Anchor>
           </Group>
           {session ? (
             <Group gap="sm">

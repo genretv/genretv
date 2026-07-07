@@ -15,14 +15,12 @@ import {
 } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 
-import seedJson from "../../seeds/blogspot-canonical.seed.json";
+import { canonicalSchedule as schedule } from "../domain/canonical-schedule";
 import {
-  buildScheduleFromSeed,
   defaultScheduleViewPreferences,
   filterScheduleEntries,
   scheduleFilterOptions,
   sectionLabels,
-  type BlogspotCanonicalSeed,
   type EndingFilter,
   type ScheduleEntry,
   type ScheduleSection,
@@ -30,7 +28,6 @@ import {
   type ScheduleViewPreferences,
 } from "../domain/schedule";
 
-const schedule = buildScheduleFromSeed(seedJson as unknown as BlogspotCanonicalSeed);
 const storageKey = "genretv.schedule.view.v1";
 
 function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section: ScheduleSection }) {
@@ -112,11 +109,6 @@ export function HomeRoute() {
       maw={1220}
       mx="auto"
       p={{ base: "md", sm: "xl" }}
-      style={{
-        background: "rgba(255, 255, 255, 0.9)",
-        border: "1px solid rgba(20, 34, 36, 0.12)",
-        boxShadow: "0 18px 60px rgba(10, 20, 22, 0.18)",
-      }}
     >
       <Group justify="space-between" align="flex-end">
         <div>
@@ -178,6 +170,12 @@ export function HomeRoute() {
         />
         {preferences.section === "past" && (
           <SegmentedControl
+            classNames={{
+              control: "ending-filter-control",
+              indicator: "ending-filter-indicator",
+              label: "ending-filter-label",
+              root: "ending-filter",
+            }}
             value={preferences.ending}
             data={[
               { value: "all", label: "All" },

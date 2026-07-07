@@ -2,6 +2,8 @@ import { createHashHistory, createRootRoute, createRoute, createRouter } from "@
 
 import { HomeRoute } from "./routes/home";
 import { LoginRoute } from "./routes/login";
+import { ManageRoute } from "./routes/manage";
+import { ManageShowRoute } from "./routes/manage-show";
 import { RootLayout } from "./routes/root";
 
 const rootRoute = createRootRoute({ component: RootLayout });
@@ -18,7 +20,19 @@ const loginRoute = createRoute({
   component: LoginRoute,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, loginRoute]);
+const manageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/manage",
+  component: ManageRoute,
+});
+
+const manageShowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/manage/show/$showId",
+  component: ManageShowRoute,
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, loginRoute, manageRoute, manageShowRoute]);
 
 const hashRouting = import.meta.env["VITE_GENRETV_HASH_ROUTING"] === "1";
 

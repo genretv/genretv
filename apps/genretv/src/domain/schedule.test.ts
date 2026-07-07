@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildManagementShows,
   buildScheduleFromSeed,
   defaultScheduleViewPreferences,
+  filterManagementShows,
+  findManagementShow,
   filterScheduleEntries,
   scheduleFilterOptions,
   type BlogspotCanonicalSeed,
@@ -127,5 +130,18 @@ describe("schedule read model", () => {
       languages: ["da", "en"],
       organizations: ["Apple", "Netflix"],
     });
+  });
+
+  test("groups schedule entries into show management rows", () => {
+    const schedule = buildScheduleFromSeed(seed);
+    const shows = buildManagementShows(schedule.entries);
+    expect(shows.map((show) => show.id)).toEqual(["a-show", "b-show", "c-show"]);
+    expect(findManagementShow(shows, "c-show")?.seasons).toMatchObject([
+      {
+        endedReason: "Canceled",
+        seasonLabel: "S1",
+      },
+    ]);
+    expect(filterManagementShows(shows, "super", "Netflix", "en").map((show) => show.id)).toEqual(["c-show"]);
   });
 });

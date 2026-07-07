@@ -84,6 +84,27 @@ export interface ScheduleEntry {
   legacyCells: string[];
 }
 
+export interface ManagementSeason {
+  id: string;
+  section: ScheduleSection;
+  seasonLabel: string;
+  timing: string;
+  endedReason: string;
+  organizationText: string;
+  genreText: string;
+  sourceRow: number;
+}
+
+export interface ManagementShow {
+  id: string;
+  title: string;
+  languages: string[];
+  organizations: string[];
+  genres: string[];
+  links: ExternalLinkSeed[];
+  seasons: ManagementSeason[];
+}
+
 export interface CanonicalSchedule {
   title: string;
   sourceUrl: string;
@@ -173,6 +194,71 @@ export function scheduleFilterOptions(entries: readonly ScheduleEntry[]) {
   };
 }
 
+export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
+  const shows = new Map<string, ManagementShow>();
+  for (const entry of entries) {
+    const id = showIdForTitle(entry.title);
+    const existing = shows.get(id);
+    const show =
+      existing ??
+      ({
+        id,
+        title: entry.title,
+        languages: [],
+        organizations: [],
+        genres: [],
+        links: [],
+        seasons: [],
+      } satisfies ManagementShow);
+
+    show.languages = uniqueSorted([...show.languages, ...entry.languages]);
+    show.organizations = uniqueSorted([...show.organizations, ...entry.organizations]);
+    show.genres = uniqueSorted([...show.genres, ...entry.genres]);
+    show.links = mergeLinks(show.links, entry.links);
+    show.seasons.push({
+      id: entry.id,
+      section: entry.section,
+      seasonLabel: entry.seasonLabel,
+      timing: entry.timing,
+      endedReason: entry.endedReason,
+      organizationText: entry.organizationText,
+      genreText: entry.genreText,
+      sourceRow: entry.sourceRow,
+    });
+
+    shows.set(id, show);
+  }
+
+  return [...shows.values()]
+    .map((show) => ({
+      ...show,
+      seasons: [...show.seasons].sort((left, right) => left.sourceRow - right.sourceRow),
+    }))
+    .sort((left, right) => left.title.localeCompare(right.title));
+}
+
+export function filterManagementShows(
+  shows: readonly ManagementShow[],
+  query: string,
+  organization: string,
+  language: string,
+): ManagementShow[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return shows.filter((show) => {
+    if (organization !== "all" && !show.organizations.includes(organization)) return false;
+    if (language !== "all" && !show.languages.includes(language)) return false;
+    if (normalizedQuery === "") return true;
+    return [show.title, show.organizations.join(" "), show.genres.join(" "), show.languages.join(" ")]
+      .join(" ")
+      .toLocaleLowerCase()
+      .includes(normalizedQuery);
+  });
+}
+
+export function findManagementShow(shows: readonly ManagementShow[], showId: string): ManagementShow | null {
+  return shows.find((show) => show.id === showId) ?? null;
+}
+
 function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   const organizations = entry.organizations.map((organization) => organization.name).filter(Boolean);
   const genreText = entry.genreTags.join(", ") || entry.legacy.genreText;
@@ -206,6 +292,24 @@ function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: Schedul
 
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values.filter((value) => value !== ""))].sort((left, right) => left.localeCompare(right));
+}
+
+function mergeLinks(left: readonly ExternalLinkSeed[], right: readonly ExternalLinkSeed[]): ExternalLinkSeed[] {
+  const byUrl = new Map<string, ExternalLinkSeed>();
+  for (const link of [...left, ...right]) {
+    byUrl.set(link.url, link);
+  }
+  return [...byUrl.values()];
+}
+
+function showIdForTitle(title: string): string {
+  const slug = title
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return slug || "untitled";
 }
 
 function formatWindow(window: ReleaseWindowSeed | null): string {
