@@ -18,8 +18,9 @@
     "lint:fix": "oxlint --fix -c .oxlintrc.jsonc apps/*/src *.ts",
     "preview:genretv": "cd apps/genretv && bun run preview",
     "seed:blogspot": "bun apps/genretv/scripts/extract-blogspot-seed.ts --out apps/genretv/seeds/blogspot-canonical.seed.json",
-    "test": "bun run test:api",
+    "test": "bun run test:genretv && bun run test:api",
     "test:api": "cd apps/genretv-api && bun run test",
+    "test:genretv": "cd apps/genretv && bun run test",
     "typecheck": "tsgo --noEmit -p tsconfig.json && tsgo --noEmit -p apps/genretv/tsconfig.json && tsgo --noEmit -p apps/genretv-api/tsconfig.json",
     "validate": "bun run typecheck && bun run lint && bun run test && bun run build"
   },

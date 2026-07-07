@@ -1,0 +1,83 @@
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #eeeeee;
+  background-image: image-set(
+    url("/assets/genretv-background.webp") type("image/webp"),
+    url("/assets/genretv-background.jpg") type("image/jpeg")
+  );
+  background-position: top left;
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+
+.mantine-AppShell-main {
+  background: transparent;
+}
+
+.schedule-panel {
+  color: #102225;
+}
+
+.schedule-panel h1,
+.schedule-panel [role="tab"] {
+  color: #102225;
+}
+
+.schedule-panel [data-dimmed] {
+  color: #415256;
+}
+
+.schedule-panel [role="tab"][data-active] {
+  color: #064e55;
+}
+
+.schedule-controls label {
+  color: #102225;
+  font-weight: 650;
+}
+
+.schedule-controls input {
+  color: #102225;
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(17, 34, 37, 0.26);
+}
+
+.schedule-search {
+  flex: 1 1 260px;
+}
+
+.schedule-table {
+  color: #102225;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.schedule-table :where(th, td) {
+  color: #102225;
+  border-color: rgba(17, 34, 37, 0.16);
+}
+
+.schedule-table thead tr {
+  background: rgba(224, 236, 231, 0.98);
+}
+
+.schedule-table tbody tr {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.schedule-table tbody tr:nth-of-type(odd) {
+  background: rgba(240, 247, 243, 0.98);
+}
+
+.schedule-table tbody tr:hover {
+  background: rgba(218, 236, 228, 0.98);
+}
+
+.schedule-table a {
+  color: #075b64;
+}

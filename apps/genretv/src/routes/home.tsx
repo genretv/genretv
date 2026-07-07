@@ -2,132 +2,49 @@ import {
   Anchor,
   Badge,
   Box,
-  Button,
   Group,
   ScrollArea,
+  SegmentedControl,
+  Select,
   Stack,
   Table,
   Tabs,
   Text,
+  TextInput,
   Title,
 } from "@mantine/core";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import seedJson from "../../seeds/blogspot-canonical.seed.json";
+import {
+  buildScheduleFromSeed,
+  defaultScheduleViewPreferences,
+  filterScheduleEntries,
+  scheduleFilterOptions,
+  sectionLabels,
+  type BlogspotCanonicalSeed,
+  type EndingFilter,
+  type ScheduleEntry,
+  type ScheduleSection,
+  type ScheduleSort,
+  type ScheduleViewPreferences,
+} from "../domain/schedule";
 
-type Section = "current" | "upcoming" | "past";
+const schedule = buildScheduleFromSeed(seedJson as unknown as BlogspotCanonicalSeed);
+const storageKey = "genretv.schedule.view.v1";
 
-interface ExternalLinkSeed {
-  kind?: string;
-  label: string;
-  url: string;
-}
-
-interface ReleaseWindowSeed {
-  raw: string;
-  precision: string;
-  confidence: string;
-  year: number | null;
-  month: number | null;
-  day: number | null;
-  releaseSeason: string | null;
-}
-
-interface EntrySeed {
-  id: string;
-  section: Section;
-  show: {
-    displayTitle: string;
-    externalLinks: ExternalLinkSeed[];
-    languages: string[];
-  };
-  season: {
-    rawSeason: string;
-    labelKind: string;
-    number?: number;
-    tentative: boolean;
-    extraMovie: boolean;
-    hiatus: boolean;
-    releasePattern: string | null;
-    releaseWindow: ReleaseWindowSeed | null;
-    finaleWindow: ReleaseWindowSeed | null;
-    lifecycleMarkers: string[];
-    legacyStatus: string;
-    legacyTiming: string;
-  };
-  organizations: Array<{ name: string; role: string; externalLinks: ExternalLinkSeed[] }>;
-  genreTags: string[];
-  notes: string[];
-  legacy: {
-    genreText: string;
-    organizationText: string;
-    detailText: string;
-    cells: string[];
-  };
-}
-
-interface CanonicalSeed {
-  generatedAt: string;
-  source: {
-    pageTitle: string;
-    updatedLabel: string;
-    url: string;
-  };
-  summary: {
-    totalEntries: number;
-    bySection: Record<Section, number>;
-  };
-  entries: EntrySeed[];
-}
-
-const seed = seedJson as unknown as CanonicalSeed;
-
-const sectionLabels: Record<Section, string> = {
-  current: "Now Showing",
-  upcoming: "Upcoming",
-  past: "Finished",
-};
-
-function formatWindow(window: ReleaseWindowSeed | null): string {
-  if (window == null) return "";
-  if (window.raw !== "") return window.raw;
-  if (window.releaseSeason != null && window.year != null) return `${window.releaseSeason} ${window.year}`;
-  if (window.year != null) return String(window.year);
-  return "";
-}
-
-function timingFor(entry: EntrySeed): string {
-  const release = formatWindow(entry.season.releaseWindow);
-  const finale = formatWindow(entry.season.finaleWindow);
-  if (entry.section === "current") {
-    return [entry.season.legacyTiming, finale ? `finale ${finale}` : ""].filter(Boolean).join(" · ");
-  }
-  if (entry.section === "upcoming") {
-    return [release || entry.season.legacyTiming, finale ? `finale ${finale}` : ""].filter(Boolean).join(" · ");
-  }
-  return entry.legacy.detailText || entry.season.legacyStatus || "past";
-}
-
-function seasonLabel(entry: EntrySeed): string {
-  const prefix = entry.season.extraMovie ? "Movie" : `S${entry.season.rawSeason || "?"}`;
-  return entry.season.tentative ? `${prefix}?` : prefix;
-}
-
-function organizationText(entry: EntrySeed): string {
-  const names = entry.organizations.map((organization) => organization.name).filter(Boolean);
-  return names.length > 0 ? names.join(", ") : entry.legacy.organizationText;
-}
-
-function SectionTable({ entries }: { entries: EntrySeed[] }) {
+function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section: ScheduleSection }) {
+  const showStopReason = section === "past";
   return (
     <ScrollArea>
-      <Table striped highlightOnHover verticalSpacing="sm" miw={860}>
+      <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={showStopReason ? 980 : 860}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th w={44}></Table.Th>
             <Table.Th>Show</Table.Th>
             <Table.Th w={120}>Season</Table.Th>
             <Table.Th>When</Table.Th>
+            {showStopReason && <Table.Th w={130}>Ended</Table.Th>}
             <Table.Th>Where</Table.Th>
             <Table.Th>Genre</Table.Th>
           </Table.Tr>
@@ -137,19 +54,19 @@ function SectionTable({ entries }: { entries: EntrySeed[] }) {
             <Table.Tr key={entry.id}>
               <Table.Td>
                 <details>
-                  <summary aria-label={`Show details for ${entry.show.displayTitle}`}></summary>
+                  <summary aria-label={`Show details for ${entry.title}`}></summary>
                   <Box mt="xs" w={360}>
                     <Stack gap={6}>
                       <Group gap={6}>
-                        {entry.show.externalLinks.map((link) => (
+                        {entry.links.map((link) => (
                           <Anchor key={`${entry.id}-${link.kind}-${link.url}`} href={link.url} target="_blank" size="sm">
                             {link.kind ?? link.label}
                           </Anchor>
                         ))}
                       </Group>
-                      {entry.show.languages.length > 0 && (
+                      {entry.languages.length > 0 && (
                         <Group gap={4}>
-                          {entry.show.languages.map((language) => (
+                          {entry.languages.map((language) => (
                             <Badge key={`${entry.id}-${language}`} size="xs" variant="light">
                               {language}
                             </Badge>
@@ -157,19 +74,20 @@ function SectionTable({ entries }: { entries: EntrySeed[] }) {
                         </Group>
                       )}
                       <Text size="xs" c="dimmed">
-                        Legacy cells: {entry.legacy.cells.join(" | ")}
+                        Legacy cells: {entry.legacyCells.join(" | ")}
                       </Text>
                     </Stack>
                   </Box>
                 </details>
               </Table.Td>
               <Table.Td>
-                <Text fw={600}>{entry.show.displayTitle}</Text>
+                <Text fw={600}>{entry.title}</Text>
               </Table.Td>
-              <Table.Td>{seasonLabel(entry)}</Table.Td>
-              <Table.Td>{timingFor(entry)}</Table.Td>
-              <Table.Td>{organizationText(entry)}</Table.Td>
-              <Table.Td>{entry.genreTags.join(", ") || entry.legacy.genreText}</Table.Td>
+              <Table.Td>{entry.seasonLabel}</Table.Td>
+              <Table.Td>{entry.timing}</Table.Td>
+              {showStopReason && <Table.Td>{entry.endedReason}</Table.Td>}
+              <Table.Td>{entry.organizationText}</Table.Td>
+              <Table.Td>{entry.genreText}</Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>
@@ -179,41 +97,149 @@ function SectionTable({ entries }: { entries: EntrySeed[] }) {
 }
 
 export function HomeRoute() {
-  const [section, setSection] = useState<Section>("current");
-  const entriesBySection = useMemo(
-    () => ({
-      current: seed.entries.filter((entry) => entry.section === "current"),
-      upcoming: seed.entries.filter((entry) => entry.section === "upcoming"),
-      past: seed.entries.filter((entry) => entry.section === "past"),
-    }),
-    [],
-  );
+  const [preferences, setPreferences] = useStoredScheduleViewPreferences();
+  const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), []);
+  const visibleEntries = useMemo(() => filterScheduleEntries(schedule.entries, preferences), [preferences]);
+
+  const updatePreferences = (patch: Partial<ScheduleViewPreferences>) => {
+    setPreferences((current) => ({ ...current, ...patch }));
+  };
 
   return (
-    <Stack gap="lg">
+    <Stack
+      className="schedule-panel"
+      gap="lg"
+      maw={1220}
+      mx="auto"
+      p={{ base: "md", sm: "xl" }}
+      style={{
+        background: "rgba(255, 255, 255, 0.9)",
+        border: "1px solid rgba(20, 34, 36, 0.12)",
+        boxShadow: "0 18px 60px rgba(10, 20, 22, 0.18)",
+      }}
+    >
       <Group justify="space-between" align="flex-end">
         <div>
-          <Title order={1}>{seed.source.pageTitle}</Title>
+          <Title order={1}>{schedule.title}</Title>
           <Text size="sm" c="dimmed">
-            Canonical seed scraped from {seed.source.url}. {seed.source.updatedLabel}
+            Canonical seed scraped from {schedule.sourceUrl}. {schedule.updatedLabel}
           </Text>
         </div>
-        <Button component="a" href="/login" variant="default">
-          Sign in to edit
-        </Button>
       </Group>
 
-      <Tabs value={section} onChange={(value) => setSection((value as Section | null) ?? "current")}>
+      <Tabs
+        value={preferences.section}
+        onChange={(value) => updatePreferences({ section: parseSection(value), ending: "all" })}
+      >
         <Tabs.List>
           {(["current", "upcoming", "past"] as const).map((value) => (
             <Tabs.Tab key={value} value={value}>
-              {sectionLabels[value]} ({entriesBySection[value].length})
+              {sectionLabels[value]} ({schedule.counts[value]})
             </Tabs.Tab>
           ))}
         </Tabs.List>
       </Tabs>
 
-      <SectionTable entries={entriesBySection[section]} />
+      <Group className="schedule-controls" align="flex-end" gap="sm">
+        <TextInput
+          className="schedule-search"
+          label="Search"
+          value={preferences.query}
+          onChange={(event) => updatePreferences({ query: event.currentTarget.value })}
+        />
+        <Select
+          label="Language"
+          value={preferences.language}
+          data={[
+            { value: "all", label: "All languages" },
+            ...filterOptions.languages.map((language) => ({ value: language, label: language })),
+          ]}
+          onChange={(value) => updatePreferences({ language: value ?? "all" })}
+        />
+        <Select
+          label="Source"
+          value={preferences.organization}
+          searchable
+          data={[
+            { value: "all", label: "All sources" },
+            ...filterOptions.organizations.map((organization) => ({ value: organization, label: organization })),
+          ]}
+          onChange={(value) => updatePreferences({ organization: value ?? "all" })}
+        />
+        <Select
+          label="Sort"
+          value={preferences.sort}
+          data={[
+            { value: "source", label: "Original order" },
+            { value: "title", label: "Title" },
+            { value: "organization", label: "Source" },
+          ]}
+          onChange={(value) => updatePreferences({ sort: parseSort(value) })}
+        />
+        {preferences.section === "past" && (
+          <SegmentedControl
+            value={preferences.ending}
+            data={[
+              { value: "all", label: "All" },
+              { value: "canceled", label: "Canceled" },
+              { value: "finished", label: "Finished" },
+            ]}
+            onChange={(value) => updatePreferences({ ending: parseEnding(value) })}
+          />
+        )}
+        <Text size="sm" c="dimmed" ml="auto">
+          {visibleEntries.length} rows
+        </Text>
+      </Group>
+
+      <SectionTable entries={visibleEntries} section={preferences.section} />
     </Stack>
   );
+}
+
+function useStoredScheduleViewPreferences() {
+  const [preferences, setPreferences] = useState<ScheduleViewPreferences>(readStoredPreferences);
+
+  useEffect(() => {
+    window.localStorage.setItem(storageKey, JSON.stringify(preferences));
+  }, [preferences]);
+
+  return [preferences, setPreferences] as const;
+}
+
+function readStoredPreferences(): ScheduleViewPreferences {
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (raw == null) return defaultScheduleViewPreferences;
+    const parsed = JSON.parse(raw) as Partial<ScheduleViewPreferences>;
+    return {
+      section: parseSection(parsed.section),
+      query: typeof parsed.query === "string" ? parsed.query : defaultScheduleViewPreferences.query,
+      language: typeof parsed.language === "string" ? parsed.language : defaultScheduleViewPreferences.language,
+      organization:
+        typeof parsed.organization === "string" ? parsed.organization : defaultScheduleViewPreferences.organization,
+      ending: parseEnding(parsed.ending),
+      sort: parseSort(parsed.sort),
+    };
+  } catch {
+    return defaultScheduleViewPreferences;
+  }
+}
+
+function parseSection(value: unknown): ScheduleSection {
+  return value === "current" || value === "upcoming" || value === "past"
+    ? value
+    : defaultScheduleViewPreferences.section;
+}
+
+function parseEnding(value: unknown): EndingFilter {
+  return value === "all" || value === "canceled" || value === "finished" || value === "unknown"
+    ? value
+    : defaultScheduleViewPreferences.ending;
+}
+
+function parseSort(value: unknown): ScheduleSort {
+  return value === "source" || value === "title" || value === "organization"
+    ? value
+    : defaultScheduleViewPreferences.sort;
 }

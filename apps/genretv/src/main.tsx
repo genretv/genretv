@@ -1,4 +1,5 @@
 import "@mantine/core/styles.css";
+import "./app.css";
 import { Center, Loader, MantineProvider } from "@mantine/core";
 import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
