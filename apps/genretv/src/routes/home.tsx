@@ -3,6 +3,7 @@ import {
   Badge,
   Box,
   Group,
+  Pagination,
   ScrollArea,
   SegmentedControl,
   Select,
@@ -19,9 +20,13 @@ import { canonicalSchedule as schedule } from "../domain/canonical-schedule";
 import {
   defaultScheduleViewPreferences,
   filterScheduleEntries,
+  pageCountFor,
+  paginateItems,
+  pageSizeOptions,
   scheduleFilterOptions,
   sectionLabels,
   type EndingFilter,
+  type PageSize,
   type ScheduleEntry,
   type ScheduleSection,
   type ScheduleSort,
@@ -34,7 +39,7 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
   const showStopReason = section === "past";
   return (
     <ScrollArea>
-      <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={showStopReason ? 980 : 860}>
+      <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={showStopReason ? 1100 : 980}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th w={44}></Table.Th>
@@ -42,6 +47,7 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
             <Table.Th w={120}>Season</Table.Th>
             <Table.Th>When</Table.Th>
             {showStopReason && <Table.Th w={130}>Ended</Table.Th>}
+            <Table.Th w={140}>Lang</Table.Th>
             <Table.Th>Where</Table.Th>
             <Table.Th>Genre</Table.Th>
           </Table.Tr>
@@ -83,6 +89,9 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
               <Table.Td>{entry.seasonLabel}</Table.Td>
               <Table.Td>{entry.timing}</Table.Td>
               {showStopReason && <Table.Td>{entry.endedReason}</Table.Td>}
+              <Table.Td>
+                <LanguageBadges languages={entry.languages} ownerId={entry.id} />
+              </Table.Td>
               <Table.Td>{entry.organizationText}</Table.Td>
               <Table.Td>{entry.genreText}</Table.Td>
             </Table.Tr>
@@ -93,14 +102,38 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
   );
 }
 
+function LanguageBadges({ languages, ownerId }: { languages: readonly string[]; ownerId: string }) {
+  if (languages.length === 0) return <Text>Unknown</Text>;
+  return (
+    <Group gap={4}>
+      {languages.map((language) => (
+        <Badge key={`${ownerId}-${language}`} size="xs" variant="light">
+          {language}
+        </Badge>
+      ))}
+    </Group>
+  );
+}
+
 export function HomeRoute() {
   const [preferences, setPreferences] = useStoredScheduleViewPreferences();
+  const [page, setPage] = useState(1);
   const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), []);
   const visibleEntries = useMemo(() => filterScheduleEntries(schedule.entries, preferences), [preferences]);
+  const totalPages = pageCountFor(visibleEntries.length, preferences.pageSize);
+  const pageEntries = useMemo(
+    () => paginateItems(visibleEntries, page, preferences.pageSize),
+    [page, preferences.pageSize, visibleEntries],
+  );
 
   const updatePreferences = (patch: Partial<ScheduleViewPreferences>) => {
+    setPage(1);
     setPreferences((current) => ({ ...current, ...patch }));
   };
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <Stack
@@ -168,6 +201,12 @@ export function HomeRoute() {
           ]}
           onChange={(value) => updatePreferences({ sort: parseSort(value) })}
         />
+        <Select
+          label="Rows"
+          value={String(preferences.pageSize)}
+          data={pageSizeOptions.map((size) => ({ value: String(size), label: String(size) }))}
+          onChange={(value) => updatePreferences({ pageSize: parsePageSize(value) })}
+        />
         {preferences.section === "past" && (
           <SegmentedControl
             classNames={{
@@ -190,7 +229,14 @@ export function HomeRoute() {
         </Text>
       </Group>
 
-      <SectionTable entries={visibleEntries} section={preferences.section} />
+      <SectionTable entries={pageEntries} section={preferences.section} />
+
+      <Group justify="space-between" align="center">
+        <Text size="sm" c="dimmed">
+          Page {page} of {totalPages}
+        </Text>
+        <Pagination value={page} total={totalPages} onChange={setPage} />
+      </Group>
     </Stack>
   );
 }
@@ -218,6 +264,7 @@ function readStoredPreferences(): ScheduleViewPreferences {
         typeof parsed.organization === "string" ? parsed.organization : defaultScheduleViewPreferences.organization,
       ending: parseEnding(parsed.ending),
       sort: parseSort(parsed.sort),
+      pageSize: parsePageSize(parsed.pageSize),
     };
   } catch {
     return defaultScheduleViewPreferences;
@@ -240,4 +287,9 @@ function parseSort(value: unknown): ScheduleSort {
   return value === "source" || value === "title" || value === "organization"
     ? value
     : defaultScheduleViewPreferences.sort;
+}
+
+function parsePageSize(value: unknown): PageSize {
+  const parsed = Number(value);
+  return pageSizeOptions.includes(parsed as PageSize) ? (parsed as PageSize) : defaultScheduleViewPreferences.pageSize;
 }

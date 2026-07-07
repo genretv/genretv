@@ -7,6 +7,8 @@ import {
   filterManagementShows,
   findManagementShow,
   filterScheduleEntries,
+  pageCountFor,
+  paginateItems,
   scheduleFilterOptions,
   type BlogspotCanonicalSeed,
 } from "./schedule";
@@ -120,6 +122,7 @@ describe("schedule read model", () => {
       language: "en",
       organization: "Netflix",
       ending: "canceled",
+      pageSize: 50,
     });
     expect(entries.map((entry) => entry.id)).toEqual(["past-c"]);
   });
@@ -139,9 +142,17 @@ describe("schedule read model", () => {
     expect(findManagementShow(shows, "c-show")?.seasons).toMatchObject([
       {
         endedReason: "Canceled",
+        languages: ["en", "da"],
         seasonLabel: "S1",
       },
     ]);
     expect(filterManagementShows(shows, "super", "Netflix", "en").map((show) => show.id)).toEqual(["c-show"]);
+  });
+
+  test("paginates lists with a minimum page count of one", () => {
+    expect(paginateItems(["a", "b", "c"], 2, 20)).toEqual([]);
+    expect(paginateItems(["a", "b", "c"], 1, 20)).toEqual(["a", "b", "c"]);
+    expect(pageCountFor(0, 20)).toBe(1);
+    expect(pageCountFor(101, 50)).toBe(3);
   });
 });

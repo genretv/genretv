@@ -1,6 +1,10 @@
 export type ScheduleSection = "current" | "upcoming" | "past";
 export type EndingFilter = "all" | "canceled" | "finished" | "unknown";
 export type ScheduleSort = "source" | "title" | "organization";
+export type PageSize = (typeof pageSizeOptions)[number];
+
+export const pageSizeOptions = [20, 50, 100] as const;
+export const defaultPageSize: PageSize = 50;
 
 export interface ExternalLinkSeed {
   kind?: string;
@@ -92,6 +96,7 @@ export interface ManagementSeason {
   endedReason: string;
   organizationText: string;
   genreText: string;
+  languages: string[];
   sourceRow: number;
 }
 
@@ -121,6 +126,7 @@ export interface ScheduleViewPreferences {
   organization: string;
   ending: EndingFilter;
   sort: ScheduleSort;
+  pageSize: PageSize;
 }
 
 export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
@@ -130,6 +136,7 @@ export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
   organization: "all",
   ending: "all",
   sort: "source",
+  pageSize: defaultPageSize,
 };
 
 export const sectionLabels: Record<ScheduleSection, string> = {
@@ -194,6 +201,16 @@ export function scheduleFilterOptions(entries: readonly ScheduleEntry[]) {
   };
 }
 
+export function paginateItems<T>(items: readonly T[], page: number, pageSize: PageSize): T[] {
+  const safePage = Math.max(1, Math.floor(page));
+  const start = (safePage - 1) * pageSize;
+  return items.slice(start, start + pageSize);
+}
+
+export function pageCountFor(totalItems: number, pageSize: PageSize): number {
+  return Math.max(1, Math.ceil(totalItems / pageSize));
+}
+
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
@@ -223,6 +240,7 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       endedReason: entry.endedReason,
       organizationText: entry.organizationText,
       genreText: entry.genreText,
+      languages: entry.languages,
       sourceRow: entry.sourceRow,
     });
 

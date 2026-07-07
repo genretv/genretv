@@ -74,6 +74,7 @@ export function ManageShowRoute() {
                 <Table.Th w={120}>Season</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>When</Table.Th>
+                <Table.Th w={140}>Lang</Table.Th>
                 <Table.Th>Source</Table.Th>
                 <Table.Th>Genre</Table.Th>
                 <Table.Th w={120}>Episodes</Table.Th>
@@ -85,6 +86,16 @@ export function ManageShowRoute() {
                   <Table.Td>{season.seasonLabel}</Table.Td>
                   <Table.Td>{season.section === "past" ? season.endedReason : sectionLabels[season.section]}</Table.Td>
                   <Table.Td>{season.timing}</Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
+                      {season.languages.length === 0 && <Text>Unknown</Text>}
+                      {season.languages.map((language) => (
+                        <Badge key={`${season.id}-${language}`} size="xs" variant="light">
+                          {language}
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Table.Td>
                   <Table.Td>{season.organizationText}</Table.Td>
                   <Table.Td>{season.genreText}</Table.Td>
                   <Table.Td>Unknown</Table.Td>
