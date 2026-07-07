@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "bun-types"]
+  },
+  "include": [
+    "apps/genretv/src/**/*.ts",
+    "apps/genretv/src/**/*.tsx",
+    "apps/genretv/scripts/**/*.ts",
+    "apps/genretv-api/src/**/*.ts"
+  ]
+}

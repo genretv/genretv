@@ -1,0 +1,12 @@
+# Supabase CLI config for deploying GenreTV edge functions.
+project_id = "genretv"
+
+[functions.genretv-write]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/genretv-write/index.ts"
+
+[functions.genretv-sync]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/genretv-sync/index.ts"

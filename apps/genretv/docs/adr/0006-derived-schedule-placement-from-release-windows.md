@@ -1,0 +1,3 @@
+# Derived Schedule Placement From Release Windows
+
+Schedule View placement and ordering will be derived from Release Windows rather than manually assigned sections. Exact dates, Release Seasons, and year-only values can all participate in ordering by using an approximate midpoint for imprecise periods while preserving the original precision and Date Confidence for display and filtering. Release Seasons use Northern Hemisphere meteorological windows for sorting, while the displayed label remains intentionally fuzzy. Release Pattern distinguishes weekly, bulk, and unknown seasons; bulk streaming releases stay current for a Current Grace Period, initially five weeks, before moving out of the current section.
