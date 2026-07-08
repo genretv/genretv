@@ -1,3 +1,5 @@
+import { genretvSyncRegistry } from "@genretv/domain/registry";
+import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import {
   Alert,
   Anchor,
@@ -18,8 +20,6 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { eq, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
 
-import { genretvSyncRegistry } from "@genretv/domain/registry";
-import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
 import {
@@ -36,6 +36,7 @@ import {
   useManagementDraft,
   type ManagementSeasonDraft,
 } from "../features/management/drafts";
+import { canSendCanonicalProposal } from "../features/management/proposals";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -43,7 +44,7 @@ const newSeasonId = "new";
 
 export function ManageSeasonRoute() {
   const { showId, seasonId } = useParams({ from: "/manage/show/$showId/season/$seasonId" });
-  const { session } = useAuth();
+  const { roles, session } = useAuth();
   const navigate = useNavigate();
   const { shows } = useManagementShows();
   const show = shows.find((candidate) => candidate.id === showId) ?? null;
@@ -57,10 +58,7 @@ export function ManageSeasonRoute() {
       <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
         <Title order={1}>Season not found</Title>
         <Group>
-          <Button
-            variant="default"
-            onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId } })}
-          >
+          <Button variant="default" onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId } })}>
             Show
           </Button>
           <Button component={Link} to="/manage" variant="default">
@@ -71,23 +69,35 @@ export function ManageSeasonRoute() {
     );
   }
 
-  return <EditableSeason show={result.show} season={result.season} canEdit={session != null} />;
+  return (
+    <EditableSeason
+      show={result.show}
+      season={result.season}
+      canEdit={session != null}
+      canPropose={canSendCanonicalProposal(roles)}
+    />
+  );
 }
 
 function EditableSeason({
   show,
   season,
   canEdit,
+  canPropose,
 }: {
   show: ManagementShow;
   season: ManagementSeason;
   canEdit: boolean;
+  canPropose: boolean;
 }) {
   const navigate = useNavigate();
   const client = useSyncClient();
   const [savingOverlay, setSavingOverlay] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
+  const [proposalSaving, setProposalSaving] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [proposalSent, setProposalSent] = useState(false);
   const status = season.section === "past" ? season.endedReason : sectionLabels[season.section];
   const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
   const personalSeasons = useLiveDrizzleRows(
@@ -139,6 +149,8 @@ function EditableSeason({
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
   const canSaveOverlay =
     canEdit && !personalSeasons.loading && !personalShows.loading && dirty && episodeCountValid && !savingOverlay;
+  const canSubmitProposal =
+    canEdit && canPropose && !personalSeasons.loading && !personalShows.loading && episodeCountValid && !proposalSaving;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -180,6 +192,58 @@ function EditableSeason({
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSavingOverlay(false);
+    }
+  };
+
+  const sendCanonicalProposal = async () => {
+    const proposalId = crypto.randomUUID();
+    const title = `${show.title} ${draft.seasonLabel.trim() || season.seasonLabel}`.trim();
+    const isPersonalOnlySeason = personalRow != null && personalRow.canonicalSeasonId == null;
+    const isPersonalOnlyShow = personalShowRow != null && personalShowRow.canonicalShowId == null;
+    setProposalSaving(true);
+    setProposalError(null);
+    setProposalSent(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.canonical_proposal.create({
+          id: proposalId,
+          proposalKind: "season",
+          status: "open",
+          title,
+          message: nullableText(draft.notes),
+          personalShowId: personalShowRow?.id ?? null,
+          personalSeasonId: personalRow?.id ?? null,
+          personalEpisodeId: null,
+          canonicalShowId: isPersonalOnlyShow ? null : show.id,
+          canonicalSeasonId: season.id === newSeasonId || isPersonalOnlySeason ? null : season.id,
+          canonicalEpisodeId: null,
+          proposedPayload: {
+            kind: "season",
+            showTitle: show.title,
+            section: draft.section,
+            seasonLabel: draft.seasonLabel.trim() || season.seasonLabel,
+            timing: draft.timing.trim(),
+            endedReason: draft.endedReason.trim(),
+            releasePattern: nullableText(draft.releasePattern),
+            episodeCount: draftEpisodeCount,
+            notes: nullableText(draft.notes),
+          },
+        });
+        tx.tables.maintainer_notification.create({
+          id: crypto.randomUUID(),
+          notificationKind: "canonical_proposal",
+          status: "unread",
+          title: `Canonical proposal: ${title}`,
+          body: nullableText(draft.notes),
+          relatedPublishApplicationId: null,
+          relatedCanonicalProposalId: proposalId,
+        });
+      });
+      setProposalSent(true);
+    } catch (cause) {
+      setProposalError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setProposalSaving(false);
     }
   };
 
@@ -228,6 +292,16 @@ function EditableSeason({
       {overlaySaved && (
         <Alert color="teal" variant="light">
           Saved to your personal overlay.
+        </Alert>
+      )}
+      {proposalError != null && (
+        <Alert color="red" variant="light">
+          Could not send canonical proposal: {proposalError}
+        </Alert>
+      )}
+      {proposalSent && (
+        <Alert color="teal" variant="light">
+          Sent to the canonical maintainers.
         </Alert>
       )}
 
@@ -314,6 +388,16 @@ function EditableSeason({
             <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
               Save to overlay
             </Button>
+            {canPropose && (
+              <Button
+                variant="light"
+                disabled={!canSubmitProposal}
+                loading={proposalSaving}
+                onClick={() => void sendCanonicalProposal()}
+              >
+                Send to canonical
+              </Button>
+            )}
           </Group>
         </Group>
         {locallySaved && (

@@ -1,3 +1,5 @@
+import { genretvSyncRegistry } from "@genretv/domain/registry";
+import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import {
   Alert,
   Anchor,
@@ -17,29 +19,23 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { eq, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
 
-import { genretvSyncRegistry } from "@genretv/domain/registry";
-import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
-import {
-  findManagementShow,
-  formatEpisodeCount,
-  sectionLabels,
-  type ManagementShow,
-} from "../domain/schedule";
+import { findManagementShow, formatEpisodeCount, sectionLabels, type ManagementShow } from "../domain/schedule";
 import {
   orderedTextToList,
   showDraftFromShow,
   showDraftStorageKey,
   useManagementDraft,
 } from "../features/management/drafts";
+import { canSendCanonicalProposal } from "../features/management/proposals";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const newShowId = "new";
 
 export function ManageShowRoute() {
   const { showId } = useParams({ from: "/manage/show/$showId" });
-  const { session } = useAuth();
+  const { roles, session } = useAuth();
   const { shows } = useManagementShows();
   const show = showId === newShowId ? emptyManagementShow() : findManagementShow(shows, showId);
 
@@ -54,15 +50,18 @@ export function ManageShowRoute() {
     );
   }
 
-  return <EditableShow show={show} canEdit={session != null} />;
+  return <EditableShow show={show} canEdit={session != null} canPropose={canSendCanonicalProposal(roles)} />;
 }
 
-function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolean }) {
+function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; canEdit: boolean; canPropose: boolean }) {
   const navigate = useNavigate();
   const client = useSyncClient();
   const [savingOverlay, setSavingOverlay] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
+  const [proposalSaving, setProposalSaving] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [proposalSent, setProposalSent] = useState(false);
   const personalShows = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -95,6 +94,7 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
   const draftCountries = orderedTextToList(draft.countriesText);
   const draftGenres = orderedTextToList(draft.genresText);
   const canSaveOverlay = canEdit && !personalShows.loading && dirty && !savingOverlay;
+  const canSubmitProposal = canEdit && canPropose && !personalShows.loading && !proposalSaving;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -130,6 +130,55 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSavingOverlay(false);
+    }
+  };
+
+  const sendCanonicalProposal = async () => {
+    const proposalId = crypto.randomUUID();
+    const title = draft.title.trim() || show.title || "Untitled show";
+    const isPersonalOnlyShow = personalRow != null && personalRow.canonicalShowId == null;
+    setProposalSaving(true);
+    setProposalError(null);
+    setProposalSent(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.canonical_proposal.create({
+          id: proposalId,
+          proposalKind: "show",
+          status: "open",
+          title,
+          message: nullableText(draft.notes),
+          personalShowId: personalRow?.id ?? null,
+          personalSeasonId: null,
+          personalEpisodeId: null,
+          canonicalShowId: show.id === newShowId || isPersonalOnlyShow ? null : show.id,
+          canonicalSeasonId: null,
+          canonicalEpisodeId: null,
+          proposedPayload: {
+            kind: "show",
+            displayTitle: title,
+            originalTitle: nullableText(draft.originalTitle),
+            languages: draftLanguages,
+            countries: draftCountries,
+            genreTags: draftGenres,
+            notes: nullableText(draft.notes),
+          },
+        });
+        tx.tables.maintainer_notification.create({
+          id: crypto.randomUUID(),
+          notificationKind: "canonical_proposal",
+          status: "unread",
+          title: `Canonical proposal: ${title}`,
+          body: nullableText(draft.notes),
+          relatedPublishApplicationId: null,
+          relatedCanonicalProposalId: proposalId,
+        });
+      });
+      setProposalSent(true);
+    } catch (cause) {
+      setProposalError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setProposalSaving(false);
     }
   };
 
@@ -183,6 +232,16 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
       {overlaySaved && (
         <Alert color="teal" variant="light">
           Saved to your personal overlay.
+        </Alert>
+      )}
+      {proposalError != null && (
+        <Alert color="red" variant="light">
+          Could not send canonical proposal: {proposalError}
+        </Alert>
+      )}
+      {proposalSent && (
+        <Alert color="teal" variant="light">
+          Sent to the canonical maintainers.
         </Alert>
       )}
 
@@ -263,6 +322,16 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
             <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
               Save to overlay
             </Button>
+            {canPropose && (
+              <Button
+                variant="light"
+                disabled={!canSubmitProposal}
+                loading={proposalSaving}
+                onClick={() => void sendCanonicalProposal()}
+              >
+                Send to canonical
+              </Button>
+            )}
           </Group>
         </Group>
         {locallySaved && (
