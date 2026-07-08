@@ -6,6 +6,7 @@ import {
   Button,
   Group,
   ScrollArea,
+  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -39,6 +40,13 @@ const publishApplication = genretvSyncRegistry.publish_application.view!;
 const canonicalProposal = genretvSyncRegistry.canonical_proposal.view!;
 const maintainerNotification = genretvSyncRegistry.maintainer_notification.view!;
 const publishedList = genretvSyncRegistry.published_list.view!;
+const workflowStatusOptions = [
+  { value: "all", label: "All statuses" },
+  { value: "open", label: "Open" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "closed", label: "Closed" },
+];
 
 export function PublishingRoute() {
   const { roles, session } = useAuth();
@@ -53,6 +61,9 @@ export function PublishingRoute() {
   const [publishedSaved, setPublishedSaved] = useState(false);
   const [applicationReviewNotes, setApplicationReviewNotes] = useState<Record<string, string>>({});
   const [proposalReviewNotes, setProposalReviewNotes] = useState<Record<string, string>>({});
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState("all");
+  const [proposalStatusFilter, setProposalStatusFilter] = useState("all");
+  const [proposalKindFilter, setProposalKindFilter] = useState("all");
   const isMaintainer = roles.includes("canonical_maintainer");
   const hasPublisherRole = canPublishList(roles);
   const canonical = useCanonicalSchedule();
@@ -143,6 +154,19 @@ export function PublishingRoute() {
   const ownApplications = useMemo(
     () => applications.rows.filter((application) => userId != null && application.ownerId === userId),
     [applications.rows, userId],
+  );
+  const visibleApplications = useMemo(
+    () => applications.rows.filter((application) => matchesStatusFilter(application.status, applicationStatusFilter)),
+    [applicationStatusFilter, applications.rows],
+  );
+  const visibleProposals = useMemo(
+    () =>
+      proposals.rows.filter(
+        (proposal) =>
+          matchesStatusFilter(proposal.status, proposalStatusFilter) &&
+          (proposalKindFilter === "all" || proposal.proposalKind === proposalKindFilter),
+      ),
+    [proposalKindFilter, proposalStatusFilter, proposals.rows],
   );
   const hasApprovedApplication = hasApprovedPublishApplication(ownApplications);
   const hasOpenApplication = hasOpenPublishApplication(ownApplications);
@@ -501,7 +525,20 @@ export function PublishingRoute() {
       )}
 
       <Stack gap="sm">
-        <Title order={2}>{isMaintainer ? "Applications" : "Your applications"}</Title>
+        <Group justify="space-between" align="flex-end">
+          <div>
+            <Title order={2}>{isMaintainer ? "Applications" : "Your applications"}</Title>
+            <Text size="sm" c="dimmed">
+              {visibleApplications.length} of {applications.rows.length}
+            </Text>
+          </div>
+          <Select
+            label="Status"
+            value={applicationStatusFilter}
+            data={workflowStatusOptions}
+            onChange={(value) => setApplicationStatusFilter(value ?? "all")}
+          />
+        </Group>
         <ScrollArea>
           <Table className="schedule-table" striped verticalSpacing="sm" miw={760}>
             <Table.Thead>
@@ -513,14 +550,16 @@ export function PublishingRoute() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {applications.rows.length === 0 ? (
+              {visibleApplications.length === 0 ? (
                 <Table.Tr>
                   <Table.Td colSpan={isMaintainer ? 4 : 3}>
-                    <Text c="dimmed">No applications yet.</Text>
+                    <Text c="dimmed">
+                      {applications.rows.length === 0 ? "No applications yet." : "No applications match these filters."}
+                    </Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                applications.rows.map((application) => {
+                visibleApplications.map((application) => {
                   const reviewNote = applicationReviewNotes[application.id] ?? application.reviewerNote ?? "";
                   return (
                     <Table.Tr key={application.id}>
@@ -588,7 +627,33 @@ export function PublishingRoute() {
       </Stack>
 
       <Stack gap="sm">
-        <Title order={2}>{isMaintainer ? "Canonical proposals" : "Your canonical proposals"}</Title>
+        <Group justify="space-between" align="flex-end">
+          <div>
+            <Title order={2}>{isMaintainer ? "Canonical proposals" : "Your canonical proposals"}</Title>
+            <Text size="sm" c="dimmed">
+              {visibleProposals.length} of {proposals.rows.length}
+            </Text>
+          </div>
+          <Group align="flex-end">
+            <Select
+              label="Status"
+              value={proposalStatusFilter}
+              data={workflowStatusOptions}
+              onChange={(value) => setProposalStatusFilter(value ?? "all")}
+            />
+            <Select
+              label="Kind"
+              value={proposalKindFilter}
+              data={[
+                { value: "all", label: "All kinds" },
+                { value: "show", label: "Shows" },
+                { value: "season", label: "Seasons" },
+                { value: "episode", label: "Episodes" },
+              ]}
+              onChange={(value) => setProposalKindFilter(value ?? "all")}
+            />
+          </Group>
+        </Group>
         <ScrollArea>
           <Table className="schedule-table" striped verticalSpacing="sm" miw={900}>
             <Table.Thead>
@@ -602,14 +667,18 @@ export function PublishingRoute() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {proposals.rows.length === 0 ? (
+              {visibleProposals.length === 0 ? (
                 <Table.Tr>
                   <Table.Td colSpan={isMaintainer ? 6 : 5}>
-                    <Text c="dimmed">No canonical proposals yet.</Text>
+                    <Text c="dimmed">
+                      {proposals.rows.length === 0
+                        ? "No canonical proposals yet."
+                        : "No proposals match these filters."}
+                    </Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                proposals.rows.map((proposal) => {
+                visibleProposals.map((proposal) => {
                   const reviewNote = proposalReviewNotes[proposal.id] ?? proposal.reviewerNote ?? "";
                   const payloadDetails = proposalPayloadDetails(proposal.proposedPayload);
                   return (
@@ -875,6 +944,10 @@ function stringList(value: unknown): string | null {
 
 function compactStrings(values: Array<string | null>): string[] {
   return values.filter((value): value is string => value != null);
+}
+
+function matchesStatusFilter(status: string, filter: string): boolean {
+  return filter === "all" || status === filter;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
