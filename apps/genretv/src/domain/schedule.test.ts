@@ -57,7 +57,7 @@ const seed: BlogspotCanonicalSeed = {
       id: "upcoming-b",
       section: "upcoming",
       sourceRow: 2,
-      show: { displayTitle: "B Show", externalLinks: [], languages: ["en"] },
+      show: { displayTitle: "B Show", externalLinks: [], languages: [] },
       season: {
         rawSeason: "1",
         labelKind: "numbered",
@@ -109,6 +109,7 @@ describe("schedule read model", () => {
     const schedule = buildScheduleFromSeed(seed);
     expect(schedule.entries[0]?.title).toBe("A Show");
     expect(schedule.entries[0]?.seasonLabel).toBe("S2");
+    expect(schedule.entries[1]?.languages).toEqual(["en"]);
     expect(schedule.entries[2]?.endedReason).toBe("Canceled");
     expect(schedule.entries[2]?.endingKind).toBe("canceled");
   });

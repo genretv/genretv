@@ -152,6 +152,7 @@ const lifecycleLabels: Record<string, string> = {
   renewed: "Renewed",
   moving_to_new_channel: "Moved",
 };
+const defaultLanguage = "en";
 
 export function buildScheduleFromSeed(seed: BlogspotCanonicalSeed): CanonicalSchedule {
   return {
@@ -281,6 +282,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   const organizations = entry.organizations.map((organization) => organization.name).filter(Boolean);
   const genreText = entry.genreTags.join(", ") || entry.legacy.genreText;
   const endedReason = stopReasonFor(entry);
+  const languages = normalizeLanguages(entry.show.languages);
   return {
     id: entry.id,
     sourceRow: entry.sourceRow,
@@ -294,7 +296,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     organizations,
     genreText,
     genres: entry.genreTags,
-    languages: entry.show.languages,
+    languages,
     links: entry.show.externalLinks,
     legacyCells: entry.legacy.cells,
   };
@@ -310,6 +312,10 @@ function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: Schedul
 
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values.filter((value) => value !== ""))].sort((left, right) => left.localeCompare(right));
+}
+
+function normalizeLanguages(languages: readonly string[]): string[] {
+  return languages.length > 0 ? [...languages] : [defaultLanguage];
 }
 
 function mergeLinks(left: readonly ExternalLinkSeed[], right: readonly ExternalLinkSeed[]): ExternalLinkSeed[] {
