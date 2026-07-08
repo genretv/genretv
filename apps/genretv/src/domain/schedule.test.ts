@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildManagementShows,
+  buildScheduleFromRegistryRows,
   buildScheduleFromRegistrySeed,
   defaultScheduleViewPreferences,
   filterManagementShows,
@@ -176,6 +177,19 @@ describe("schedule read model", () => {
     });
     expect(schedule.entries[2]?.endedReason).toBe("Canceled");
     expect(schedule.entries[2]?.endingKind).toBe("canceled");
+  });
+
+  test("builds display entries from canonical registry rows", () => {
+    const schedule = buildScheduleFromRegistryRows(seed.rows, {
+      title: "Live GenreTV",
+      sourceUrl: "https://live.example.test",
+      updatedLabel: "Live",
+      generatedAt: "2026-07-08T00:00:00.000Z",
+    });
+    expect(schedule.title).toBe("Live GenreTV");
+    expect(schedule.sourceUrl).toBe("https://live.example.test");
+    expect(schedule.counts).toEqual({ current: 1, upcoming: 1, past: 1 });
+    expect(schedule.entries[1]?.episodes.map((episode) => episode.title)).toEqual(["Pilot", "Second Landing"]);
   });
 
   test("filters by section, language, organization, ending, and query", () => {

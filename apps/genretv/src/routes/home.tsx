@@ -17,7 +17,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";
-import { canonicalSchedule as schedule } from "../domain/canonical-schedule";
+import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import {
   defaultScheduleViewPreferences,
   filterScheduleEntries,
@@ -133,10 +133,14 @@ function LanguageBadges({ languages, ownerId }: { languages: readonly string[]; 
 }
 
 export function HomeRoute() {
+  const { schedule } = useCanonicalSchedule();
   const [preferences, setPreferences] = useStoredScheduleViewPreferences();
   const [page, setPage] = useState(1);
-  const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), []);
-  const visibleEntries = useMemo(() => filterScheduleEntries(schedule.entries, preferences), [preferences]);
+  const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), [schedule.entries]);
+  const visibleEntries = useMemo(
+    () => filterScheduleEntries(schedule.entries, preferences),
+    [preferences, schedule.entries],
+  );
   const totalPages = pageCountFor(visibleEntries.length, preferences.pageSize);
   const pageEntries = useMemo(
     () => paginateItems(visibleEntries, page, preferences.pageSize),

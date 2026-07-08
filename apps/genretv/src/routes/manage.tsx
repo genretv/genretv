@@ -14,7 +14,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";
-import { canonicalSchedule } from "../domain/canonical-schedule";
+import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import {
   buildManagementShows,
   defaultPageSize,
@@ -26,10 +26,10 @@ import {
   type PageSize,
 } from "../domain/schedule";
 
-const shows = buildManagementShows(canonicalSchedule.entries);
-const filterOptions = scheduleFilterOptions(canonicalSchedule.entries);
-
 export function ManageRoute() {
+  const { schedule } = useCanonicalSchedule();
+  const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
+  const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), [schedule.entries]);
   const [query, setQuery] = useState("");
   const [organization, setOrganization] = useState("all");
   const [languages, setLanguages] = useState<string[]>([]);
@@ -38,7 +38,7 @@ export function ManageRoute() {
   const [page, setPage] = useState(1);
   const visibleShows = useMemo(
     () => filterManagementShows(shows, query, organization, languages, countries),
-    [query, organization, languages, countries],
+    [query, organization, languages, countries, shows],
   );
   const totalPages = pageCountFor(visibleShows.length, pageSize);
   const pageShows = useMemo(() => paginateItems(visibleShows, page, pageSize), [page, pageSize, visibleShows]);

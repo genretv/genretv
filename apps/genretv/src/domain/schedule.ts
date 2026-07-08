@@ -256,9 +256,21 @@ export function buildScheduleFromSeed(seed: BlogspotCanonicalSeed): CanonicalSch
 }
 
 export function buildScheduleFromRegistrySeed(seed: CanonicalRegistrySeed): CanonicalSchedule {
-  const showsById = new Map(seed.rows.shows.map((show) => [show.id, show]));
-  const episodesBySeason = groupEpisodesBySeason(seed.rows.episodes);
-  const entries = seed.rows.seasons
+  return buildScheduleFromRegistryRows(seed.rows, {
+    title: seed.source?.pageTitle ?? "GenreTV",
+    sourceUrl: seed.source?.url ?? "",
+    updatedLabel: seed.source?.updatedLabel ?? "",
+    generatedAt: seed.generatedAt ?? "",
+  });
+}
+
+export function buildScheduleFromRegistryRows(
+  rows: CanonicalRegistrySeed["rows"],
+  metadata: Pick<CanonicalSchedule, "generatedAt" | "sourceUrl" | "title" | "updatedLabel">,
+): CanonicalSchedule {
+  const showsById = new Map(rows.shows.map((show) => [show.id, show]));
+  const episodesBySeason = groupEpisodesBySeason(rows.episodes);
+  const entries = rows.seasons
     .map((season) => {
       const show = showsById.get(season.showId);
       return show == null ? null : toRegistryScheduleEntry(show, season, episodesBySeason.get(season.id) ?? []);
@@ -266,10 +278,10 @@ export function buildScheduleFromRegistrySeed(seed: CanonicalRegistrySeed): Cano
     .filter((entry): entry is ScheduleEntry => entry != null);
 
   return {
-    title: seed.source?.pageTitle ?? "GenreTV",
-    sourceUrl: seed.source?.url ?? "",
-    updatedLabel: seed.source?.updatedLabel ?? "",
-    generatedAt: seed.generatedAt ?? "",
+    title: metadata.title,
+    sourceUrl: metadata.sourceUrl,
+    updatedLabel: metadata.updatedLabel,
+    generatedAt: metadata.generatedAt,
     counts: countBySection(entries),
     entries,
   };

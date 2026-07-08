@@ -17,7 +17,7 @@ import { useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { useAuth } from "../auth/auth";
-import { canonicalSchedule } from "../domain/canonical-schedule";
+import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import {
   buildManagementShows,
   findManagementShow,
@@ -32,11 +32,11 @@ import {
   useManagementDraft,
 } from "../features/management/drafts";
 
-const shows = buildManagementShows(canonicalSchedule.entries);
-
 export function ManageShowRoute() {
   const { showId } = useParams({ from: "/manage/show/$showId" });
   const { session } = useAuth();
+  const { schedule } = useCanonicalSchedule();
+  const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
   const show = findManagementShow(shows, showId);
 
   if (show == null) {
