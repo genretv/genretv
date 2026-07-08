@@ -40,7 +40,9 @@ import { canSendCanonicalProposal } from "../features/management/proposals";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
+const personalEpisode = genretvSyncRegistry.personal_episode.view!;
 const personalListExclusion = genretvSyncRegistry.personal_list_exclusion.view!;
+const listImport = genretvSyncRegistry.list_import.view!;
 const newSeasonId = "new";
 
 export function ManageSeasonRoute() {
@@ -97,6 +99,7 @@ function EditableSeason({
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
   const [hidingSeason, setHidingSeason] = useState(false);
+  const [deletingSeason, setDeletingSeason] = useState(false);
   const [proposalSaving, setProposalSaving] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
@@ -137,6 +140,42 @@ function EditableSeason({
     { ready: canEdit },
   );
   const personalShowRow = personalShows.rows[0] ?? null;
+  const personalSeasonSiblings = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalSeason.id,
+          personalShowId: personalSeason.personalShowId,
+        })
+        .from(personalSeason)
+        .where(eq(personalSeason.personalShowId, show.id)),
+    [show.id],
+    { ready: canEdit && personalShowRow?.canonicalShowId === null },
+  );
+  const personalEpisodesForSeason = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalEpisode.id,
+          personalSeasonId: personalEpisode.personalSeasonId,
+        })
+        .from(personalEpisode)
+        .where(eq(personalEpisode.personalSeasonId, season.id)),
+    [season.id],
+    { ready: canEdit && season.id !== newSeasonId },
+  );
+  const importsForSeason = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: listImport.id,
+          targetPersonalSeasonId: listImport.targetPersonalSeasonId,
+        })
+        .from(listImport)
+        .where(eq(listImport.targetPersonalSeasonId, season.id)),
+    [season.id],
+    { ready: canEdit && season.id !== newSeasonId },
+  );
   const seasonExclusions = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -174,6 +213,14 @@ function EditableSeason({
     existingSeasonExclusion == null &&
     (personalRow == null || personalRow.canonicalSeasonId != null) &&
     !hidingSeason;
+  const canDeletePersonalSeason =
+    canEdit &&
+    personalRow != null &&
+    personalRow.canonicalSeasonId == null &&
+    !personalEpisodesForSeason.loading &&
+    !importsForSeason.loading &&
+    !personalSeasonSiblings.loading &&
+    !deletingSeason;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -296,6 +343,40 @@ function EditableSeason({
     }
   };
 
+  const deletePersonalSeason = async () => {
+    if (personalRow == null || personalRow.canonicalSeasonId != null) return;
+    const deletePersonalShow =
+      personalShowRow != null &&
+      personalShowRow.canonicalShowId == null &&
+      personalSeasonSiblings.rows.filter((row) => row.id !== personalRow.id).length === 0;
+    setDeletingSeason(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        for (const importRow of importsForSeason.rows) {
+          tx.tables.list_import.delete({ id: importRow.id });
+        }
+        for (const episode of personalEpisodesForSeason.rows) {
+          tx.tables.personal_episode.delete({ id: episode.id });
+        }
+        tx.tables.personal_season.delete({ id: personalRow.id });
+        if (deletePersonalShow && personalShowRow != null) {
+          tx.tables.personal_show.delete({ id: personalShowRow.id });
+        }
+      });
+      if (deletePersonalShow) {
+        void navigate({ to: "/manage" });
+      } else {
+        void navigate({ to: "/manage/show/$showId", params: { showId: show.id } });
+      }
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setDeletingSeason(false);
+    }
+  };
+
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
       <Group justify="space-between" align="flex-start">
@@ -331,6 +412,11 @@ function EditableSeason({
       {personalShows.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this show: {personalShows.error.message}
+        </Alert>
+      )}
+      {(personalEpisodesForSeason.error ?? importsForSeason.error ?? personalSeasonSiblings.error) != null && (
+        <Alert color="red" variant="light">
+          Could not load the personal rows needed for deletion.
         </Alert>
       )}
       {seasonExclusions.error != null && (
@@ -450,6 +536,15 @@ function EditableSeason({
               onClick={() => void hideSeason()}
             >
               Hide from my list
+            </Button>
+            <Button
+              color="red"
+              variant="outline"
+              disabled={!canDeletePersonalSeason}
+              loading={deletingSeason}
+              onClick={() => void deletePersonalSeason()}
+            >
+              Delete personal season
             </Button>
             {canPropose && (
               <Button
