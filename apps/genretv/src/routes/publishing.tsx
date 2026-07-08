@@ -18,7 +18,12 @@ import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
-import { canPublishList, workflowStatusColor } from "../features/management/proposals";
+import {
+  canPublishList,
+  hasApprovedPublishApplication,
+  hasOpenPublishApplication,
+  workflowStatusColor,
+} from "../features/management/proposals";
 import { buildPublishedSnapshotPlan, normalizePublishedSlug } from "../features/publishing/snapshots";
 
 const publishApplication = genretvSyncRegistry.publish_application.view!;
@@ -38,7 +43,7 @@ export function PublishingRoute() {
   const [saved, setSaved] = useState(false);
   const [publishedSaved, setPublishedSaved] = useState(false);
   const isMaintainer = roles.includes("canonical_maintainer");
-  const canPublish = canPublishList(roles);
+  const hasPublisherRole = canPublishList(roles);
   const canonical = useCanonicalSchedule();
   const normalizedSlug = normalizePublishedSlug(listSlug);
   const applications = useLiveDrizzleRows(
@@ -118,6 +123,14 @@ export function PublishingRoute() {
     [normalizedSlug, publishedLists.rows],
   );
   const userId = session?.user.id ?? null;
+  const ownApplications = useMemo(
+    () => applications.rows.filter((application) => userId != null && application.ownerId === userId),
+    [applications.rows, userId],
+  );
+  const hasApprovedApplication = hasApprovedPublishApplication(ownApplications);
+  const hasOpenApplication = hasOpenPublishApplication(ownApplications);
+  const canPublish = hasPublisherRole || hasApprovedApplication;
+  const canSubmitApplication = !saving && !applications.loading && !canPublish && !hasOpenApplication;
   const ownMatchingPublishedList =
     matchingPublishedList != null && userId != null && matchingPublishedList.ownerId === userId
       ? matchingPublishedList
@@ -317,6 +330,11 @@ export function PublishingRoute() {
       {canPublish ? (
         <Stack gap="sm">
           <Title order={2}>Publish snapshot</Title>
+          {hasApprovedApplication && !hasPublisherRole && (
+            <Alert color="teal" variant="light">
+              Your publish application has been approved.
+            </Alert>
+          )}
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <TextInput label="Title" value={listTitle} onChange={(event) => setListTitle(event.currentTarget.value)} />
             <TextInput
@@ -349,15 +367,21 @@ export function PublishingRoute() {
       ) : (
         <Stack gap="sm">
           <Title order={2}>Apply to publish</Title>
+          {hasOpenApplication && (
+            <Alert color="yellow" variant="light">
+              Your publish application is waiting for maintainer review.
+            </Alert>
+          )}
           <Textarea
             label="Message"
             autosize
             minRows={4}
             value={message}
+            disabled={hasOpenApplication}
             onChange={(event) => setMessage(event.currentTarget.value)}
           />
           <Group justify="flex-end">
-            <Button loading={saving} onClick={() => void submitApplication()}>
+            <Button loading={saving} disabled={!canSubmitApplication} onClick={() => void submitApplication()}>
               Apply to publish
             </Button>
           </Group>
