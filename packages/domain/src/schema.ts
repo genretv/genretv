@@ -399,6 +399,7 @@ export const publishedSeasonSyncEntry = defineSyncTable({
     finaleWindow: jsonb("finale_window"),
     sortKey: varchar("sort_key", { length: 40 }),
     episodeCount: integer("episode_count"),
+    sourceRow: integer("source_row").notNull(),
     organizations: jsonb("organizations").notNull().default([]),
     externalLinks: jsonb("external_links").notNull().default([]),
     notes: varchar("notes", { length: 8000 }),
@@ -550,7 +551,8 @@ export const publishApplicationSyncEntry = defineSyncTable({
   subscription: "lazy",
   consistencyGroup: "maintainer-workflow",
   shape: {
-    rowFilter: (columns) => ownerOrRoleReadFilter(columns, "canonical_maintainer", "publish-application-owner-or-maintainer-v1"),
+    rowFilter: (columns) =>
+      ownerOrRoleReadFilter(columns, "canonical_maintainer", "publish-application-owner-or-maintainer-v1"),
   },
   governance: {
     managedFields: [
@@ -595,7 +597,8 @@ export const canonicalProposalSyncEntry = defineSyncTable({
   subscription: "lazy",
   consistencyGroup: "maintainer-workflow",
   shape: {
-    rowFilter: (columns) => ownerOrRoleReadFilter(columns, "canonical_maintainer", "canonical-proposal-owner-or-maintainer-v1"),
+    rowFilter: (columns) =>
+      ownerOrRoleReadFilter(columns, "canonical_maintainer", "canonical-proposal-owner-or-maintainer-v1"),
   },
   governance: {
     managedFields: [
@@ -637,7 +640,8 @@ export const maintainerNotificationSyncEntry = defineSyncTable({
   subscription: "lazy",
   consistencyGroup: "maintainer-workflow",
   shape: {
-    rowFilter: (columns) => ownerOrRoleReadFilter(columns, "canonical_maintainer", "notification-owner-or-maintainer-v1"),
+    rowFilter: (columns) =>
+      ownerOrRoleReadFilter(columns, "canonical_maintainer", "notification-owner-or-maintainer-v1"),
   },
   governance: {
     managedFields: [

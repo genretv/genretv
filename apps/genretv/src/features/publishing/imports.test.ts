@@ -1,0 +1,106 @@
+import { describe, expect, test } from "bun:test";
+
+import { buildPublishedListSummaries } from "./imports";
+
+describe("published list import summaries", () => {
+  test("uses only published current snapshot rows and marks imported seasons", () => {
+    const summaries = buildPublishedListSummaries(
+      [
+        {
+          id: "list-1",
+          slug: "published",
+          title: "Published list",
+          description: "Public",
+          publicationStatus: "published",
+          snapshotVersion: 2,
+          updatedAtUs: 10n,
+        },
+        {
+          id: "draft-list",
+          slug: "draft",
+          title: "Draft list",
+          description: null,
+          publicationStatus: "draft",
+          snapshotVersion: 1,
+          updatedAtUs: 1n,
+        },
+      ],
+      [
+        {
+          id: "show-current",
+          publishedListId: "list-1",
+          snapshotVersion: 2,
+          displayTitle: "Shared Show",
+          originalTitle: null,
+          languages: ["da", "sv"],
+          countries: ["DK"],
+          genreTags: ["Fantasy"],
+          externalLinks: [{ label: "IMDb", url: "https://imdb.test/title/1" }],
+          notes: "Show note",
+        },
+        {
+          id: "show-stale",
+          publishedListId: "list-1",
+          snapshotVersion: 1,
+          displayTitle: "Old Show",
+          originalTitle: null,
+          languages: ["en"],
+          countries: ["US"],
+          genreTags: [],
+          externalLinks: [],
+          notes: null,
+        },
+      ],
+      [
+        {
+          id: "season-current",
+          publishedListId: "list-1",
+          publishedShowId: "show-current",
+          snapshotVersion: 2,
+          section: "current",
+          seasonLabel: "S1",
+          timing: "Fridays",
+          endedReason: "Unknown",
+          releasePattern: "weekly",
+          episodeCount: null,
+          sourceRow: 2,
+          organizations: [{ name: "Netflix", role: "streamer", externalLinks: [] }],
+          notes: "Season note",
+        },
+        {
+          id: "season-stale",
+          publishedListId: "list-1",
+          publishedShowId: "show-stale",
+          snapshotVersion: 1,
+          section: "past",
+          seasonLabel: "S0",
+          timing: "",
+          endedReason: "Finished",
+          releasePattern: null,
+          episodeCount: 8,
+          sourceRow: 1,
+          organizations: [],
+          notes: null,
+        },
+      ],
+      [{ sourcePublishedSeasonId: "season-current", importMode: "linked" }],
+    );
+
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]).toMatchObject({
+      id: "list-1",
+      title: "Published list",
+      snapshotVersion: 2,
+    });
+    expect(summaries[0]?.seasons).toHaveLength(1);
+    expect(summaries[0]?.seasons[0]).toMatchObject({
+      id: "season-current",
+      displayTitle: "Shared Show",
+      languages: ["da", "sv"],
+      showNotes: "Show note",
+      notes: "Season note",
+      organizationText: "Netflix",
+      importMode: "linked",
+    });
+  });
+});

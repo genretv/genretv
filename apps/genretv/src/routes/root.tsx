@@ -19,6 +19,9 @@ export function RootLayout() {
             <Anchor component={Link} to="/manage" size="sm">
               Shows
             </Anchor>
+            <Anchor component={Link} to="/published" size="sm">
+              Published
+            </Anchor>
             <Anchor component={Link} to="/publishing" size="sm">
               Publishing
             </Anchor>
