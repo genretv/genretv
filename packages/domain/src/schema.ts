@@ -18,6 +18,43 @@ const publicReadPolicy = (name: string) =>
     using: sql`true`,
   });
 
+// Tier 3 is intentional here: Drizzle has no typed helper for testing Supabase custom roles inside
+// `request.jwt.claims`; this mirrors pgxsinkit's owner-or-admin policy helper.
+const canonicalMaintainerRolePredicate = sql`EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements_text(
+      COALESCE(
+        (
+          coalesce(
+            nullif(current_setting('request.jwt.claim', true), ''),
+            nullif(current_setting('request.jwt.claims', true), '')
+          )::jsonb -> 'app_metadata' -> 'roles'
+        ),
+        '[]'::jsonb
+      )
+    ) AS assigned_role(role_name_value)
+    WHERE assigned_role.role_name_value = 'canonical_maintainer'
+  )`;
+
+const canonicalMaintainerWritePolicies = (tableName: string) => [
+  pgPolicy(`${tableName}_canonical_maintainer_insert`, {
+    for: "insert",
+    to: authenticatedRole,
+    withCheck: canonicalMaintainerRolePredicate,
+  }),
+  pgPolicy(`${tableName}_canonical_maintainer_update`, {
+    for: "update",
+    to: authenticatedRole,
+    using: canonicalMaintainerRolePredicate,
+    withCheck: canonicalMaintainerRolePredicate,
+  }),
+  pgPolicy(`${tableName}_canonical_maintainer_delete`, {
+    for: "delete",
+    to: authenticatedRole,
+    using: canonicalMaintainerRolePredicate,
+  }),
+];
+
 function ownerReadFilter(columns: { ownerId: AnyColumn }) {
   return {
     customWhere: (claims: JwtClaims) => (claims.sub ? sql`${c(columns.ownerId)} = ${claims.sub}` : DENY_ALL),
@@ -93,8 +130,14 @@ export const canonicalShowSyncEntry = defineSyncTable({
     notes: varchar("notes", { length: 8000 }),
     updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
   }),
-  policies: [publicReadPolicy("canonical_show_public_read")],
-  mode: "readonly",
+  policies: [publicReadPolicy("canonical_show_public_read"), ...canonicalMaintainerWritePolicies("canonical_show")],
+  mode: "readwrite",
+  conflictPolicy: "reject-if-stale",
+  writeMode: "pessimistic",
+  consistencyGroup: "canonical-schedule",
+  governance: {
+    managedFields: [{ column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" }],
+  },
 });
 
 export const canonicalSeasonSyncEntry = defineSyncTable({
@@ -121,9 +164,14 @@ export const canonicalSeasonSyncEntry = defineSyncTable({
     notes: varchar("notes", { length: 8000 }),
     updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
   }),
-  policies: [publicReadPolicy("canonical_season_public_read")],
-  mode: "readonly",
+  policies: [publicReadPolicy("canonical_season_public_read"), ...canonicalMaintainerWritePolicies("canonical_season")],
+  mode: "readwrite",
+  conflictPolicy: "reject-if-stale",
+  writeMode: "pessimistic",
   consistencyGroup: "canonical-schedule",
+  governance: {
+    managedFields: [{ column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" }],
+  },
 });
 
 export const canonicalEpisodeSyncEntry = defineSyncTable({
@@ -141,9 +189,17 @@ export const canonicalEpisodeSyncEntry = defineSyncTable({
     notes: varchar("notes", { length: 8000 }),
     updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
   }),
-  policies: [publicReadPolicy("canonical_episode_public_read")],
-  mode: "readonly",
+  policies: [
+    publicReadPolicy("canonical_episode_public_read"),
+    ...canonicalMaintainerWritePolicies("canonical_episode"),
+  ],
+  mode: "readwrite",
+  conflictPolicy: "reject-if-stale",
+  writeMode: "pessimistic",
   consistencyGroup: "canonical-schedule",
+  governance: {
+    managedFields: [{ column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" }],
+  },
 });
 
 export const personalShowSyncEntry = defineSyncTable({

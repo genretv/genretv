@@ -22,9 +22,12 @@ describe("genretv sync registry", () => {
       "published_show",
       "user_profile",
     ]);
-    expect(genretvSyncRegistry.canonical_episode.mode).toBe("readonly");
-    expect(genretvSyncRegistry.canonical_show.mode).toBe("readonly");
-    expect(genretvSyncRegistry.canonical_season.mode).toBe("readonly");
+    expect(genretvSyncRegistry.canonical_episode.mode).toBe("readwrite");
+    expect(genretvSyncRegistry.canonical_episode.writeMode).toBe("pessimistic");
+    expect(genretvSyncRegistry.canonical_show.mode).toBe("readwrite");
+    expect(genretvSyncRegistry.canonical_show.writeMode).toBe("pessimistic");
+    expect(genretvSyncRegistry.canonical_season.mode).toBe("readwrite");
+    expect(genretvSyncRegistry.canonical_season.writeMode).toBe("pessimistic");
     expect(genretvSyncRegistry.personal_show.mode).toBe("readwrite");
     expect(genretvSyncRegistry.personal_show.subscription).toBe("lazy");
     expect(genretvSyncRegistry.personal_show.writeMode).toBe("pessimistic");

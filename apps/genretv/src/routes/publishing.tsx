@@ -18,6 +18,7 @@ import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { buildCanonicalProposalMergePlan } from "../features/management/canonical-merge";
 import {
   unreadNotificationIdsForCanonicalProposal,
   unreadNotificationIdsForPublishApplication,
@@ -267,6 +268,45 @@ export function PublishingRoute() {
         }
       });
       setProposalReviewNotes((notes) => withoutKey(notes, id));
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const approveCanonicalProposal = async (
+    proposal: {
+      canonicalSeasonId: string | null;
+      canonicalShowId: string | null;
+      id: string;
+      proposalKind: string;
+      proposedPayload: unknown;
+      title: string;
+    },
+    note: string,
+  ) => {
+    const notificationIds = unreadNotificationIdsForCanonicalProposal(notifications.rows, proposal.id);
+    const plan = buildCanonicalProposalMergePlan(proposal, () => crypto.randomUUID());
+    setSaving(true);
+    setActionError(null);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        if (plan.showCreate != null) tx.tables.canonical_show.create(plan.showCreate);
+        if (plan.showUpdate != null) tx.tables.canonical_show.update({ id: plan.showUpdate.id }, plan.showUpdate.patch);
+        if (plan.seasonCreate != null) tx.tables.canonical_season.create(plan.seasonCreate);
+        if (plan.seasonUpdate != null) {
+          tx.tables.canonical_season.update({ id: plan.seasonUpdate.id }, plan.seasonUpdate.patch);
+        }
+        tx.tables.canonical_proposal.update(
+          { id: proposal.id },
+          { status: "approved", reviewerNote: nullableText(note) },
+        );
+        for (const notificationId of notificationIds) {
+          tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
+        }
+      });
+      setProposalReviewNotes((notes) => withoutKey(notes, proposal.id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -612,9 +652,9 @@ export function PublishingRoute() {
                                 size="xs"
                                 variant="light"
                                 disabled={saving}
-                                onClick={() => void updateProposalStatus(proposal.id, "approved", reviewNote)}
+                                onClick={() => void approveCanonicalProposal(proposal, reviewNote)}
                               >
-                                Approve
+                                Approve + merge
                               </Button>
                               <Button
                                 size="xs"

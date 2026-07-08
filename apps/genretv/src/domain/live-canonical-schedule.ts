@@ -21,9 +21,9 @@ import {
   type ScheduleSection,
 } from "./schedule";
 
-const canonicalShow = genretvSyncRegistry.canonical_show.table;
-const canonicalSeason = genretvSyncRegistry.canonical_season.table;
-const canonicalEpisode = genretvSyncRegistry.canonical_episode.table;
+const canonicalShow = genretvSyncRegistry.canonical_show.view!;
+const canonicalSeason = genretvSyncRegistry.canonical_season.view!;
+const canonicalEpisode = genretvSyncRegistry.canonical_episode.view!;
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;

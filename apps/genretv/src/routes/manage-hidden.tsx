@@ -7,9 +7,9 @@ import { useMemo, useState } from "react";
 import { useAuth } from "../auth/auth";
 import { buildExclusionSummaries } from "../features/management/exclusions";
 
-const canonicalShow = genretvSyncRegistry.canonical_show.table;
-const canonicalSeason = genretvSyncRegistry.canonical_season.table;
-const canonicalEpisode = genretvSyncRegistry.canonical_episode.table;
+const canonicalShow = genretvSyncRegistry.canonical_show.view!;
+const canonicalSeason = genretvSyncRegistry.canonical_season.view!;
+const canonicalEpisode = genretvSyncRegistry.canonical_episode.view!;
 const personalListExclusion = genretvSyncRegistry.personal_list_exclusion.view!;
 
 export function ManageHiddenRoute() {
