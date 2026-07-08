@@ -28,7 +28,7 @@ export function RootLayout() {
           </Group>
           {session ? (
             <Group gap="sm">
-              <Text size="sm" c="dimmed">
+              <Text component={Link} to="/profile" size="sm" c="dimmed">
                 {session.user.email}
               </Text>
               <Button size="xs" variant="default" onClick={() => void signOut()}>
