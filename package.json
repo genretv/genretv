@@ -18,6 +18,7 @@
     "lint:fix": "oxlint --fix -c .oxlintrc.jsonc apps/*/src *.ts",
     "preview:genretv": "cd apps/genretv && bun run preview",
     "seed:blogspot": "bun apps/genretv/scripts/extract-blogspot-seed.ts --out apps/genretv/seeds/blogspot-canonical.seed.json",
+    "seed:canonical": "bun apps/genretv/scripts/build-canonical-registry-seed.ts --out apps/genretv/seeds/canonical-registry.seed.json",
     "test": "bun run test:genretv && bun run test:api",
     "test:api": "cd apps/genretv-api && bun run test",
     "test:genretv": "cd apps/genretv && bun run test",
