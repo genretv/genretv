@@ -165,6 +165,7 @@ describe("schedule read model", () => {
   test("builds display entries from the canonical registry seed", () => {
     const schedule = buildScheduleFromRegistrySeed(seed);
     expect(schedule.entries[0]?.title).toBe("A Show");
+    expect(schedule.entries[0]?.originalTitle).toBeNull();
     expect(schedule.entries[0]?.seasonLabel).toBe("S2");
     expect(schedule.entries[1]?.languages).toEqual(["en"]);
     expect(schedule.entries[1]?.episodeCount).toBe(2);
@@ -208,6 +209,7 @@ describe("schedule read model", () => {
       {
         endedReason: "Canceled",
         languages: ["en", "da"],
+        notes: null,
         seasonLabel: "S1",
       },
     ]);

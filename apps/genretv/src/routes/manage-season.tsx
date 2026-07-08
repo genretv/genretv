@@ -1,13 +1,44 @@
-import { Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Button,
+  Group,
+  ScrollArea,
+  Select,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Textarea,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useParams } from "@tanstack/react-router";
+import { useMemo } from "react";
 
+import { useAuth } from "../auth/auth";
 import { canonicalSchedule } from "../domain/canonical-schedule";
-import { buildManagementShows, findManagementSeason, formatEpisodeCount, sectionLabels } from "../domain/schedule";
+import {
+  buildManagementShows,
+  findManagementSeason,
+  formatEpisodeCount,
+  sectionLabels,
+  type ManagementSeason,
+  type ManagementShow,
+} from "../domain/schedule";
+import {
+  parseEpisodeCountDraft,
+  seasonDraftFromSeason,
+  seasonDraftStorageKey,
+  useManagementDraft,
+  type ManagementSeasonDraft,
+} from "../features/management/drafts";
 
 const shows = buildManagementShows(canonicalSchedule.entries);
 
 export function ManageSeasonRoute() {
   const { showId, seasonId } = useParams({ from: "/manage/show/$showId/season/$seasonId" });
+  const { session } = useAuth();
   const result = findManagementSeason(shows, showId, seasonId);
 
   if (result == null) {
@@ -26,9 +57,27 @@ export function ManageSeasonRoute() {
     );
   }
 
-  const { show, season } = result;
+  return <EditableSeason show={result.show} season={result.season} canEdit={session != null} />;
+}
+
+function EditableSeason({
+  show,
+  season,
+  canEdit,
+}: {
+  show: ManagementShow;
+  season: ManagementSeason;
+  canEdit: boolean;
+}) {
   const status = season.section === "past" ? season.endedReason : sectionLabels[season.section];
   const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
+  const initialDraft = useMemo(() => seasonDraftFromSeason(season), [season]);
+  const { draft, dirty, locallySaved, setDraft, saveLocalDraft, discardLocalDraft } = useManagementDraft(
+    seasonDraftStorageKey(season.id),
+    initialDraft,
+  );
+  const draftEpisodeCount = parseEpisodeCountDraft(draft.episodeCount);
+  const episodeCountValid = draft.episodeCount.trim() === "" || draftEpisodeCount != null;
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
 
@@ -51,56 +100,101 @@ export function ManageSeasonRoute() {
         </Group>
       </Group>
 
-      <Table className="schedule-table" verticalSpacing="sm">
-        <Table.Tbody>
-          <Table.Tr>
-            <Table.Th w={150}>Status</Table.Th>
-            <Table.Td>{status}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>When</Table.Th>
-            <Table.Td>{season.timing}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>Source</Table.Th>
-            <Table.Td>{season.organizationText || "Unknown"}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>Genre</Table.Th>
-            <Table.Td>{season.genreText || "Unknown"}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>Languages</Table.Th>
-            <Table.Td>
-              <Group gap={4}>
-                {season.languages.length === 0 && <Text>Unknown</Text>}
-                {season.languages.map((language) => (
-                  <Badge key={`${season.id}-${language}`} size="xs" variant="light">
-                    {language}
-                  </Badge>
-                ))}
-              </Group>
-            </Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>Countries</Table.Th>
-            <Table.Td>
-              <Group gap={4}>
-                {season.countries.length === 0 && <Text>Unknown</Text>}
-                {season.countries.map((country) => (
-                  <Badge key={`${season.id}-${country}`} size="xs" variant="light">
-                    {country}
-                  </Badge>
-                ))}
-              </Group>
-            </Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>Episodes</Table.Th>
-            <Table.Td>{episodeCount}</Table.Td>
-          </Table.Tr>
-        </Table.Tbody>
-      </Table>
+      <Alert color={canEdit ? "teal" : "yellow"} variant="light">
+        {canEdit
+          ? "Changes can be saved as a browser-local draft. Publishing to your overlay will be enabled when the writable pgxsinkit registry lands."
+          : "Sign in to create a browser-local management draft."}
+      </Alert>
+
+      <Stack gap="md">
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <TextInput
+            label="Season"
+            value={draft.seasonLabel}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, seasonLabel: event.currentTarget.value }))}
+          />
+          <Select
+            label="Section"
+            value={draft.section}
+            disabled={!canEdit}
+            data={[
+              { value: "current", label: sectionLabels.current },
+              { value: "upcoming", label: sectionLabels.upcoming },
+              { value: "past", label: sectionLabels.past },
+            ]}
+            onChange={(value) =>
+              setDraft((current) => ({
+                ...current,
+                section: (value ?? current.section) as ManagementSeasonDraft["section"],
+              }))
+            }
+          />
+          <TextInput
+            label="Episodes"
+            value={draft.episodeCount}
+            disabled={!canEdit}
+            error={!episodeCountValid ? "Use a whole number or leave blank" : null}
+            onChange={(event) => setDraft((current) => ({ ...current, episodeCount: event.currentTarget.value }))}
+          />
+        </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <TextInput
+            label="When"
+            value={draft.timing}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, timing: event.currentTarget.value }))}
+          />
+          <TextInput
+            label="Release pattern"
+            value={draft.releasePattern}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, releasePattern: event.currentTarget.value }))}
+          />
+          <TextInput
+            label="Finished reason"
+            value={draft.endedReason}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, endedReason: event.currentTarget.value }))}
+          />
+        </SimpleGrid>
+        <Textarea
+          label="Notes"
+          autosize
+          minRows={4}
+          value={draft.notes}
+          disabled={!canEdit}
+          onChange={(event) => setDraft((current) => ({ ...current, notes: event.currentTarget.value }))}
+        />
+        <Group justify="space-between">
+          <Group gap={4}>
+            {season.languages.map((language) => (
+              <Badge key={`${season.id}-${language}`} size="xs" variant="light">
+                {language}
+              </Badge>
+            ))}
+            {season.countries.map((country) => (
+              <Badge key={`${season.id}-${country}`} size="xs" variant="outline">
+                {country}
+              </Badge>
+            ))}
+          </Group>
+          <Group>
+            <Button variant="default" disabled={!canEdit || !dirty} onClick={discardLocalDraft}>
+              Discard
+            </Button>
+            <Button variant="light" disabled={!canEdit || !dirty || !episodeCountValid} onClick={saveLocalDraft}>
+              Save draft
+            </Button>
+            <Button disabled>Save to overlay</Button>
+          </Group>
+        </Group>
+        {locallySaved && (
+          <Text size="sm" c="dimmed">
+            Local draft saved.
+          </Text>
+        )}
+      </Stack>
 
       <Stack gap="sm">
         <Title order={2}>Episodes</Title>

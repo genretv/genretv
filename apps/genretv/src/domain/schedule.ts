@@ -139,6 +139,7 @@ export interface ScheduleEntry {
   sourceRow: number;
   section: ScheduleSection;
   title: string;
+  originalTitle: string | null;
   seasonLabel: string;
   timing: string;
   endedReason: string;
@@ -150,6 +151,9 @@ export interface ScheduleEntry {
   languages: string[];
   countries: string[];
   links: ExternalLinkSeed[];
+  notes: string | null;
+  seasonNotes: string | null;
+  releasePattern: string | null;
   legacyCells: string[];
   episodeCount: number | null;
   episodes: ScheduleEpisode[];
@@ -170,23 +174,27 @@ export interface ManagementSeason {
   seasonLabel: string;
   timing: string;
   endedReason: string;
+  releasePattern: string | null;
   organizationText: string;
   genreText: string;
   languages: string[];
   countries: string[];
   sourceRow: number;
   episodeCount: number | null;
+  notes: string | null;
   episodes: ScheduleEpisode[];
 }
 
 export interface ManagementShow {
   id: string;
   title: string;
+  originalTitle: string | null;
   languages: string[];
   organizations: string[];
   genres: string[];
   links: ExternalLinkSeed[];
   countries: string[];
+  notes: string | null;
   seasons: ManagementSeason[];
 }
 
@@ -332,11 +340,13 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       ({
         id,
         title: entry.title,
+        originalTitle: entry.originalTitle,
         languages: [],
         organizations: [],
         genres: [],
         links: [],
         countries: [],
+        notes: entry.notes,
         seasons: [],
       } satisfies ManagementShow);
 
@@ -345,18 +355,21 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
     show.organizations = uniqueSorted([...show.organizations, ...entry.organizations]);
     show.genres = uniqueSorted([...show.genres, ...entry.genres]);
     show.links = mergeLinks(show.links, entry.links);
+    show.notes = joinNotes([show.notes, entry.notes]);
     show.seasons.push({
       id: entry.id,
       section: entry.section,
       seasonLabel: entry.seasonLabel,
       timing: entry.timing,
       endedReason: entry.endedReason,
+      releasePattern: entry.releasePattern,
       organizationText: entry.organizationText,
       genreText: entry.genreText,
       languages: entry.languages,
       countries: entry.countries,
       sourceRow: entry.sourceRow,
       episodeCount: entry.episodeCount,
+      notes: entry.seasonNotes,
       episodes: entry.episodes,
     });
 
@@ -423,6 +436,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     sourceRow: entry.sourceRow,
     section: entry.section,
     title: entry.show.displayTitle,
+    originalTitle: null,
     seasonLabel: seasonLabel(entry),
     timing: timingFor(entry),
     endedReason,
@@ -434,6 +448,9 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     languages,
     countries,
     links: entry.show.externalLinks,
+    notes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
+    seasonNotes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
+    releasePattern: entry.season.releasePattern,
     legacyCells: entry.legacy.cells,
     episodeCount: null,
     episodes: [],
@@ -455,6 +472,7 @@ function toRegistryScheduleEntry(
     sourceRow: season.sourceRow,
     section: season.section,
     title: show.displayTitle,
+    originalTitle: show.originalTitle,
     seasonLabel: season.seasonLabel,
     timing: season.timing || formatRegistryTiming(season),
     endedReason: season.endedReason || "Unknown",
@@ -466,6 +484,9 @@ function toRegistryScheduleEntry(
     languages,
     countries: show.countries,
     links,
+    notes: show.notes,
+    seasonNotes: season.notes,
+    releasePattern: season.releasePattern,
     legacyCells: [],
     episodeCount: season.episodeCount,
     episodes: episodes.map(toScheduleEpisode),
@@ -544,6 +565,11 @@ function mergeLinks(left: readonly ExternalLinkSeed[], right: readonly ExternalL
     byUrl.set(link.url, link);
   }
   return [...byUrl.values()];
+}
+
+function joinNotes(notes: readonly (string | null)[]): string | null {
+  const text = notes.filter((note): note is string => typeof note === "string" && note.trim() !== "").join("\n\n");
+  return text === "" ? null : text;
 }
 
 function showIdForTitle(title: string): string {
