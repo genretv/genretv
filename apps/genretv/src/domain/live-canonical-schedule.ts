@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
+import { useAuth } from "../auth/auth";
 
 import { canonicalSchedule as fallbackSchedule } from "./canonical-schedule";
 import {
@@ -18,6 +19,8 @@ import {
 const canonicalShow = genretvSyncRegistry.canonical_show.table;
 const canonicalSeason = genretvSyncRegistry.canonical_season.table;
 const canonicalEpisode = genretvSyncRegistry.canonical_episode.table;
+const personalShow = genretvSyncRegistry.personal_show.view!;
+const personalSeason = genretvSyncRegistry.personal_season.view!;
 
 export interface LiveCanonicalSchedule {
   error: Error | null;
@@ -27,6 +30,8 @@ export interface LiveCanonicalSchedule {
 }
 
 export function useCanonicalSchedule(): LiveCanonicalSchedule {
+  const { session } = useAuth();
+  const personalReady = session != null;
   const shows = useLiveDrizzleRows(
     (client) =>
       client.drizzle
@@ -84,14 +89,56 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
         .from(canonicalEpisode),
     [],
   );
+  const personalShows = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          canonicalShowId: personalShow.canonicalShowId,
+          displayTitle: personalShow.displayTitle,
+          originalTitle: personalShow.originalTitle,
+          languages: personalShow.languages,
+          countries: personalShow.countries,
+          genreTags: personalShow.genreTags,
+          externalLinks: personalShow.externalLinks,
+          notes: personalShow.notes,
+        })
+        .from(personalShow),
+    [],
+    { ready: personalReady },
+  );
+  const personalSeasons = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          canonicalSeasonId: personalSeason.canonicalSeasonId,
+          section: personalSeason.section,
+          seasonLabel: personalSeason.seasonLabel,
+          timing: personalSeason.timing,
+          endedReason: personalSeason.endedReason,
+          releasePattern: personalSeason.releasePattern,
+          episodeCount: personalSeason.episodeCount,
+          notes: personalSeason.notes,
+        })
+        .from(personalSeason),
+    [],
+    { ready: personalReady },
+  );
 
   const usingFallback = shows.rows.length === 0 || seasons.rows.length === 0;
   const schedule = useMemo(() => {
     if (usingFallback) return fallbackSchedule;
+    const showRows = applyPersonalShows(
+      shows.rows.map(toCanonicalShowSeedRow),
+      personalReady ? personalShows.rows : [],
+    );
+    const seasonRows = applyPersonalSeasons(
+      seasons.rows.map(toCanonicalSeasonSeedRow),
+      personalReady ? personalSeasons.rows : [],
+    );
     return buildScheduleFromRegistryRows(
       {
-        shows: shows.rows.map(toCanonicalShowSeedRow),
-        seasons: seasons.rows.map(toCanonicalSeasonSeedRow),
+        shows: showRows,
+        seasons: seasonRows,
         episodes: episodes.rows.map(toCanonicalEpisodeSeedRow),
       },
       {
@@ -101,14 +148,84 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
         generatedAt: fallbackSchedule.generatedAt,
       },
     );
-  }, [episodes.rows, seasons.rows, shows.rows, usingFallback]);
+  }, [episodes.rows, personalReady, personalSeasons.rows, personalShows.rows, seasons.rows, shows.rows, usingFallback]);
 
   return {
     schedule,
     usingFallback,
-    loading: shows.loading || seasons.loading || episodes.loading,
-    error: shows.error ?? seasons.error ?? episodes.error ?? null,
+    loading:
+      shows.loading ||
+      seasons.loading ||
+      episodes.loading ||
+      (personalReady && (personalShows.loading || personalSeasons.loading)),
+    error:
+      shows.error ??
+      seasons.error ??
+      episodes.error ??
+      (personalReady ? (personalShows.error ?? personalSeasons.error) : null),
   };
+}
+
+function applyPersonalShows(
+  canonicalRows: CanonicalShowSeedRow[],
+  personalRows: ReadonlyArray<{
+    canonicalShowId: string | null;
+    countries: unknown;
+    displayTitle: string;
+    externalLinks: unknown;
+    genreTags: unknown;
+    languages: unknown;
+    notes: string | null;
+    originalTitle: string | null;
+  }>,
+): CanonicalShowSeedRow[] {
+  const overlays = new Map(personalRows.flatMap((row) => (row.canonicalShowId == null ? [] : [[row.canonicalShowId, row]])));
+  if (overlays.size === 0) return canonicalRows;
+  return canonicalRows.map((row) => {
+    const overlay = overlays.get(row.id);
+    if (overlay == null) return row;
+    return {
+      ...row,
+      displayTitle: overlay.displayTitle,
+      originalTitle: overlay.originalTitle,
+      languages: stringArray(overlay.languages),
+      countries: stringArray(overlay.countries),
+      genreTags: stringArray(overlay.genreTags),
+      externalLinks: externalLinks(overlay.externalLinks),
+      notes: overlay.notes,
+    };
+  });
+}
+
+function applyPersonalSeasons(
+  canonicalRows: CanonicalSeasonSeedRow[],
+  personalRows: ReadonlyArray<{
+    canonicalSeasonId: string;
+    endedReason: string;
+    episodeCount: number | null;
+    notes: string | null;
+    releasePattern: string | null;
+    seasonLabel: string;
+    section: string;
+    timing: string;
+  }>,
+): CanonicalSeasonSeedRow[] {
+  const overlays = new Map(personalRows.map((row) => [row.canonicalSeasonId, row]));
+  if (overlays.size === 0) return canonicalRows;
+  return canonicalRows.map((row) => {
+    const overlay = overlays.get(row.id);
+    if (overlay == null) return row;
+    return {
+      ...row,
+      section: scheduleSection(overlay.section),
+      seasonLabel: overlay.seasonLabel,
+      timing: overlay.timing,
+      endedReason: overlay.endedReason,
+      releasePattern: overlay.releasePattern,
+      episodeCount: overlay.episodeCount,
+      notes: overlay.notes,
+    };
+  });
 }
 
 function toCanonicalShowSeedRow(row: {

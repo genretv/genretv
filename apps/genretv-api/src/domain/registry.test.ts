@@ -8,6 +8,7 @@ describe("genretv sync registry", () => {
       "canonical_episode",
       "canonical_season",
       "canonical_show",
+      "personal_season",
       "personal_show",
     ]);
     expect(genretvSyncRegistry.canonical_episode.mode).toBe("readonly");
@@ -16,6 +17,9 @@ describe("genretv sync registry", () => {
     expect(genretvSyncRegistry.personal_show.mode).toBe("readwrite");
     expect(genretvSyncRegistry.personal_show.subscription).toBe("lazy");
     expect(genretvSyncRegistry.personal_show.writeMode).toBe("pessimistic");
+    expect(genretvSyncRegistry.personal_season.mode).toBe("readwrite");
+    expect(genretvSyncRegistry.personal_season.subscription).toBe("lazy");
+    expect(genretvSyncRegistry.personal_season.writeMode).toBe("pessimistic");
     expect(genretvSyncRegistry.canonical_episode.consistencyGroup).toBe("canonical-schedule");
     expect(genretvSyncRegistry.canonical_season.consistencyGroup).toBe("canonical-schedule");
   });

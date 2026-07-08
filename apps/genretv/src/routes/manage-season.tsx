@@ -14,8 +14,11 @@ import {
   Title,
 } from "@mantine/core";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { eq } from "drizzle-orm";
+import { useMemo, useState } from "react";
 
+import { genretvSyncRegistry } from "@genretv/domain/registry";
+import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import {
@@ -33,6 +36,8 @@ import {
   useManagementDraft,
   type ManagementSeasonDraft,
 } from "../features/management/drafts";
+
+const personalSeason = genretvSyncRegistry.personal_season.view!;
 
 export function ManageSeasonRoute() {
   const { showId, seasonId } = useParams({ from: "/manage/show/$showId/season/$seasonId" });
@@ -74,9 +79,36 @@ function EditableSeason({
   canEdit: boolean;
 }) {
   const navigate = useNavigate();
+  const client = useSyncClient();
+  const [savingOverlay, setSavingOverlay] = useState(false);
+  const [overlayError, setOverlayError] = useState<string | null>(null);
+  const [overlaySaved, setOverlaySaved] = useState(false);
   const status = season.section === "past" ? season.endedReason : sectionLabels[season.section];
   const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
-  const initialDraft = useMemo(() => seasonDraftFromSeason(season), [season]);
+  const personalSeasons = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalSeason.id,
+          canonicalSeasonId: personalSeason.canonicalSeasonId,
+          section: personalSeason.section,
+          seasonLabel: personalSeason.seasonLabel,
+          timing: personalSeason.timing,
+          endedReason: personalSeason.endedReason,
+          releasePattern: personalSeason.releasePattern,
+          episodeCount: personalSeason.episodeCount,
+          notes: personalSeason.notes,
+        })
+        .from(personalSeason)
+        .where(eq(personalSeason.canonicalSeasonId, season.id)),
+    [season.id],
+    { ready: canEdit },
+  );
+  const personalRow = personalSeasons.rows[0] ?? null;
+  const initialDraft = useMemo(
+    () => (personalRow == null ? seasonDraftFromSeason(season) : seasonDraftFromPersonalRow(personalRow)),
+    [personalRow, season],
+  );
   const { draft, dirty, locallySaved, setDraft, saveLocalDraft, discardLocalDraft } = useManagementDraft(
     seasonDraftStorageKey(season.id),
     initialDraft,
@@ -85,6 +117,41 @@ function EditableSeason({
   const episodeCountValid = draft.episodeCount.trim() === "" || draftEpisodeCount != null;
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
+  const canSaveOverlay = canEdit && !personalSeasons.loading && dirty && episodeCountValid && !savingOverlay;
+
+  const saveOverlay = async () => {
+    setSavingOverlay(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      const patch = {
+        section: draft.section,
+        seasonLabel: draft.seasonLabel.trim() || season.seasonLabel,
+        timing: draft.timing.trim(),
+        endedReason: draft.endedReason.trim(),
+        releasePattern: nullableText(draft.releasePattern),
+        episodeCount: draftEpisodeCount,
+        notes: nullableText(draft.notes),
+      };
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        if (personalRow == null) {
+          tx.tables.personal_season.create({
+            id: crypto.randomUUID(),
+            canonicalShowId: show.id,
+            canonicalSeasonId: season.id,
+            ...patch,
+          });
+        } else {
+          tx.tables.personal_season.update({ id: personalRow.id }, patch);
+        }
+      });
+      setOverlaySaved(true);
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSavingOverlay(false);
+    }
+  };
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -110,9 +177,24 @@ function EditableSeason({
 
       <Alert color={canEdit ? "teal" : "yellow"} variant="light">
         {canEdit
-          ? "Changes can be saved as a browser-local draft. Publishing to your overlay will be enabled when the writable pgxsinkit registry lands."
+          ? "Save a browser-local draft while editing, or save this season-level metadata to your personal overlay."
           : "Sign in to create a browser-local management draft."}
       </Alert>
+      {personalSeasons.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your personal overlay for this season: {personalSeasons.error.message}
+        </Alert>
+      )}
+      {overlayError != null && (
+        <Alert color="red" variant="light">
+          Could not save to your overlay: {overlayError}
+        </Alert>
+      )}
+      {overlaySaved && (
+        <Alert color="teal" variant="light">
+          Saved to your personal overlay.
+        </Alert>
+      )}
 
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
@@ -194,7 +276,9 @@ function EditableSeason({
             <Button variant="light" disabled={!canEdit || !dirty || !episodeCountValid} onClick={saveLocalDraft}>
               Save draft
             </Button>
-            <Button disabled>Save to overlay</Button>
+            <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
+              Save to overlay
+            </Button>
           </Group>
         </Group>
         {locallySaved && (
@@ -239,4 +323,33 @@ function EditableSeason({
       </Stack>
     </Stack>
   );
+}
+
+function seasonDraftFromPersonalRow(row: {
+  endedReason: string;
+  episodeCount: number | null;
+  notes: string | null;
+  releasePattern: string | null;
+  seasonLabel: string;
+  section: string;
+  timing: string;
+}): ManagementSeasonDraft {
+  return {
+    section: scheduleSection(row.section),
+    seasonLabel: row.seasonLabel,
+    timing: row.timing,
+    endedReason: row.endedReason,
+    releasePattern: row.releasePattern ?? "",
+    episodeCount: row.episodeCount == null ? "" : String(row.episodeCount),
+    notes: row.notes ?? "",
+  };
+}
+
+function scheduleSection(value: string): ManagementSeasonDraft["section"] {
+  return value === "current" || value === "upcoming" || value === "past" ? value : "upcoming";
+}
+
+function nullableText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
 }

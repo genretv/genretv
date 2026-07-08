@@ -6,6 +6,7 @@ import {
   canonicalEpisodeSyncEntry,
   canonicalSeasonSyncEntry,
   canonicalShowSyncEntry,
+  personalSeasonSyncEntry,
   personalShowSyncEntry,
 } from "./schema";
 
@@ -27,4 +28,5 @@ export const genretvSyncRegistry = defineSyncRegistry({
     shape: { ...canonicalEpisodeSyncEntry.shape!, rowFilter: { customWhere: publicCanonicalReadFilter } },
   },
   personal_show: personalShowSyncEntry,
+  personal_season: personalSeasonSyncEntry,
 });
