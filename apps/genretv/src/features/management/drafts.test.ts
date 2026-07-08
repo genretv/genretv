@@ -9,6 +9,8 @@ import {
   organizationTextToRows,
   parseEpisodeCountDraft,
   releaseDateDraftToWindow,
+  releaseWindowDraftToWindow,
+  releaseWindowText,
 } from "./drafts";
 
 describe("management draft helpers", () => {
@@ -65,5 +67,16 @@ describe("management draft helpers", () => {
       precision: "unknown",
       confidence: "unknown",
     });
+  });
+
+  test("round-trips raw release window text with explicit metadata", () => {
+    expect(releaseWindowText(null)).toBe("");
+    expect(releaseWindowText({ raw: "Summer 2027", precision: "season" })).toBe("Summer 2027");
+    expect(releaseWindowDraftToWindow(" Summer 2027 ", "season", "expected")).toEqual({
+      raw: "Summer 2027",
+      precision: "season",
+      confidence: "expected",
+    });
+    expect(releaseWindowDraftToWindow("", "season", "expected")).toBeNull();
   });
 });

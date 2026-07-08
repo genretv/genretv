@@ -156,6 +156,11 @@ export interface ScheduleEntry {
   notes: string | null;
   seasonNotes: string | null;
   releasePattern: string | null;
+  releasePrecision: string;
+  dateConfidence: string;
+  releaseWindow: ReleaseWindowSeed | null;
+  finaleWindow: ReleaseWindowSeed | null;
+  sortKey: string | null;
   legacyCells: string[];
   episodeCount: number | null;
   episodes: ScheduleEpisode[];
@@ -177,6 +182,11 @@ export interface ManagementSeason {
   timing: string;
   endedReason: string;
   releasePattern: string | null;
+  releasePrecision: string;
+  dateConfidence: string;
+  releaseWindow: ReleaseWindowSeed | null;
+  finaleWindow: ReleaseWindowSeed | null;
+  sortKey: string | null;
   organizationText: string;
   organizations: string[];
   genreText: string;
@@ -379,6 +389,11 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       timing: entry.timing,
       endedReason: entry.endedReason,
       releasePattern: entry.releasePattern,
+      releasePrecision: entry.releasePrecision,
+      dateConfidence: entry.dateConfidence,
+      releaseWindow: entry.releaseWindow,
+      finaleWindow: entry.finaleWindow,
+      sortKey: entry.sortKey,
       organizationText: entry.organizationText,
       organizations: entry.organizations,
       genreText: entry.genreText,
@@ -471,6 +486,11 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     notes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
     seasonNotes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
     releasePattern: entry.season.releasePattern,
+    releasePrecision: entry.season.releaseWindow?.precision ?? "unknown",
+    dateConfidence: entry.season.releaseWindow?.confidence ?? "unknown",
+    releaseWindow: entry.season.releaseWindow,
+    finaleWindow: entry.season.finaleWindow,
+    sortKey: null,
     legacyCells: entry.legacy.cells,
     episodeCount: null,
     episodes: [],
@@ -509,6 +529,11 @@ function toRegistryScheduleEntry(
     notes: show.notes,
     seasonNotes: season.notes,
     releasePattern: season.releasePattern,
+    releasePrecision: season.releasePrecision,
+    dateConfidence: season.dateConfidence,
+    releaseWindow: season.releaseWindow,
+    finaleWindow: season.finaleWindow,
+    sortKey: season.sortKey,
     legacyCells: [],
     episodeCount: season.episodeCount,
     episodes: episodes.map(toScheduleEpisode),

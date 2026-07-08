@@ -109,6 +109,11 @@ describe("canonical proposal merge planning", () => {
           section: "past",
           endedReason: "finished",
           releasePattern: "weekly",
+          releasePrecision: "season",
+          dateConfidence: "expected",
+          releaseWindow: { raw: "Spring 2027", precision: "season", confidence: "expected" },
+          finaleWindow: { raw: "Summer 2027", precision: "season", confidence: "expected" },
+          sortKey: "2027-04",
         },
       },
       () => "unused",
@@ -124,6 +129,11 @@ describe("canonical proposal merge planning", () => {
         seasonLabel: "Season 2",
         endedReason: "finished",
         releasePattern: "weekly",
+        releasePrecision: "season",
+        dateConfidence: "expected",
+        releaseWindow: { raw: "Spring 2027", precision: "season", confidence: "expected" },
+        finaleWindow: { raw: "Summer 2027", precision: "season", confidence: "expected" },
+        sortKey: "2027-04",
       },
     });
   });

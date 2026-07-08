@@ -35,6 +35,8 @@ import {
   organizationRowsToText,
   organizationTextToRows,
   parseEpisodeCountDraft,
+  releaseWindowDraftToWindow,
+  releaseWindowText,
   seasonDraftFromSeason,
   seasonDraftStorageKey,
   useManagementDraft,
@@ -123,6 +125,11 @@ function EditableSeason({
           timing: personalSeason.timing,
           endedReason: personalSeason.endedReason,
           releasePattern: personalSeason.releasePattern,
+          releasePrecision: personalSeason.releasePrecision,
+          dateConfidence: personalSeason.dateConfidence,
+          releaseWindow: personalSeason.releaseWindow,
+          finaleWindow: personalSeason.finaleWindow,
+          sortKey: personalSeason.sortKey,
           episodeCount: personalSeason.episodeCount,
           organizations: personalSeason.organizations,
           externalLinks: personalSeason.externalLinks,
@@ -221,6 +228,16 @@ function EditableSeason({
   );
   const draftEpisodeCount = parseEpisodeCountDraft(draft.episodeCount);
   const draftLinks = externalLinkTextToRows(draft.linksText);
+  const draftReleaseWindow = releaseWindowDraftToWindow(
+    draft.releaseWindowText,
+    draft.releasePrecision,
+    draft.dateConfidence,
+  );
+  const draftFinaleWindow = releaseWindowDraftToWindow(
+    draft.finaleWindowText,
+    draft.releasePrecision,
+    draft.dateConfidence,
+  );
   const episodeCountValid = draft.episodeCount.trim() === "" || draftEpisodeCount != null;
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
@@ -269,6 +286,11 @@ function EditableSeason({
         timing: draft.timing.trim(),
         endedReason: draft.endedReason.trim(),
         releasePattern: nullableText(draft.releasePattern),
+        releasePrecision: draft.releasePrecision,
+        dateConfidence: draft.dateConfidence,
+        releaseWindow: draftReleaseWindow,
+        finaleWindow: draftFinaleWindow,
+        sortKey: nullableText(draft.sortKey),
         episodeCount: draftEpisodeCount,
         organizations: organizationTextToRows(draft.organizationsText),
         externalLinks: draftLinks,
@@ -332,6 +354,11 @@ function EditableSeason({
             timing: draft.timing.trim(),
             endedReason: draft.endedReason.trim(),
             releasePattern: nullableText(draft.releasePattern),
+            releasePrecision: draft.releasePrecision,
+            dateConfidence: draft.dateConfidence,
+            releaseWindow: draftReleaseWindow,
+            finaleWindow: draftFinaleWindow,
+            sortKey: nullableText(draft.sortKey),
             episodeCount: draftEpisodeCount,
             organizations: organizationTextToRows(draft.organizationsText),
             externalLinks: draftLinks,
@@ -556,6 +583,53 @@ function EditableSeason({
             onChange={(event) => setDraft((current) => ({ ...current, endedReason: event.currentTarget.value }))}
           />
         </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <TextInput
+            label="Release window"
+            value={draft.releaseWindowText}
+            disabled={!canEditDraft}
+            onChange={(event) => setDraft((current) => ({ ...current, releaseWindowText: event.currentTarget.value }))}
+          />
+          <TextInput
+            label="Finale window"
+            value={draft.finaleWindowText}
+            disabled={!canEditDraft}
+            onChange={(event) => setDraft((current) => ({ ...current, finaleWindowText: event.currentTarget.value }))}
+          />
+          <TextInput
+            label="Sort key"
+            value={draft.sortKey}
+            disabled={!canEditDraft}
+            onChange={(event) => setDraft((current) => ({ ...current, sortKey: event.currentTarget.value }))}
+          />
+        </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <Select
+            label="Date precision"
+            value={draft.releasePrecision}
+            disabled={!canEditDraft}
+            data={[
+              { value: "unknown", label: "Unknown" },
+              { value: "day", label: "Day" },
+              { value: "month", label: "Month" },
+              { value: "season", label: "Season" },
+              { value: "year", label: "Year" },
+            ]}
+            onChange={(value) => setDraft((current) => ({ ...current, releasePrecision: value ?? "unknown" }))}
+          />
+          <Select
+            label="Date confidence"
+            value={draft.dateConfidence}
+            disabled={!canEditDraft}
+            data={[
+              { value: "unknown", label: "Unknown" },
+              { value: "confirmed", label: "Confirmed" },
+              { value: "expected", label: "Expected" },
+              { value: "estimated", label: "Estimated" },
+            ]}
+            onChange={(value) => setDraft((current) => ({ ...current, dateConfidence: value ?? "unknown" }))}
+          />
+        </SimpleGrid>
         <Textarea
           label="Organizations"
           autosize
@@ -716,14 +790,19 @@ function EditableSeason({
 }
 
 function seasonDraftFromPersonalRow(row: {
+  dateConfidence: string;
   endedReason: string;
   episodeCount: number | null;
   notes: string | null;
   organizations: unknown;
   externalLinks: unknown;
+  finaleWindow: unknown;
   releasePattern: string | null;
+  releasePrecision: string;
+  releaseWindow: unknown;
   seasonLabel: string;
   section: string;
+  sortKey: string | null;
   timing: string;
 }): ManagementSeasonDraft {
   return {
@@ -732,6 +811,11 @@ function seasonDraftFromPersonalRow(row: {
     timing: row.timing,
     endedReason: row.endedReason,
     releasePattern: row.releasePattern ?? "",
+    releaseWindowText: releaseWindowText(row.releaseWindow),
+    finaleWindowText: releaseWindowText(row.finaleWindow),
+    releasePrecision: row.releasePrecision,
+    dateConfidence: row.dateConfidence,
+    sortKey: row.sortKey ?? "",
     episodeCount: row.episodeCount == null ? "" : String(row.episodeCount),
     organizationsText: organizationRowsToText(row.organizations),
     linksText: externalLinksToText(row.externalLinks),
@@ -747,6 +831,11 @@ function emptyManagementSeason(): ManagementSeason {
     timing: "",
     endedReason: "",
     releasePattern: null,
+    releasePrecision: "unknown",
+    dateConfidence: "unknown",
+    releaseWindow: null,
+    finaleWindow: null,
+    sortKey: null,
     organizationText: "",
     organizations: [],
     genreText: "",

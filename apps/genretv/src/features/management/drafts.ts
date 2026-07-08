@@ -18,6 +18,11 @@ export interface ManagementSeasonDraft {
   timing: string;
   endedReason: string;
   releasePattern: string;
+  releaseWindowText: string;
+  finaleWindowText: string;
+  releasePrecision: string;
+  dateConfidence: string;
+  sortKey: string;
   episodeCount: string;
   organizationsText: string;
   linksText: string;
@@ -52,6 +57,11 @@ export function seasonDraftFromSeason(season: ManagementSeason): ManagementSeaso
     timing: season.timing,
     endedReason: season.endedReason,
     releasePattern: season.releasePattern ?? "",
+    releaseWindowText: releaseWindowText(season.releaseWindow),
+    finaleWindowText: releaseWindowText(season.finaleWindow),
+    releasePrecision: season.releasePrecision,
+    dateConfidence: season.dateConfidence,
+    sortKey: season.sortKey ?? "",
     episodeCount: season.episodeCount == null ? "" : String(season.episodeCount),
     organizationsText: orderedListToText(season.organizations),
     linksText: externalLinksToText(season.links),
@@ -166,8 +176,29 @@ export function episodeDraftStorageKey(seasonId: string, episodeId: string): str
 }
 
 export function releaseDateDraftToWindow(value: string): { raw: string; precision: string; confidence: string } | null {
+  return releaseWindowDraftToWindow(value, "unknown", "unknown");
+}
+
+export function releaseWindowDraftToWindow(
+  value: string,
+  precision: string,
+  confidence: string,
+): { raw: string; precision: string; confidence: string } | null {
   const raw = value.trim();
-  return raw === "" ? null : { raw, precision: "unknown", confidence: "unknown" };
+  return raw === ""
+    ? null
+    : {
+        raw,
+        precision: precision.trim() || "unknown",
+        confidence: confidence.trim() || "unknown",
+      };
+}
+
+export function releaseWindowText(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (isRecord(value) && typeof value["raw"] === "string") return value["raw"];
+  return "";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -20,6 +20,7 @@ import {
   externalLinkTextToRows,
   externalLinksToText,
   releaseDateDraftToWindow,
+  releaseWindowText,
   useManagementDraft,
   type ManagementEpisodeDraft,
 } from "../features/management/drafts";
@@ -545,18 +546,7 @@ function episodeDraftFromPersonalRow(row: {
   };
 }
 
-function releaseWindowText(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  if (isRecord(value) && typeof value["raw"] === "string") return value["raw"];
-  return "";
-}
-
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value != null;
 }
