@@ -14,6 +14,7 @@ interface CanonicalRegistrySeed {
   summary: {
     shows: number;
     seasons: number;
+    episodes: number;
   };
   rows: CanonicalRegistrySeedRows;
 }
@@ -42,13 +43,16 @@ async function main() {
     summary: {
       shows: rows.shows.length,
       seasons: rows.seasons.length,
+      episodes: rows.episodes.length,
     },
     rows,
   };
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(seed, null, 2)}\n`);
-  console.log(`Wrote ${rows.shows.length} shows and ${rows.seasons.length} seasons to ${outputPath}`);
+  console.log(
+    `Wrote ${rows.shows.length} shows, ${rows.seasons.length} seasons, and ${rows.episodes.length} episodes to ${outputPath}`,
+  );
 }
 
 await main();

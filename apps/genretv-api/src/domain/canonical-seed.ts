@@ -83,9 +83,21 @@ export interface CanonicalSeasonSeedRow {
   notes: string | null;
 }
 
+export interface CanonicalEpisodeSeedRow {
+  id: string;
+  seasonId: string;
+  episodeLabel: string | null;
+  title: string | null;
+  releaseWindow: ReleaseWindowSeed | null;
+  sortKey: string | null;
+  externalLinks: ExternalLinkSeed[];
+  notes: string | null;
+}
+
 export interface CanonicalRegistrySeedRows {
   shows: CanonicalShowSeedRow[];
   seasons: CanonicalSeasonSeedRow[];
+  episodes: CanonicalEpisodeSeedRow[];
 }
 
 const defaultLanguage = "en";
@@ -156,6 +168,7 @@ export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): Can
   return {
     shows: [...shows.values()].sort((left, right) => left.displayTitle.localeCompare(right.displayTitle)),
     seasons: seasons.sort((left, right) => left.sourceRow - right.sourceRow),
+    episodes: [],
   };
 }
 

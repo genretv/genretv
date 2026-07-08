@@ -46,5 +46,25 @@ export const canonicalSeasonSyncEntry = defineSyncTable({
   consistencyGroup: "canonical-schedule",
 });
 
+export const canonicalEpisodeSyncEntry = defineSyncTable({
+  tableName: "canonical_episode",
+  makeColumns: () => ({
+    id: uuid("id").primaryKey(),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => canonicalSeasonSyncEntry.table.id),
+    episodeLabel: varchar("episode_label", { length: 80 }),
+    title: varchar("title", { length: 300 }),
+    releaseWindow: jsonb("release_window"),
+    sortKey: varchar("sort_key", { length: 40 }),
+    externalLinks: jsonb("external_links").notNull().default([]),
+    notes: varchar("notes", { length: 8000 }),
+    updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
+  }),
+  mode: "readonly",
+  consistencyGroup: "canonical-schedule",
+});
+
 export const canonicalShowTable = canonicalShowSyncEntry.table;
 export const canonicalSeasonTable = canonicalSeasonSyncEntry.table;
+export const canonicalEpisodeTable = canonicalEpisodeSyncEntry.table;

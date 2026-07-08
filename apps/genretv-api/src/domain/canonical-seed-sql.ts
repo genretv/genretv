@@ -1,4 +1,9 @@
-import type { CanonicalRegistrySeedRows, CanonicalSeasonSeedRow, CanonicalShowSeedRow } from "./canonical-seed";
+import type {
+  CanonicalEpisodeSeedRow,
+  CanonicalRegistrySeedRows,
+  CanonicalSeasonSeedRow,
+  CanonicalShowSeedRow,
+} from "./canonical-seed";
 
 export function buildCanonicalRegistrySeedSql(rows: CanonicalRegistrySeedRows): string {
   return [
@@ -9,6 +14,8 @@ export function buildCanonicalRegistrySeedSql(rows: CanonicalRegistrySeedRows): 
     buildShowUpsert(rows.shows),
     "",
     buildSeasonUpsert(rows.seasons),
+    "",
+    buildEpisodeUpsert(rows.episodes),
     "",
     "COMMIT;",
     "",
@@ -85,6 +92,32 @@ function buildSeasonUpsert(rows: readonly CanonicalSeasonSeedRow[]): string {
   ].join("\n");
 }
 
+function buildEpisodeUpsert(rows: readonly CanonicalEpisodeSeedRow[]): string {
+  if (rows.length === 0) return "-- No canonical_episode rows.";
+  return [
+    `INSERT INTO public.canonical_episode (${[
+      "id",
+      "season_id",
+      "episode_label",
+      "title",
+      "release_window",
+      "sort_key",
+      "external_links",
+      "notes",
+    ].join(", ")}) VALUES`,
+    rows.map(episodeValues).join(",\n"),
+    `ON CONFLICT (id) DO UPDATE SET
+  season_id = EXCLUDED.season_id,
+  episode_label = EXCLUDED.episode_label,
+  title = EXCLUDED.title,
+  release_window = EXCLUDED.release_window,
+  sort_key = EXCLUDED.sort_key,
+  external_links = EXCLUDED.external_links,
+  notes = EXCLUDED.notes,
+  updated_at_us = public.pgxsinkit_clock_us();`,
+  ].join("\n");
+}
+
 function showValues(row: CanonicalShowSeedRow): string {
   return `(${[
     sqlString(row.id),
@@ -115,6 +148,19 @@ function seasonValues(row: CanonicalSeasonSeedRow): string {
     sqlNullableNumber(row.episodeCount),
     String(row.sourceRow),
     sqlJsonb(row.organizations),
+    sqlJsonb(row.externalLinks),
+    sqlNullableString(row.notes),
+  ].join(", ")})`;
+}
+
+function episodeValues(row: CanonicalEpisodeSeedRow): string {
+  return `(${[
+    sqlString(row.id),
+    sqlString(row.seasonId),
+    sqlNullableString(row.episodeLabel),
+    sqlNullableString(row.title),
+    sqlNullableJsonb(row.releaseWindow),
+    sqlNullableString(row.sortKey),
     sqlJsonb(row.externalLinks),
     sqlNullableString(row.notes),
   ].join(", ")})`;

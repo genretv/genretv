@@ -73,6 +73,7 @@ describe("canonical registry seed rows", () => {
 
     expect(first).toEqual(second);
     expect(first.shows).toHaveLength(1);
+    expect(first.episodes).toEqual([]);
     expect(first.shows[0]).toMatchObject({
       displayTitle: "The Show",
       languages: ["en", "da"],

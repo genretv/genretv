@@ -1559,4 +1559,6 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes,
   updated_at_us = public.pgxsinkit_clock_us();
 
+-- No canonical_episode rows.
+
 COMMIT;

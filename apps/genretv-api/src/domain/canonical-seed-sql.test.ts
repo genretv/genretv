@@ -45,6 +45,18 @@ const rows: CanonicalRegistrySeedRows = {
       notes: null,
     },
   ],
+  episodes: [
+    {
+      id: "00000000-0000-5000-8000-000000000003",
+      seasonId: "00000000-0000-5000-8000-000000000002",
+      episodeLabel: "E1",
+      title: "Pilot's Landing",
+      releaseWindow: null,
+      sortKey: null,
+      externalLinks: [],
+      notes: null,
+    },
+  ],
 };
 
 describe("canonical registry seed SQL", () => {
@@ -53,6 +65,9 @@ describe("canonical registry seed SQL", () => {
 
     expect(sql.indexOf("INSERT INTO public.canonical_show")).toBeLessThan(
       sql.indexOf("INSERT INTO public.canonical_season"),
+    );
+    expect(sql.indexOf("INSERT INTO public.canonical_season")).toBeLessThan(
+      sql.indexOf("INSERT INTO public.canonical_episode"),
     );
     expect(sql).toContain("ON CONFLICT (id) DO UPDATE SET");
     expect(sql).not.toContain("DELETE FROM");
@@ -63,6 +78,7 @@ describe("canonical registry seed SQL", () => {
     const sql = buildCanonicalRegistrySeedSql(rows);
 
     expect(sql).toContain("'Pilot''s \"Show\"'");
+    expect(sql).toContain("'Pilot''s Landing'");
     expect(sql).toContain("'quoted '' note'");
     expect(sql).toContain(`'["en"]'::jsonb`);
     expect(sql).toContain(`'{"raw":"Summer 2027"`);
