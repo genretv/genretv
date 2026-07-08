@@ -77,6 +77,23 @@ body {
   border-color: rgba(17, 34, 37, 0.26);
 }
 
+.checkbox-filter-button {
+  min-width: 128px;
+  color: #102225;
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(17, 34, 37, 0.26);
+}
+
+.checkbox-filter-menu {
+  color: #102225;
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(17, 34, 37, 0.18);
+}
+
+.checkbox-filter-menu label {
+  color: #102225;
+}
+
 .schedule-search {
   flex: 1 1 260px;
 }

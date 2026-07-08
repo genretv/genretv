@@ -3,7 +3,6 @@ import {
   Badge,
   Box,
   Group,
-  MultiSelect,
   Pagination,
   ScrollArea,
   SegmentedControl,
@@ -17,6 +16,7 @@ import {
 } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 
+import { CheckboxFilter } from "../components/checkbox-filter";
 import { canonicalSchedule as schedule } from "../domain/canonical-schedule";
 import {
   defaultScheduleViewPreferences,
@@ -173,16 +173,16 @@ export function HomeRoute() {
           value={preferences.query}
           onChange={(event) => updatePreferences({ query: event.currentTarget.value })}
         />
-        <MultiSelect
+        <CheckboxFilter
           label="Language"
-          value={preferences.languages}
-          data={filterOptions.languages.map((language) => ({ value: language, label: language }))}
+          options={filterOptions.languages}
+          selected={preferences.languages}
           onChange={(languages) => updatePreferences({ languages })}
         />
-        <MultiSelect
+        <CheckboxFilter
           label="Country"
-          value={preferences.countries}
-          data={filterOptions.countries.map((country) => ({ value: country, label: country }))}
+          options={filterOptions.countries}
+          selected={preferences.countries}
           onChange={(countries) => updatePreferences({ countries })}
         />
         <Select

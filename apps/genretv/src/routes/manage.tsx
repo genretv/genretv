@@ -1,6 +1,7 @@
-import { Anchor, Badge, Group, MultiSelect, Pagination, ScrollArea, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Anchor, Badge, Group, Pagination, ScrollArea, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 
+import { CheckboxFilter } from "../components/checkbox-filter";
 import { canonicalSchedule } from "../domain/canonical-schedule";
 import {
   buildManagementShows,
@@ -57,21 +58,21 @@ export function ManageRoute() {
             resetToFirstPage();
           }}
         />
-        <MultiSelect
+        <CheckboxFilter
           label="Language"
-          value={languages}
-          data={filterOptions.languages.map((value) => ({ value, label: value }))}
-          onChange={(value) => {
-            setLanguages(value);
+          options={filterOptions.languages}
+          selected={languages}
+          onChange={(selected) => {
+            setLanguages(selected);
             resetToFirstPage();
           }}
         />
-        <MultiSelect
+        <CheckboxFilter
           label="Country"
-          value={countries}
-          data={filterOptions.countries.map((value) => ({ value, label: value }))}
-          onChange={(value) => {
-            setCountries(value);
+          options={filterOptions.countries}
+          selected={countries}
+          onChange={(selected) => {
+            setCountries(selected);
             resetToFirstPage();
           }}
         />
