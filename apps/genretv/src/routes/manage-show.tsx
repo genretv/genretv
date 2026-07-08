@@ -23,6 +23,8 @@ import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
 import { findManagementShow, formatEpisodeCount, sectionLabels, type ManagementShow } from "../domain/schedule";
 import {
+  externalLinkTextToRows,
+  externalLinksToText,
   orderedTextToList,
   showDraftFromShow,
   showDraftStorageKey,
@@ -187,6 +189,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const draftLanguages = orderedTextToList(draft.languagesText);
   const draftCountries = orderedTextToList(draft.countriesText);
   const draftGenres = orderedTextToList(draft.genresText);
+  const draftLinks = externalLinkTextToRows(draft.linksText);
   const canSaveOverlay = canEditDraft && !personalShows.loading && dirty && !savingOverlay;
   const canSubmitProposal = canEditDraft && canPropose && !personalShows.loading && !proposalSaving;
   const canDeletePersonalShow =
@@ -221,7 +224,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         languages: draftLanguages,
         countries: draftCountries,
         genreTags: draftGenres,
-        externalLinks: show.links,
+        externalLinks: draftLinks,
         notes: nullableText(draft.notes),
       };
       await client.transaction({ mode: "pessimistic" }, (tx) => {
@@ -274,6 +277,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             languages: draftLanguages,
             countries: draftCountries,
             genreTags: draftGenres,
+            externalLinks: draftLinks,
             notes: nullableText(draft.notes),
           },
         });
@@ -388,8 +392,8 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         {isLinkedImportedShow
           ? "This show is linked from a published list. Use Copy on the published list if you want an editable personal version."
           : canEdit
-          ? "Save a browser-local draft while editing, or save this show-level metadata to your personal overlay."
-          : "Sign in to create a browser-local management draft."}
+            ? "Save a browser-local draft while editing, or save this show-level metadata to your personal overlay."
+            : "Sign in to create a browser-local management draft."}
       </Alert>
       {personalShows.error != null && (
         <Alert color="red" variant="light">
@@ -468,6 +472,14 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             onChange={(event) => setDraft((current) => ({ ...current, genresText: event.currentTarget.value }))}
           />
         </SimpleGrid>
+        <Textarea
+          label="Links"
+          autosize
+          minRows={3}
+          value={draft.linksText}
+          disabled={!canEditDraft}
+          onChange={(event) => setDraft((current) => ({ ...current, linksText: event.currentTarget.value }))}
+        />
         <Textarea
           label="Notes"
           autosize
@@ -603,6 +615,7 @@ function showDraftFromPersonalRow(row: {
   countries: unknown;
   displayTitle: string;
   genreTags: unknown;
+  externalLinks: unknown;
   languages: unknown;
   notes: string | null;
   originalTitle: string | null;
@@ -613,6 +626,7 @@ function showDraftFromPersonalRow(row: {
     languagesText: orderedListToText(row.languages),
     countriesText: orderedListToText(row.countries),
     genresText: orderedListToText(row.genreTags),
+    linksText: externalLinksToText(row.externalLinks),
     notes: row.notes ?? "",
   };
 }

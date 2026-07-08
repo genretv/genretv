@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import {
   emptyEpisodeDraft,
+  externalLinksToText,
+  externalLinkTextToRows,
   orderedTextToList,
   organizationRowsToText,
   organizationTextToRows,
@@ -24,6 +26,19 @@ describe("management draft helpers", () => {
     expect(organizationTextToRows("BBC\nNetflix\nBBC")).toEqual([
       { name: "BBC", role: "unknown", externalLinks: [] },
       { name: "Netflix", role: "unknown", externalLinks: [] },
+    ]);
+  });
+
+  test("round-trips external link drafts through existing row shape", () => {
+    expect(
+      externalLinksToText([
+        { kind: "imdb", label: "IMDb", url: "https://imdb.example/title" },
+        { label: "Wikipedia", url: "https://wikipedia.example/wiki/Show" },
+      ]),
+    ).toBe("imdb | IMDb | https://imdb.example/title\nWikipedia | https://wikipedia.example/wiki/Show");
+    expect(externalLinkTextToRows("imdb | IMDb | https://imdb.example/title\nhttps://example.com")).toEqual([
+      { kind: "imdb", label: "IMDb", url: "https://imdb.example/title" },
+      { label: "https://example.com", url: "https://example.com" },
     ]);
   });
 

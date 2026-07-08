@@ -8,6 +8,7 @@ export interface ManagementShowDraft {
   languagesText: string;
   countriesText: string;
   genresText: string;
+  linksText: string;
   notes: string;
 }
 
@@ -37,6 +38,7 @@ export function showDraftFromShow(show: ManagementShow): ManagementShowDraft {
     languagesText: orderedListToText(show.languages),
     countriesText: orderedListToText(show.countries),
     genresText: orderedListToText(show.genres),
+    linksText: externalLinksToText(show.links),
     notes: show.notes ?? "",
   };
 }
@@ -104,6 +106,39 @@ export function organizationTextToRows(
   value: string,
 ): Array<{ externalLinks: unknown[]; name: string; role: "unknown" }> {
   return orderedTextToList(value).map((name) => ({ name, role: "unknown", externalLinks: [] }));
+}
+
+export function externalLinksToText(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  return value
+    .flatMap((item): string[] => {
+      if (!isRecord(item) || typeof item["url"] !== "string" || typeof item["label"] !== "string") return [];
+      return [
+        typeof item["kind"] === "string"
+          ? `${item["kind"]} | ${item["label"]} | ${item["url"]}`
+          : `${item["label"]} | ${item["url"]}`,
+      ];
+    })
+    .join("\n");
+}
+
+export function externalLinkTextToRows(value: string): Array<{ kind?: string; label: string; url: string }> {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .flatMap((line): Array<{ kind?: string; label: string; url: string }> => {
+      const parts = line
+        .split("|")
+        .map((part) => part.trim())
+        .filter(Boolean);
+      const first = parts[0];
+      const second = parts[1];
+      if (first == null) return [];
+      if (second != null && parts.length >= 3) return [{ kind: first, label: second, url: parts.slice(2).join(" | ") }];
+      if (second != null) return [{ label: first, url: second }];
+      return [{ label: first, url: first }];
+    });
 }
 
 export function parseEpisodeCountDraft(value: string): number | null {
