@@ -43,6 +43,14 @@ body {
   color: #064e55;
 }
 
+.auth-panel {
+  padding: 28px;
+}
+
+.auth-panel h2 {
+  color: #102225;
+}
+
 .schedule-controls label {
   color: #102225;
   font-weight: 650;

@@ -95,6 +95,7 @@ function AuthRoute({ initialMode }: { initialMode: AuthMode }) {
   return (
     <Center mih="70vh">
       <form
+        className="schedule-panel auth-panel"
         style={{ width: "100%", maxWidth: 430 }}
         onSubmit={(event) => {
           event.preventDefault();
