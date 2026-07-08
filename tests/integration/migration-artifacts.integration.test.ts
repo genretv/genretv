@@ -30,4 +30,31 @@ describe("database artifact contract", () => {
     expect(compose).not.toContain("schema-seed");
     expect(compose).not.toContain("canonical-registry.sql");
   });
+
+  test("hardens workflow review policies in a custom Drizzle migration", async () => {
+    const folders = (await readdir(drizzleDir, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    const workflowPolicyFolder = folders.find((folder) => folder.endsWith("_workflow_review_policies"));
+
+    expect(workflowPolicyFolder).toBeString();
+
+    const migration = await readFile(join(drizzleDir, workflowPolicyFolder!, "migration.sql"), "utf8");
+
+    for (const table of ["publish_application", "canonical_proposal", "maintainer_notification"]) {
+      expect(migration).toContain(`DROP POLICY "${table}_update_owner_or_admin" ON "${table}"`);
+      expect(migration).toContain(
+        `CREATE POLICY "${table}_insert_owner_or_admin" ON "${table}" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK`,
+      );
+      expect(migration).toContain(
+        `CREATE POLICY "${table}_update_owner_or_admin" ON "${table}" AS PERMISSIVE FOR UPDATE TO "authenticated" USING`,
+      );
+      expect(migration).toContain(
+        `CREATE POLICY "${table}_delete_owner_or_admin" ON "${table}" AS PERMISSIVE FOR DELETE TO "authenticated" USING`,
+      );
+    }
+
+    expect(migration).toContain("WHERE assigned_role.role_name_value = 'canonical_maintainer'");
+    expect(migration).toContain(") WITH CHECK (");
+  });
 });
