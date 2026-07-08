@@ -31,6 +31,7 @@
     "infra:local:up": "bun scripts/infra-local-up.ts",
     "lint": "oxlint -c .oxlintrc.jsonc apps/*/src packages/*/src apps/*/scripts scripts tests infra *.ts",
     "lint:fix": "oxlint --fix -c .oxlintrc.jsonc apps/*/src packages/*/src apps/*/scripts scripts tests infra *.ts",
+    "prepare": "git config core.hooksPath .githooks || true",
     "preview:genretv": "cd apps/genretv && bun run preview",
     "seed:blogspot": "bun apps/genretv/scripts/extract-blogspot-seed.ts --out apps/genretv/seeds/blogspot-canonical.seed.json",
     "seed:canonical": "bun apps/genretv/scripts/build-canonical-registry-seed.ts --out apps/genretv/seeds/canonical-registry.seed.json",
