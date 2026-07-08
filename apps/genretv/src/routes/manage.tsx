@@ -12,7 +12,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";
@@ -59,9 +59,14 @@ export function ManageRoute() {
             {visibleShows.length} of {shows.length}
           </Text>
         </div>
-        <Button onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId: "new" } })}>
-          Add show
-        </Button>
+        <Group>
+          <Button component={Link} to="/manage/hidden" variant="default">
+            Hidden rows
+          </Button>
+          <Button onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId: "new" } })}>
+            Add show
+          </Button>
+        </Group>
       </Group>
 
       <Group className="schedule-controls" align="flex-end" gap="sm">

@@ -4,6 +4,7 @@ import { HomeRoute } from "./routes/home";
 import { LoginRoute, RecoverRoute, ResetPasswordRoute, SignUpRoute } from "./routes/login";
 import { ManageRoute } from "./routes/manage";
 import { ManageEpisodeRoute } from "./routes/manage-episode";
+import { ManageHiddenRoute } from "./routes/manage-hidden";
 import { ManageSeasonRoute } from "./routes/manage-season";
 import { ManageShowRoute } from "./routes/manage-show";
 import { PublishedRoute } from "./routes/published";
@@ -48,6 +49,12 @@ const manageRoute = createRoute({
   component: ManageRoute,
 });
 
+const manageHiddenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/manage/hidden",
+  component: ManageHiddenRoute,
+});
+
 const manageShowRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/manage/show/$showId",
@@ -85,6 +92,7 @@ const routeTree = rootRoute.addChildren([
   recoverRoute,
   resetPasswordRoute,
   manageRoute,
+  manageHiddenRoute,
   manageShowRoute,
   manageSeasonRoute,
   manageEpisodeRoute,
