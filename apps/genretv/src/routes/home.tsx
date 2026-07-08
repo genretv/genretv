@@ -3,6 +3,7 @@ import {
   Badge,
   Box,
   Group,
+  MultiSelect,
   Pagination,
   ScrollArea,
   SegmentedControl,
@@ -172,14 +173,17 @@ export function HomeRoute() {
           value={preferences.query}
           onChange={(event) => updatePreferences({ query: event.currentTarget.value })}
         />
-        <Select
+        <MultiSelect
           label="Language"
-          value={preferences.language}
-          data={[
-            { value: "all", label: "All languages" },
-            ...filterOptions.languages.map((language) => ({ value: language, label: language })),
-          ]}
-          onChange={(value) => updatePreferences({ language: value ?? "all" })}
+          value={preferences.languages}
+          data={filterOptions.languages.map((language) => ({ value: language, label: language }))}
+          onChange={(languages) => updatePreferences({ languages })}
+        />
+        <MultiSelect
+          label="Country"
+          value={preferences.countries}
+          data={filterOptions.countries.map((country) => ({ value: country, label: country }))}
+          onChange={(countries) => updatePreferences({ countries })}
         />
         <Select
           label="Source"
@@ -255,11 +259,12 @@ function readStoredPreferences(): ScheduleViewPreferences {
   try {
     const raw = window.localStorage.getItem(storageKey);
     if (raw == null) return defaultScheduleViewPreferences;
-    const parsed = JSON.parse(raw) as Partial<ScheduleViewPreferences>;
+    const parsed = JSON.parse(raw) as Partial<ScheduleViewPreferences> & { language?: unknown };
     return {
       section: parseSection(parsed.section),
       query: typeof parsed.query === "string" ? parsed.query : defaultScheduleViewPreferences.query,
-      language: typeof parsed.language === "string" ? parsed.language : defaultScheduleViewPreferences.language,
+      languages: parseStringArray(parsed.languages, parsed.language),
+      countries: parseStringArray(parsed.countries),
       organization:
         typeof parsed.organization === "string" ? parsed.organization : defaultScheduleViewPreferences.organization,
       ending: parseEnding(parsed.ending),
@@ -287,6 +292,12 @@ function parseSort(value: unknown): ScheduleSort {
   return value === "source" || value === "title" || value === "organization"
     ? value
     : defaultScheduleViewPreferences.sort;
+}
+
+function parseStringArray(value: unknown, legacySingleValue?: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  if (typeof legacySingleValue === "string" && legacySingleValue !== "all") return [legacySingleValue];
+  return [];
 }
 
 function parsePageSize(value: unknown): PageSize {

@@ -121,7 +121,7 @@ describe("schedule read model", () => {
       ...defaultScheduleViewPreferences,
       section: "past",
       query: "super",
-      language: "en",
+      languages: ["en"],
       organization: "Netflix",
       ending: "canceled",
       pageSize: 50,
@@ -132,6 +132,7 @@ describe("schedule read model", () => {
   test("returns stable filter options", () => {
     const schedule = buildScheduleFromSeed(seed);
     expect(scheduleFilterOptions(schedule.entries)).toEqual({
+      countries: [],
       languages: ["da", "en"],
       organizations: ["Apple", "Netflix"],
     });
@@ -148,7 +149,7 @@ describe("schedule read model", () => {
         seasonLabel: "S1",
       },
     ]);
-    expect(filterManagementShows(shows, "super", "Netflix", "en").map((show) => show.id)).toEqual(["c-show"]);
+    expect(filterManagementShows(shows, "super", "Netflix", ["en"], []).map((show) => show.id)).toEqual(["c-show"]);
   });
 
   test("finds a management season by show and season id", () => {

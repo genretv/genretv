@@ -80,6 +80,19 @@ export function ManageSeasonRoute() {
             </Table.Td>
           </Table.Tr>
           <Table.Tr>
+            <Table.Th>Countries</Table.Th>
+            <Table.Td>
+              <Group gap={4}>
+                {season.countries.length === 0 && <Text>Unknown</Text>}
+                {season.countries.map((country) => (
+                  <Badge key={`${season.id}-${country}`} size="xs" variant="light">
+                    {country}
+                  </Badge>
+                ))}
+              </Group>
+            </Table.Td>
+          </Table.Tr>
+          <Table.Tr>
             <Table.Th>Episodes</Table.Th>
             <Table.Td>Unknown</Table.Td>
           </Table.Tr>

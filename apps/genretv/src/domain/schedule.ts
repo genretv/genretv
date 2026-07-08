@@ -30,6 +30,7 @@ export interface BlogspotEntrySeed {
     displayTitle: string;
     externalLinks: ExternalLinkSeed[];
     languages: string[];
+    countries?: string[];
   };
   season: {
     rawSeason: string;
@@ -84,6 +85,7 @@ export interface ScheduleEntry {
   genreText: string;
   genres: string[];
   languages: string[];
+  countries: string[];
   links: ExternalLinkSeed[];
   legacyCells: string[];
 }
@@ -97,6 +99,7 @@ export interface ManagementSeason {
   organizationText: string;
   genreText: string;
   languages: string[];
+  countries: string[];
   sourceRow: number;
 }
 
@@ -107,6 +110,7 @@ export interface ManagementShow {
   organizations: string[];
   genres: string[];
   links: ExternalLinkSeed[];
+  countries: string[];
   seasons: ManagementSeason[];
 }
 
@@ -122,7 +126,8 @@ export interface CanonicalSchedule {
 export interface ScheduleViewPreferences {
   section: ScheduleSection;
   query: string;
-  language: string;
+  languages: string[];
+  countries: string[];
   organization: string;
   ending: EndingFilter;
   sort: ScheduleSort;
@@ -132,7 +137,8 @@ export interface ScheduleViewPreferences {
 export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
   section: "current",
   query: "",
-  language: "all",
+  languages: [],
+  countries: [],
   organization: "all",
   ending: "all",
   sort: "source",
@@ -172,7 +178,8 @@ export function filterScheduleEntries(
   const query = preferences.query.trim().toLocaleLowerCase();
   const filtered = entries.filter((entry) => {
     if (entry.section !== preferences.section) return false;
-    if (preferences.language !== "all" && !entry.languages.includes(preferences.language)) return false;
+    if (!hasAnySelected(entry.languages, preferences.languages)) return false;
+    if (!hasAnySelected(entry.countries, preferences.countries)) return false;
     if (preferences.organization !== "all" && !entry.organizations.includes(preferences.organization)) return false;
     if (preferences.section === "past" && preferences.ending !== "all" && entry.endingKind !== preferences.ending) {
       return false;
@@ -186,6 +193,7 @@ export function filterScheduleEntries(
       entry.organizationText,
       entry.genreText,
       entry.languages.join(" "),
+      entry.countries.join(" "),
     ]
       .join(" ")
       .toLocaleLowerCase()
@@ -198,6 +206,7 @@ export function filterScheduleEntries(
 export function scheduleFilterOptions(entries: readonly ScheduleEntry[]) {
   return {
     languages: uniqueSorted(entries.flatMap((entry) => entry.languages)),
+    countries: uniqueSorted(entries.flatMap((entry) => entry.countries)),
     organizations: uniqueSorted(entries.flatMap((entry) => entry.organizations)),
   };
 }
@@ -226,10 +235,12 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
         organizations: [],
         genres: [],
         links: [],
+        countries: [],
         seasons: [],
       } satisfies ManagementShow);
 
     show.languages = uniqueSorted([...show.languages, ...entry.languages]);
+    show.countries = uniqueSorted([...show.countries, ...entry.countries]);
     show.organizations = uniqueSorted([...show.organizations, ...entry.organizations]);
     show.genres = uniqueSorted([...show.genres, ...entry.genres]);
     show.links = mergeLinks(show.links, entry.links);
@@ -242,6 +253,7 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       organizationText: entry.organizationText,
       genreText: entry.genreText,
       languages: entry.languages,
+      countries: entry.countries,
       sourceRow: entry.sourceRow,
     });
 
@@ -260,14 +272,16 @@ export function filterManagementShows(
   shows: readonly ManagementShow[],
   query: string,
   organization: string,
-  language: string,
+  languages: readonly string[],
+  countries: readonly string[],
 ): ManagementShow[] {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return shows.filter((show) => {
     if (organization !== "all" && !show.organizations.includes(organization)) return false;
-    if (language !== "all" && !show.languages.includes(language)) return false;
+    if (!hasAnySelected(show.languages, languages)) return false;
+    if (!hasAnySelected(show.countries, countries)) return false;
     if (normalizedQuery === "") return true;
-    return [show.title, show.organizations.join(" "), show.genres.join(" "), show.languages.join(" ")]
+    return [show.title, show.organizations.join(" "), show.genres.join(" "), show.languages.join(" "), show.countries.join(" ")]
       .join(" ")
       .toLocaleLowerCase()
       .includes(normalizedQuery);
@@ -293,6 +307,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   const genreText = entry.genreTags.join(", ") || entry.legacy.genreText;
   const endedReason = stopReasonFor(entry);
   const languages = normalizeLanguages(entry.show.languages);
+  const countries = entry.show.countries ?? [];
   return {
     id: entry.id,
     sourceRow: entry.sourceRow,
@@ -307,9 +322,14 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     genreText,
     genres: entry.genreTags,
     languages,
+    countries,
     links: entry.show.externalLinks,
     legacyCells: entry.legacy.cells,
   };
+}
+
+function hasAnySelected(values: readonly string[], selected: readonly string[]): boolean {
+  return selected.length === 0 || selected.some((value) => values.includes(value));
 }
 
 function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: ScheduleSort): number {

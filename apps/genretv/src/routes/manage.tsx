@@ -1,4 +1,4 @@
-import { Anchor, Badge, Group, Pagination, ScrollArea, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Anchor, Badge, Group, MultiSelect, Pagination, ScrollArea, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 
 import { canonicalSchedule } from "../domain/canonical-schedule";
@@ -19,12 +19,13 @@ const filterOptions = scheduleFilterOptions(canonicalSchedule.entries);
 export function ManageRoute() {
   const [query, setQuery] = useState("");
   const [organization, setOrganization] = useState("all");
-  const [language, setLanguage] = useState("all");
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [countries, setCountries] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState<PageSize>(defaultPageSize);
   const [page, setPage] = useState(1);
   const visibleShows = useMemo(
-    () => filterManagementShows(shows, query, organization, language),
-    [query, organization, language],
+    () => filterManagementShows(shows, query, organization, languages, countries),
+    [query, organization, languages, countries],
   );
   const totalPages = pageCountFor(visibleShows.length, pageSize);
   const pageShows = useMemo(() => paginateItems(visibleShows, page, pageSize), [page, pageSize, visibleShows]);
@@ -56,15 +57,21 @@ export function ManageRoute() {
             resetToFirstPage();
           }}
         />
-        <Select
+        <MultiSelect
           label="Language"
-          value={language}
-          data={[
-            { value: "all", label: "All languages" },
-            ...filterOptions.languages.map((value) => ({ value, label: value })),
-          ]}
+          value={languages}
+          data={filterOptions.languages.map((value) => ({ value, label: value }))}
           onChange={(value) => {
-            setLanguage(value ?? "all");
+            setLanguages(value);
+            resetToFirstPage();
+          }}
+        />
+        <MultiSelect
+          label="Country"
+          value={countries}
+          data={filterOptions.countries.map((value) => ({ value, label: value }))}
+          onChange={(value) => {
+            setCountries(value);
             resetToFirstPage();
           }}
         />

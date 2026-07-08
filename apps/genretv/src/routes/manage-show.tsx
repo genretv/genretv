@@ -62,6 +62,19 @@ export function ManageShowRoute() {
               </Group>
             </Table.Td>
           </Table.Tr>
+          <Table.Tr>
+            <Table.Th>Countries</Table.Th>
+            <Table.Td>
+              <Group gap={4}>
+                {show.countries.length === 0 && <Text>Unknown</Text>}
+                {show.countries.map((country) => (
+                  <Badge key={`${show.id}-${country}`} size="xs" variant="light">
+                    {country}
+                  </Badge>
+                ))}
+              </Group>
+            </Table.Td>
+          </Table.Tr>
         </Table.Tbody>
       </Table>
 
