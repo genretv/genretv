@@ -10,7 +10,7 @@
   "sortPackageJson": {
     "sortScripts": true,
   },
-  "ignorePatterns": ["coverage/**", "dist/**", "docs/adr/**", "node_modules/**", "tmp/**"],
+  "ignorePatterns": ["apps/genretv/seeds/*.json", "coverage/**", "dist/**", "docs/adr/**", "node_modules/**", "tmp/**"],
   "useTabs": false,
   "tabWidth": 2,
   "insertFinalNewline": true,

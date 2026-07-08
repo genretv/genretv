@@ -24,8 +24,8 @@ Derive the canonical registry seed from the Blogspot artifact:
 bun run seed:canonical
 ```
 
-Generate a non-deleting SQL upsert seed for Postgres:
+Seed a local migrated Postgres database through typed Drizzle table objects:
 
 ```sh
-bun run seed:canonical:sql
+bun run db:seed:canonical:local
 ```

@@ -1,4 +1,16 @@
-import { Anchor, Badge, Group, Pagination, ScrollArea, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import {
+  Anchor,
+  Badge,
+  Group,
+  Pagination,
+  ScrollArea,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";

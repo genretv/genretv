@@ -26,5 +26,6 @@ Seeded login users all use password `genretv-local-password`:
 - `publisher@genretv.local` with `publisher` role
 - `user@genretv.local` with no elevated roles
 
-The database seed creates the canonical pgxsinkit registry tables and loads
-`infra/seeds/canonical-registry.sql`.
+`bun run infra:local:up` builds the edge bundles, starts Postgres, applies the committed Drizzle
+migrations, seeds the canonical list through typed Drizzle table objects, then starts the remaining
+Supabase/Electric services.

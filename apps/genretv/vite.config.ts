@@ -38,6 +38,10 @@ export default defineConfig({
   server: {
     port: 5660,
     host: "0.0.0.0",
-    allowedHosts: ["genretv.loc.delinin.com", "k3d-internal-service-genretv", "k3d-internal-service-genretv.genretv.svc"],
+    allowedHosts: [
+      "genretv.loc.delinin.com",
+      "k3d-internal-service-genretv",
+      "k3d-internal-service-genretv.genretv.svc",
+    ],
   },
 });

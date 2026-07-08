@@ -384,7 +384,13 @@ export function filterManagementShows(
     if (!hasAnySelected(show.languages, languages)) return false;
     if (!hasAnySelected(show.countries, countries)) return false;
     if (normalizedQuery === "") return true;
-    return [show.title, show.organizations.join(" "), show.genres.join(" "), show.languages.join(" "), show.countries.join(" ")]
+    return [
+      show.title,
+      show.organizations.join(" "),
+      show.genres.join(" "),
+      show.languages.join(" "),
+      show.countries.join(" "),
+    ]
       .join(" ")
       .toLocaleLowerCase()
       .includes(normalizedQuery);

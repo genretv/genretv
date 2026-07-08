@@ -7,6 +7,9 @@
     "apps/genretv/src/**/*.ts",
     "apps/genretv/src/**/*.tsx",
     "apps/genretv/scripts/**/*.ts",
-    "apps/genretv-api/src/**/*.ts"
+    "apps/genretv-api/src/**/*.ts",
+    "packages/domain/src/**/*.ts",
+    "scripts/**/*.ts",
+    "infra/**/*.ts"
   ]
 }

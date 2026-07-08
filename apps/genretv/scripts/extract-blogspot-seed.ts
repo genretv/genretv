@@ -282,10 +282,9 @@ function parseReleaseWindow(rawValue: string): ReleaseWindowSeed | null {
   };
 }
 
-function parseSeason(rawSeason: string): Pick<
-  CanonicalSeedEntry["season"],
-  "rawSeason" | "labelKind" | "number" | "tentative" | "extraMovie" | "hiatus"
-> {
+function parseSeason(
+  rawSeason: string,
+): Pick<CanonicalSeedEntry["season"], "rawSeason" | "labelKind" | "number" | "tentative" | "extraMovie" | "hiatus"> {
   const raw = rawSeason.trim();
   const numberMatch = raw.match(/\d+/);
   const number = numberMatch ? Number(numberMatch[0]) : null;
@@ -333,13 +332,25 @@ function parseOrganization(cellText: string, links: ParsedLink[]): CanonicalSeed
   });
 }
 
-function parseEntry(section: SectionKind, rowHtml: string, sourceRow: number, warnings: string[]): CanonicalSeedEntry | null {
+function parseEntry(
+  section: SectionKind,
+  rowHtml: string,
+  sourceRow: number,
+  warnings: string[],
+): CanonicalSeedEntry | null {
   const cells = extractCells(rowHtml);
   if (cells.length < 6) return null;
   if (cells.some((cell) => /<strong>/i.test(cell.html))) return null;
 
   const [titleCell, timingCell, organizationCell, genreCell, seasonCell, detailCell] = cells;
-  if (titleCell == null || timingCell == null || organizationCell == null || genreCell == null || seasonCell == null || detailCell == null) {
+  if (
+    titleCell == null ||
+    timingCell == null ||
+    organizationCell == null ||
+    genreCell == null ||
+    seasonCell == null ||
+    detailCell == null
+  ) {
     return null;
   }
   if (!titleCell.text) return null;
@@ -349,7 +360,8 @@ function parseEntry(section: SectionKind, rowHtml: string, sourceRow: number, wa
   const displayTitle = titleCell.text;
   const { genreTags, languages } = parseGenre(genreCell.text);
   const parsedSeason = parseSeason(seasonCell.text);
-  const releasePattern = timingCell.text.toLowerCase() === "binge" ? "bulk" : section === "current" ? "weekly" : "unknown";
+  const releasePattern =
+    timingCell.text.toLowerCase() === "binge" ? "bulk" : section === "current" ? "weekly" : "unknown";
   const lifecycleMarkers = parseMarkers(detailCell.text, seasonCell.text);
   const externalLinks: CanonicalSeedEntry["show"]["externalLinks"] = [];
   if (titleLink != null) {
@@ -365,7 +377,10 @@ function parseEntry(section: SectionKind, rowHtml: string, sourceRow: number, wa
   if (cells.length !== 6) warnings.push(`Row ${sourceRow} parsed with ${cells.length} cells: ${displayTitle}`);
 
   const releaseWindow = section === "upcoming" ? parseReleaseWindow(timingCell.text) : null;
-  const finaleWindow = section === "past" || section === "upcoming" ? parseReleaseWindow(detailCell.text) : parseReleaseWindow(detailCell.text);
+  const finaleWindow =
+    section === "past" || section === "upcoming"
+      ? parseReleaseWindow(detailCell.text)
+      : parseReleaseWindow(detailCell.text);
 
   return {
     id: `${section}-${sourceRow}-${slugify(displayTitle)}`,
@@ -475,7 +490,9 @@ async function main() {
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(seed, null, 2)}\n`);
   console.log(`Wrote ${seed.summary.totalEntries} entries to ${out}`);
-  console.log(`Sections: current=${seed.summary.bySection.current}, upcoming=${seed.summary.bySection.upcoming}, past=${seed.summary.bySection.past}`);
+  console.log(
+    `Sections: current=${seed.summary.bySection.current}, upcoming=${seed.summary.bySection.upcoming}, past=${seed.summary.bySection.past}`,
+  );
   if (seed.summary.parserWarnings.length > 0) {
     console.log(`Warnings: ${seed.summary.parserWarnings.length}`);
     for (const warning of seed.summary.parserWarnings.slice(0, 10)) console.log(`- ${warning}`);

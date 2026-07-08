@@ -5,10 +5,13 @@ services:
     image: docker.io/supabase/postgres:17.6.1.136
     container_name: genretv-db
     volumes:
-      - ./genretv/db-init/99-auth-role-password.sql:/docker-entrypoint-initdb.d/init-scripts/99-auth-role-password.sql:ro
+      - ./genretv/db-init/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:ro
+      - ./genretv/db-init/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - ./genretv/db-init/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
     ports:
       - "54322:5432"
@@ -17,27 +20,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-
-  schema-seed:
-    image: docker.io/supabase/postgres:17.6.1.136
-    container_name: genretv-schema-seed
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./genretv/db-seed:/db-seed:ro
-      - ../seeds/canonical-registry.sql:/db-seed/100-canonical-registry.sql:ro
-    environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-    command:
-      - bash
-      - -lc
-      - |
-        psql "postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable" \
-          -v ON_ERROR_STOP=1 \
-          -f /db-seed/001-canonical-schema.sql \
-          -f /db-seed/100-canonical-registry.sql
-    restart: "no"
 
   auth:
     image: docker.io/supabase/gotrue:v2.192.0
@@ -103,8 +85,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      schema-seed:
-        condition: service_completed_successfully
     command: ["start", "--main-service", "/home/deno/functions/main"]
     volumes:
       - ../../supabase/functions-dist:/home/deno/functions:ro
@@ -124,8 +104,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      schema-seed:
-        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
       ELECTRIC_INSECURE: "true"
@@ -159,6 +137,7 @@ services:
   user-seed:
     image: docker.io/curlimages/curl:8.11.1
     container_name: genretv-user-seed
+    profiles: ["seed"]
     depends_on:
       - envoy
     volumes:

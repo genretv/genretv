@@ -64,7 +64,12 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
                     <Stack gap={6}>
                       <Group gap={6}>
                         {entry.links.map((link) => (
-                          <Anchor key={`${entry.id}-${link.kind}-${link.url}`} href={link.url} target="_blank" size="sm">
+                          <Anchor
+                            key={`${entry.id}-${link.kind}-${link.url}`}
+                            href={link.url}
+                            target="_blank"
+                            size="sm"
+                          >
                             {link.kind ?? link.label}
                           </Anchor>
                         ))}
@@ -148,13 +153,7 @@ export function HomeRoute() {
   }, [totalPages]);
 
   return (
-    <Stack
-      className="schedule-panel"
-      gap="lg"
-      maw={1220}
-      mx="auto"
-      p={{ base: "md", sm: "xl" }}
-    >
+    <Stack className="schedule-panel" gap="lg" maw={1220} mx="auto" p={{ base: "md", sm: "xl" }}>
       <Group justify="space-between" align="flex-end">
         <div>
           <Title order={1}>{schedule.title}</Title>

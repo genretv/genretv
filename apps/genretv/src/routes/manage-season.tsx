@@ -127,9 +127,7 @@ export function ManageSeasonRoute() {
               ) : (
                 <Table.Tr>
                   <Table.Td colSpan={4}>
-                    <Text c="dimmed">
-                      {season.episodeCount == null ? "Episode count unknown" : emptyEpisodeText}
-                    </Text>
+                    <Text c="dimmed">{season.episodeCount == null ? "Episode count unknown" : emptyEpisodeText}</Text>
                   </Table.Td>
                 </Table.Tr>
               )}

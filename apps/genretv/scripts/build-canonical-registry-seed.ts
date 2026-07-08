@@ -5,7 +5,7 @@ import {
   buildCanonicalRegistrySeedRows,
   type BlogspotCanonicalSeed,
   type CanonicalRegistrySeedRows,
-} from "../../genretv-api/src/domain/canonical-seed";
+} from "@genretv/domain/canonical-seed";
 
 interface CanonicalRegistrySeed {
   schemaVersion: 1;

@@ -8,6 +8,7 @@
     "test": "bun test src"
   },
   "dependencies": {
+    "@genretv/domain": "workspace:*",
     "@pgxsinkit/contracts": "0.1.36",
     "@pgxsinkit/server": "0.1.36",
     "drizzle-orm": "1.0.0-rc.4",
