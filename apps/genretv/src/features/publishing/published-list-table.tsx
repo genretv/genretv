@@ -42,7 +42,20 @@ export function PublishedListRowsTable({ canImport, list, onImportSeason, saving
                   )}
                 </Stack>
               </Table.Td>
-              <Table.Td>{season.seasonLabel}</Table.Td>
+              <Table.Td>
+                <Stack gap={2}>
+                  <Text size="sm">{season.seasonLabel}</Text>
+                  {season.seasonExternalLinks.length > 0 && (
+                    <Group gap={6}>
+                      {season.seasonExternalLinks.map((link) => (
+                        <Anchor key={`${season.id}-season-${link.url}`} href={link.url} target="_blank" size="xs">
+                          {link.kind ?? link.label}
+                        </Anchor>
+                      ))}
+                    </Group>
+                  )}
+                </Stack>
+              </Table.Td>
               <Table.Td>
                 <Stack gap={2}>
                   <Text size="sm">{season.section === "past" ? season.endedReason : season.timing}</Text>
