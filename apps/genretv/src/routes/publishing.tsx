@@ -50,6 +50,8 @@ export function PublishingRoute() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [publishedSaved, setPublishedSaved] = useState(false);
+  const [applicationReviewNotes, setApplicationReviewNotes] = useState<Record<string, string>>({});
+  const [proposalReviewNotes, setProposalReviewNotes] = useState<Record<string, string>>({});
   const isMaintainer = roles.includes("canonical_maintainer");
   const hasPublisherRole = canPublishList(roles);
   const canonical = useCanonicalSchedule();
@@ -234,17 +236,18 @@ export function PublishingRoute() {
     }
   };
 
-  const updateApplicationStatus = async (id: string, status: "approved" | "rejected" | "closed") => {
+  const updateApplicationStatus = async (id: string, status: "approved" | "rejected" | "closed", note: string) => {
     const notificationIds = unreadNotificationIdsForPublishApplication(notifications.rows, id);
     setSaving(true);
     setActionError(null);
     try {
       await client.transaction({ mode: "pessimistic" }, (tx) => {
-        tx.tables.publish_application.update({ id }, { status });
+        tx.tables.publish_application.update({ id }, { status, reviewerNote: nullableText(note) });
         for (const notificationId of notificationIds) {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
+      setApplicationReviewNotes((notes) => withoutKey(notes, id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -252,17 +255,18 @@ export function PublishingRoute() {
     }
   };
 
-  const updateProposalStatus = async (id: string, status: "approved" | "rejected" | "closed") => {
+  const updateProposalStatus = async (id: string, status: "approved" | "rejected" | "closed", note: string) => {
     const notificationIds = unreadNotificationIdsForCanonicalProposal(notifications.rows, id);
     setSaving(true);
     setActionError(null);
     try {
       await client.transaction({ mode: "pessimistic" }, (tx) => {
-        tx.tables.canonical_proposal.update({ id }, { status });
+        tx.tables.canonical_proposal.update({ id }, { status, reviewerNote: nullableText(note) });
         for (const notificationId of notificationIds) {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
+      setProposalReviewNotes((notes) => withoutKey(notes, id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -469,40 +473,67 @@ export function PublishingRoute() {
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                applications.rows.map((application) => (
-                  <Table.Tr key={application.id}>
-                    <Table.Td>
-                      <Badge color={workflowStatusColor(application.status)} variant="light">
-                        {application.status}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>{application.message ?? ""}</Table.Td>
-                    <Table.Td>{formatMicroseconds(application.updatedAtUs)}</Table.Td>
-                    {isMaintainer && (
+                applications.rows.map((application) => {
+                  const reviewNote = applicationReviewNotes[application.id] ?? application.reviewerNote ?? "";
+                  return (
+                    <Table.Tr key={application.id}>
                       <Table.Td>
-                        <Group gap="xs">
-                          <Button
-                            size="xs"
-                            variant="light"
-                            disabled={saving}
-                            onClick={() => void updateApplicationStatus(application.id, "approved")}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="xs"
-                            color="red"
-                            variant="light"
-                            disabled={saving}
-                            onClick={() => void updateApplicationStatus(application.id, "rejected")}
-                          >
-                            Reject
-                          </Button>
-                        </Group>
+                        <Badge color={workflowStatusColor(application.status)} variant="light">
+                          {application.status}
+                        </Badge>
                       </Table.Td>
-                    )}
-                  </Table.Tr>
-                ))
+                      <Table.Td>
+                        <Stack gap={4}>
+                          <Text size="sm">{application.message ?? ""}</Text>
+                          {application.reviewerNote != null && (
+                            <Text size="xs" c="dimmed">
+                              Reviewer note: {application.reviewerNote}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>{formatMicroseconds(application.updatedAtUs)}</Table.Td>
+                      {isMaintainer && (
+                        <Table.Td>
+                          <Stack gap="xs">
+                            <Textarea
+                              aria-label="Publish application reviewer note"
+                              autosize
+                              minRows={2}
+                              placeholder="Optional note"
+                              value={reviewNote}
+                              onChange={(event) =>
+                                setApplicationReviewNotes((notes) => ({
+                                  ...notes,
+                                  [application.id]: event.currentTarget.value,
+                                }))
+                              }
+                            />
+                            <Group gap="xs">
+                              <Button
+                                size="xs"
+                                variant="light"
+                                disabled={saving}
+                                onClick={() => void updateApplicationStatus(application.id, "approved", reviewNote)}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="xs"
+                                color="red"
+                                variant="light"
+                                disabled={saving}
+                                onClick={() => void updateApplicationStatus(application.id, "rejected", reviewNote)}
+                              >
+                                Reject
+                              </Button>
+                            </Group>
+                          </Stack>
+                        </Table.Td>
+                      )}
+                    </Table.Tr>
+                  );
+                })
               )}
             </Table.Tbody>
           </Table>
@@ -531,57 +562,84 @@ export function PublishingRoute() {
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                proposals.rows.map((proposal) => (
-                  <Table.Tr key={proposal.id}>
-                    <Table.Td>
-                      <Badge color={workflowStatusColor(proposal.status)} variant="light">
-                        {proposal.status}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="outline">{proposal.proposalKind}</Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text fw={700}>{proposal.title}</Text>
-                      <Text size="xs" c="dimmed">
-                        {proposalTargetText(proposal)}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>{proposal.message ?? proposalPayloadSummary(proposal.proposedPayload)}</Table.Td>
-                    <Table.Td>{formatMicroseconds(proposal.updatedAtUs)}</Table.Td>
-                    {isMaintainer && (
+                proposals.rows.map((proposal) => {
+                  const reviewNote = proposalReviewNotes[proposal.id] ?? proposal.reviewerNote ?? "";
+                  return (
+                    <Table.Tr key={proposal.id}>
                       <Table.Td>
-                        <Group gap="xs">
-                          <Button
-                            size="xs"
-                            variant="light"
-                            disabled={saving}
-                            onClick={() => void updateProposalStatus(proposal.id, "approved")}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="xs"
-                            color="red"
-                            variant="light"
-                            disabled={saving}
-                            onClick={() => void updateProposalStatus(proposal.id, "rejected")}
-                          >
-                            Reject
-                          </Button>
-                          <Button
-                            size="xs"
-                            variant="default"
-                            disabled={saving}
-                            onClick={() => void updateProposalStatus(proposal.id, "closed")}
-                          >
-                            Close
-                          </Button>
-                        </Group>
+                        <Badge color={workflowStatusColor(proposal.status)} variant="light">
+                          {proposal.status}
+                        </Badge>
                       </Table.Td>
-                    )}
-                  </Table.Tr>
-                ))
+                      <Table.Td>
+                        <Badge variant="outline">{proposal.proposalKind}</Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fw={700}>{proposal.title}</Text>
+                        <Text size="xs" c="dimmed">
+                          {proposalTargetText(proposal)}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Stack gap={4}>
+                          <Text size="sm">{proposal.message ?? proposalPayloadSummary(proposal.proposedPayload)}</Text>
+                          {proposal.reviewerNote != null && (
+                            <Text size="xs" c="dimmed">
+                              Reviewer note: {proposal.reviewerNote}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>{formatMicroseconds(proposal.updatedAtUs)}</Table.Td>
+                      {isMaintainer && (
+                        <Table.Td>
+                          <Stack gap="xs">
+                            <Textarea
+                              aria-label="Canonical proposal reviewer note"
+                              autosize
+                              minRows={2}
+                              placeholder="Optional note"
+                              value={reviewNote}
+                              onChange={(event) =>
+                                setProposalReviewNotes((notes) => ({
+                                  ...notes,
+                                  [proposal.id]: event.currentTarget.value,
+                                }))
+                              }
+                            />
+                            <Group gap="xs">
+                              <Button
+                                size="xs"
+                                variant="light"
+                                disabled={saving}
+                                onClick={() => void updateProposalStatus(proposal.id, "approved", reviewNote)}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="xs"
+                                color="red"
+                                variant="light"
+                                disabled={saving}
+                                onClick={() => void updateProposalStatus(proposal.id, "rejected", reviewNote)}
+                              >
+                                Reject
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="default"
+                                disabled={saving}
+                                onClick={() => void updateProposalStatus(proposal.id, "closed", reviewNote)}
+                              >
+                                Close
+                              </Button>
+                            </Group>
+                          </Stack>
+                        </Table.Td>
+                      )}
+                    </Table.Tr>
+                  );
+                })
               )}
             </Table.Tbody>
           </Table>
@@ -629,6 +687,11 @@ export function PublishingRoute() {
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
+}
+
+function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const { [key]: _discarded, ...rest } = record;
+  return rest;
 }
 
 function formatMicroseconds(value: bigint): string {
