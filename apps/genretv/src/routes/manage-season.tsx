@@ -30,6 +30,8 @@ import {
   type ManagementShow,
 } from "../domain/schedule";
 import {
+  organizationRowsToText,
+  organizationTextToRows,
   parseEpisodeCountDraft,
   seasonDraftFromSeason,
   seasonDraftStorageKey,
@@ -120,6 +122,7 @@ function EditableSeason({
           endedReason: personalSeason.endedReason,
           releasePattern: personalSeason.releasePattern,
           episodeCount: personalSeason.episodeCount,
+          organizations: personalSeason.organizations,
           notes: personalSeason.notes,
         })
         .from(personalSeason)
@@ -218,12 +221,7 @@ function EditableSeason({
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
   const canSaveOverlay =
-    canEditDraft &&
-    !personalSeasons.loading &&
-    !personalShows.loading &&
-    dirty &&
-    episodeCountValid &&
-    !savingOverlay;
+    canEditDraft && !personalSeasons.loading && !personalShows.loading && dirty && episodeCountValid && !savingOverlay;
   const canSubmitProposal =
     canEditDraft &&
     canPropose &&
@@ -268,6 +266,7 @@ function EditableSeason({
         endedReason: draft.endedReason.trim(),
         releasePattern: nullableText(draft.releasePattern),
         episodeCount: draftEpisodeCount,
+        organizations: organizationTextToRows(draft.organizationsText),
         notes: nullableText(draft.notes),
       };
       await client.transaction({ mode: "pessimistic" }, (tx) => {
@@ -278,7 +277,6 @@ function EditableSeason({
             canonicalShowId: isPersonalOnlyShow ? null : show.id,
             canonicalSeasonId: season.id === newSeasonId ? null : season.id,
             sourceRow: season.sourceRow,
-            organizations: season.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
             externalLinks: [],
             ...patch,
           });
@@ -331,6 +329,7 @@ function EditableSeason({
             endedReason: draft.endedReason.trim(),
             releasePattern: nullableText(draft.releasePattern),
             episodeCount: draftEpisodeCount,
+            organizations: organizationTextToRows(draft.organizationsText),
             notes: nullableText(draft.notes),
           },
         });
@@ -453,8 +452,8 @@ function EditableSeason({
         {isLinkedImportedSeason
           ? "This season is linked from a published list. Remove the link here, or use Copy on the published list for an editable personal version."
           : canEdit
-          ? "Save a browser-local draft while editing, or save this season-level metadata to your personal overlay."
-          : "Sign in to create a browser-local management draft."}
+            ? "Save a browser-local draft while editing, or save this season-level metadata to your personal overlay."
+            : "Sign in to create a browser-local management draft."}
       </Alert>
       {personalSeasons.error != null && (
         <Alert color="red" variant="light">
@@ -552,6 +551,14 @@ function EditableSeason({
             onChange={(event) => setDraft((current) => ({ ...current, endedReason: event.currentTarget.value }))}
           />
         </SimpleGrid>
+        <Textarea
+          label="Organizations"
+          autosize
+          minRows={3}
+          value={draft.organizationsText}
+          disabled={!canEditDraft}
+          onChange={(event) => setDraft((current) => ({ ...current, organizationsText: event.currentTarget.value }))}
+        />
         <Textarea
           label="Notes"
           autosize
@@ -699,6 +706,7 @@ function seasonDraftFromPersonalRow(row: {
   endedReason: string;
   episodeCount: number | null;
   notes: string | null;
+  organizations: unknown;
   releasePattern: string | null;
   seasonLabel: string;
   section: string;
@@ -711,6 +719,7 @@ function seasonDraftFromPersonalRow(row: {
     endedReason: row.endedReason,
     releasePattern: row.releasePattern ?? "",
     episodeCount: row.episodeCount == null ? "" : String(row.episodeCount),
+    organizationsText: organizationRowsToText(row.organizations),
     notes: row.notes ?? "",
   };
 }

@@ -18,6 +18,7 @@ export interface ManagementSeasonDraft {
   endedReason: string;
   releasePattern: string;
   episodeCount: string;
+  organizationsText: string;
   notes: string;
 }
 
@@ -48,6 +49,7 @@ export function seasonDraftFromSeason(season: ManagementSeason): ManagementSeaso
     endedReason: season.endedReason,
     releasePattern: season.releasePattern ?? "",
     episodeCount: season.episodeCount == null ? "" : String(season.episodeCount),
+    organizationsText: orderedListToText(season.organizations),
     notes: season.notes ?? "",
   };
 }
@@ -88,6 +90,22 @@ export function orderedTextToList(value: string): string[] {
   return values;
 }
 
+export function organizationRowsToText(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  const names = value.flatMap((item): string[] => {
+    if (typeof item === "string") return [item];
+    if (isRecord(item) && typeof item["name"] === "string") return [item["name"]];
+    return [];
+  });
+  return orderedListToText(names);
+}
+
+export function organizationTextToRows(
+  value: string,
+): Array<{ externalLinks: unknown[]; name: string; role: "unknown" }> {
+  return orderedTextToList(value).map((name) => ({ name, role: "unknown", externalLinks: [] }));
+}
+
 export function parseEpisodeCountDraft(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed === "") return null;
@@ -110,6 +128,10 @@ export function episodeDraftStorageKey(seasonId: string, episodeId: string): str
 export function releaseDateDraftToWindow(value: string): { raw: string; precision: string; confidence: string } | null {
   const raw = value.trim();
   return raw === "" ? null : { raw, precision: "unknown", confidence: "unknown" };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null;
 }
 
 export function useManagementDraft<T>(storageKey: string, initialDraft: T) {

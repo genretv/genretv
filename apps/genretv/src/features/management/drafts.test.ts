@@ -1,10 +1,30 @@
 import { describe, expect, test } from "bun:test";
 
-import { emptyEpisodeDraft, orderedTextToList, parseEpisodeCountDraft, releaseDateDraftToWindow } from "./drafts";
+import {
+  emptyEpisodeDraft,
+  orderedTextToList,
+  organizationRowsToText,
+  organizationTextToRows,
+  parseEpisodeCountDraft,
+  releaseDateDraftToWindow,
+} from "./drafts";
 
 describe("management draft helpers", () => {
   test("parses ordered list drafts while preserving first occurrence", () => {
     expect(orderedTextToList("da\nsv, en\nsv\n")).toEqual(["da", "sv", "en"]);
+  });
+
+  test("round-trips organization drafts through existing row shape", () => {
+    expect(
+      organizationRowsToText([
+        { name: "BBC", role: "studio" },
+        { name: "Netflix", role: "streamer" },
+      ]),
+    ).toBe("BBC\nNetflix");
+    expect(organizationTextToRows("BBC\nNetflix\nBBC")).toEqual([
+      { name: "BBC", role: "unknown", externalLinks: [] },
+      { name: "Netflix", role: "unknown", externalLinks: [] },
+    ]);
   });
 
   test("parses unknown and zero episode counts", () => {
