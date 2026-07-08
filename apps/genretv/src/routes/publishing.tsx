@@ -1,23 +1,46 @@
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
-import { Alert, Badge, Button, Group, ScrollArea, Stack, Table, Text, Textarea, Title } from "@mantine/core";
-import { useState } from "react";
+import {
+  Alert,
+  Badge,
+  Button,
+  Group,
+  ScrollArea,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Textarea,
+  TextInput,
+  Title,
+} from "@mantine/core";
+import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
-import { workflowStatusColor } from "../features/management/proposals";
+import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { canPublishList, workflowStatusColor } from "../features/management/proposals";
+import { buildPublishedSnapshotPlan, normalizePublishedSlug } from "../features/publishing/snapshots";
 
 const publishApplication = genretvSyncRegistry.publish_application.view!;
 const canonicalProposal = genretvSyncRegistry.canonical_proposal.view!;
 const maintainerNotification = genretvSyncRegistry.maintainer_notification.view!;
+const publishedList = genretvSyncRegistry.published_list.view!;
 
 export function PublishingRoute() {
   const { roles, session } = useAuth();
   const client = useSyncClient();
   const [message, setMessage] = useState("");
+  const [listTitle, setListTitle] = useState("My GenreTV list");
+  const [listSlug, setListSlug] = useState("");
+  const [listDescription, setListDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [publishedSaved, setPublishedSaved] = useState(false);
   const isMaintainer = roles.includes("canonical_maintainer");
+  const canPublish = canPublishList(roles);
+  const canonical = useCanonicalSchedule();
+  const normalizedSlug = normalizePublishedSlug(listSlug);
   const applications = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -31,6 +54,23 @@ export function PublishingRoute() {
           updatedAtUs: publishApplication.updatedAtUs,
         })
         .from(publishApplication),
+    [],
+    { ready: session != null },
+  );
+  const publishedLists = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: publishedList.id,
+          ownerId: publishedList.ownerId,
+          slug: publishedList.slug,
+          title: publishedList.title,
+          description: publishedList.description,
+          publicationStatus: publishedList.publicationStatus,
+          snapshotVersion: publishedList.snapshotVersion,
+          updatedAtUs: publishedList.updatedAtUs,
+        })
+        .from(publishedList),
     [],
     { ready: session != null },
   );
@@ -73,6 +113,25 @@ export function PublishingRoute() {
     [],
     { ready: session != null && isMaintainer },
   );
+  const matchingPublishedList = useMemo(
+    () => publishedLists.rows.find((list) => list.slug === normalizedSlug) ?? null,
+    [normalizedSlug, publishedLists.rows],
+  );
+  const userId = session?.user.id ?? null;
+  const ownMatchingPublishedList =
+    matchingPublishedList != null && userId != null && matchingPublishedList.ownerId === userId
+      ? matchingPublishedList
+      : null;
+  const slugTakenBySomeoneElse =
+    matchingPublishedList != null && (userId == null || matchingPublishedList.ownerId !== userId);
+  const canPublishSnapshot =
+    canPublish &&
+    normalizedSlug !== "" &&
+    listTitle.trim() !== "" &&
+    !slugTakenBySomeoneElse &&
+    !canonical.loading &&
+    canonical.schedule.entries.length > 0 &&
+    !saving;
 
   const submitApplication = async () => {
     const applicationId = crypto.randomUUID();
@@ -97,6 +156,53 @@ export function PublishingRoute() {
       });
       setSaved(true);
       setMessage("");
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const publishSnapshot = async () => {
+    const listId = ownMatchingPublishedList?.id ?? crypto.randomUUID();
+    const snapshotVersion = (ownMatchingPublishedList?.snapshotVersion ?? 0) + 1;
+    const plan = buildPublishedSnapshotPlan(
+      canonical.schedule,
+      {
+        listId,
+        slug: normalizedSlug,
+        title: listTitle.trim(),
+        description: nullableText(listDescription),
+        snapshotVersion,
+        nowUs: BigInt(Date.now()) * 1000n,
+      },
+      () => crypto.randomUUID(),
+    );
+    setSaving(true);
+    setActionError(null);
+    setSaved(false);
+    setPublishedSaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        if (ownMatchingPublishedList == null) {
+          tx.tables.published_list.create(plan.list);
+        } else {
+          tx.tables.published_list.update(
+            { id: ownMatchingPublishedList.id },
+            {
+              title: plan.list.title,
+              description: plan.list.description,
+              publicationStatus: plan.list.publicationStatus,
+              snapshotVersion: plan.list.snapshotVersion,
+              publishedAtUs: plan.list.publishedAtUs,
+            },
+          );
+        }
+        for (const show of plan.shows) tx.tables.published_show.create(show);
+        for (const season of plan.seasons) tx.tables.published_season.create(season);
+        for (const episode of plan.episodes) tx.tables.published_episode.create(episode);
+      });
+      setPublishedSaved(true);
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -172,6 +278,16 @@ export function PublishingRoute() {
           Could not load publish applications: {applications.error.message}
         </Alert>
       )}
+      {publishedLists.error != null && (
+        <Alert color="red" variant="light">
+          Could not load published lists: {publishedLists.error.message}
+        </Alert>
+      )}
+      {canonical.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your current schedule for publishing: {canonical.error.message}
+        </Alert>
+      )}
       {proposals.error != null && (
         <Alert color="red" variant="light">
           Could not load canonical proposals: {proposals.error.message}
@@ -192,22 +308,103 @@ export function PublishingRoute() {
           Application sent.
         </Alert>
       )}
+      {publishedSaved && (
+        <Alert color="teal" variant="light">
+          Published snapshot saved.
+        </Alert>
+      )}
 
-      <Stack gap="sm">
-        <Title order={2}>Apply to publish</Title>
-        <Textarea
-          label="Message"
-          autosize
-          minRows={4}
-          value={message}
-          onChange={(event) => setMessage(event.currentTarget.value)}
-        />
-        <Group justify="flex-end">
-          <Button loading={saving} onClick={() => void submitApplication()}>
-            Apply to publish
-          </Button>
-        </Group>
-      </Stack>
+      {canPublish ? (
+        <Stack gap="sm">
+          <Title order={2}>Publish snapshot</Title>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <TextInput label="Title" value={listTitle} onChange={(event) => setListTitle(event.currentTarget.value)} />
+            <TextInput
+              label="Slug"
+              value={listSlug}
+              error={slugTakenBySomeoneElse ? "That slug is already published by another user" : null}
+              onChange={(event) => setListSlug(event.currentTarget.value)}
+            />
+          </SimpleGrid>
+          <Textarea
+            label="Description"
+            autosize
+            minRows={3}
+            value={listDescription}
+            onChange={(event) => setListDescription(event.currentTarget.value)}
+          />
+          <Group justify="space-between" align="center">
+            <Text size="sm" c="dimmed">
+              {ownMatchingPublishedList == null
+                ? `${canonical.schedule.entries.length} seasons will be published as a new list.`
+                : `${canonical.schedule.entries.length} seasons will become snapshot v${
+                    ownMatchingPublishedList.snapshotVersion + 1
+                  } for ${ownMatchingPublishedList.slug}.`}
+            </Text>
+            <Button loading={saving} disabled={!canPublishSnapshot} onClick={() => void publishSnapshot()}>
+              Publish snapshot
+            </Button>
+          </Group>
+        </Stack>
+      ) : (
+        <Stack gap="sm">
+          <Title order={2}>Apply to publish</Title>
+          <Textarea
+            label="Message"
+            autosize
+            minRows={4}
+            value={message}
+            onChange={(event) => setMessage(event.currentTarget.value)}
+          />
+          <Group justify="flex-end">
+            <Button loading={saving} onClick={() => void submitApplication()}>
+              Apply to publish
+            </Button>
+          </Group>
+        </Stack>
+      )}
+
+      {canPublish && (
+        <Stack gap="sm">
+          <Title order={2}>Published lists</Title>
+          <ScrollArea>
+            <Table className="schedule-table" striped verticalSpacing="sm" miw={760}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Slug</Table.Th>
+                  <Table.Th>Title</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th>Version</Table.Th>
+                  <Table.Th>Updated</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {publishedLists.rows.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={5}>
+                      <Text c="dimmed">No published lists yet.</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  publishedLists.rows.map((list) => (
+                    <Table.Tr key={list.id}>
+                      <Table.Td>{list.slug}</Table.Td>
+                      <Table.Td>{list.title}</Table.Td>
+                      <Table.Td>
+                        <Badge color={workflowStatusColor(list.publicationStatus)} variant="light">
+                          {list.publicationStatus}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>{list.snapshotVersion}</Table.Td>
+                      <Table.Td>{formatMicroseconds(list.updatedAtUs)}</Table.Td>
+                    </Table.Tr>
+                  ))
+                )}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+        </Stack>
+      )}
 
       <Stack gap="sm">
         <Title order={2}>{isMaintainer ? "Applications" : "Your applications"}</Title>
