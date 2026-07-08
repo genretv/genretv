@@ -10,6 +10,7 @@ import { ManageShowRoute } from "./routes/manage-show";
 import { ProfileRoute } from "./routes/profile";
 import { PublicProfileRoute } from "./routes/public-profile";
 import { PublishedRoute } from "./routes/published";
+import { PublishedListRoute } from "./routes/published-list";
 import { PublishingRoute } from "./routes/publishing";
 import { RootLayout } from "./routes/root";
 
@@ -99,6 +100,12 @@ const publishedRoute = createRoute({
   component: PublishedRoute,
 });
 
+const publishedListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/published/$slug",
+  component: PublishedListRoute,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   loginRoute,
@@ -114,6 +121,7 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   publicProfileRoute,
   publishedRoute,
+  publishedListRoute,
 ]);
 
 const hashRouting = import.meta.env["VITE_GENRETV_HASH_ROUTING"] === "1";

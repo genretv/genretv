@@ -1,6 +1,6 @@
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
-import { Alert, Anchor, Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } from "@mantine/core";
 import { Link, useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
@@ -116,9 +116,9 @@ export function PublicProfileRoute() {
                               {list.description}
                             </Text>
                           )}
-                          <Anchor component={Link} to="/published" size="sm">
+                          <Link className="inline-link-button" to="/published/$slug" params={{ slug: list.slug }}>
                             Browse rows
-                          </Anchor>
+                          </Link>
                         </Stack>
                       </Table.Td>
                       <Table.Td>
