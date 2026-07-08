@@ -57,6 +57,16 @@ const schedule: CanonicalSchedule = {
           episodeLabel: "E1",
           title: "Pilot",
           releaseDate: "2026-07-08",
+          releaseWindow: {
+            raw: "2026-07-08",
+            precision: "day",
+            confidence: "confirmed",
+            year: 2026,
+            month: 7,
+            day: 8,
+            releaseSeason: null,
+          },
+          sortKey: "001",
           notes: "Episode note",
           links: [],
         },
@@ -134,6 +144,12 @@ describe("published snapshot planning", () => {
       externalLinks: [{ label: "IMDb", url: "https://imdb.test/title/1" }],
     });
     expect(plan.seasons[0]?.externalLinks).toEqual([{ label: "Wikipedia", url: "https://wikipedia.test/season/1" }]);
+    expect(plan.seasons[0]).toMatchObject({
+      releasePrecision: "day",
+      dateConfidence: "confirmed",
+      releaseWindow: { raw: "2026-07-08" },
+      sortKey: "2026-07-08",
+    });
     expect(plan.seasons.map((season) => [season.id, season.publishedShowId, season.snapshotVersion])).toEqual([
       ["season-published-1", "show-published", 2],
       ["season-published-2", "show-published", 2],
@@ -143,6 +159,7 @@ describe("published snapshot planning", () => {
       publishedSeasonId: "season-published-1",
       title: "Pilot",
       releaseWindow: { raw: "2026-07-08" },
+      sortKey: "001",
     });
   });
 });

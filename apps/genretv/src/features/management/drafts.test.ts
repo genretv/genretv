@@ -9,7 +9,9 @@ import {
   organizationTextToRows,
   parseEpisodeCountDraft,
   releaseDateDraftToWindow,
+  releaseWindowConfidence,
   releaseWindowDraftToWindow,
+  releaseWindowPrecision,
   releaseWindowText,
 } from "./drafts";
 
@@ -57,6 +59,8 @@ describe("management draft helpers", () => {
       episodeLabel: "",
       title: "",
       releaseDate: "",
+      releasePrecision: "unknown",
+      dateConfidence: "unknown",
       sortKey: "",
       linksText: "",
       notes: "",
@@ -72,6 +76,8 @@ describe("management draft helpers", () => {
   test("round-trips raw release window text with explicit metadata", () => {
     expect(releaseWindowText(null)).toBe("");
     expect(releaseWindowText({ raw: "Summer 2027", precision: "season" })).toBe("Summer 2027");
+    expect(releaseWindowPrecision({ raw: "Summer 2027", precision: "season" })).toBe("season");
+    expect(releaseWindowConfidence({ raw: "Summer 2027", confidence: "expected" })).toBe("expected");
     expect(releaseWindowDraftToWindow(" Summer 2027 ", "season", "expected")).toEqual({
       raw: "Summer 2027",
       precision: "season",

@@ -215,9 +215,18 @@ describe("canonical proposal merge planning", () => {
           seasonLabel: "Season 1",
           section: "current",
           timing: "Mondays",
+          releasePrecision: "season",
+          dateConfidence: "expected",
+          seasonReleaseWindow: { raw: "Spring 2027", precision: "season", confidence: "expected" },
+          finaleWindow: { raw: "Summer 2027", precision: "season", confidence: "expected" },
+          seasonSortKey: "2027-04",
           seasonEpisodeCount: 6,
+          organizations: [{ name: "Netflix", role: "unknown", externalLinks: [] }],
+          seasonExternalLinks: [{ label: "Wikipedia", url: "https://wikipedia.test/show" }],
+          seasonNotes: "Parent note",
           episodeLabel: "1",
           title: "Pilot",
+          releaseWindow: { raw: "2027-04-01", precision: "day", confidence: "confirmed" },
         },
       },
       ids,
@@ -230,7 +239,15 @@ describe("canonical proposal merge planning", () => {
       section: "current",
       seasonLabel: "Season 1",
       timing: "Mondays",
+      releasePrecision: "season",
+      dateConfidence: "expected",
+      releaseWindow: { raw: "Spring 2027", precision: "season", confidence: "expected" },
+      finaleWindow: { raw: "Summer 2027", precision: "season", confidence: "expected" },
+      sortKey: "2027-04",
       episodeCount: 6,
+      organizations: [{ name: "Netflix", role: "unknown", externalLinks: [] }],
+      externalLinks: [{ label: "Wikipedia", url: "https://wikipedia.test/show" }],
+      notes: "Parent note",
       sourceRow: 1_000_000,
     });
     expect(plan.episodeCreate).toMatchObject({
@@ -238,6 +255,7 @@ describe("canonical proposal merge planning", () => {
       seasonId: "season-new",
       episodeLabel: "1",
       title: "Pilot",
+      releaseWindow: { raw: "2027-04-01", precision: "day", confidence: "confirmed" },
     });
   });
 });

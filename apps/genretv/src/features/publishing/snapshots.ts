@@ -48,7 +48,7 @@ export interface PublishedSeasonDraft {
   endedReason: string;
   episodeCount: number | null;
   externalLinks: ExternalLinkSeed[];
-  finaleWindow: null;
+  finaleWindow: ReleaseWindowSeed | null;
   id: string;
   notes: string | null;
   organizations: Array<{ externalLinks: ExternalLinkSeed[]; name: string; role: string }>;
@@ -57,7 +57,7 @@ export interface PublishedSeasonDraft {
   publishedShowId: string;
   releasePattern: string | null;
   releasePrecision: string;
-  releaseWindow: null;
+  releaseWindow: ReleaseWindowSeed | null;
   seasonLabel: string;
   section: string;
   snapshotVersion: number;
@@ -113,8 +113,8 @@ export function buildPublishedSnapshotPlan(
         canonicalEpisodeId: null,
         episodeLabel: episode.episodeLabel || null,
         title: episode.title || null,
-        releaseWindow: releaseWindowFromDisplay(episode.releaseDate),
-        sortKey: null,
+        releaseWindow: episode.releaseWindow,
+        sortKey: episode.sortKey,
         externalLinks: episode.links,
         notes: episode.notes,
       });
@@ -184,29 +184,15 @@ function seasonDraft(
     timing: entry.timing,
     endedReason: entry.endedReason,
     releasePattern: entry.releasePattern,
-    releasePrecision: "unknown",
-    dateConfidence: "unknown",
-    releaseWindow: null,
-    finaleWindow: null,
-    sortKey: null,
+    releasePrecision: entry.releasePrecision,
+    dateConfidence: entry.dateConfidence,
+    releaseWindow: entry.releaseWindow,
+    finaleWindow: entry.finaleWindow,
+    sortKey: entry.sortKey,
     episodeCount: entry.episodeCount,
     sourceRow: entry.sourceRow,
     organizations: entry.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
     externalLinks: entry.seasonLinks,
     notes: entry.seasonNotes,
-  };
-}
-
-function releaseWindowFromDisplay(raw: string): ReleaseWindowSeed | null {
-  const text = raw.trim();
-  if (text === "") return null;
-  return {
-    raw: text,
-    precision: "unknown",
-    confidence: "unknown",
-    year: null,
-    month: null,
-    day: null,
-    releaseSeason: null,
   };
 }

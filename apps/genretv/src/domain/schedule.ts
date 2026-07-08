@@ -171,6 +171,8 @@ export interface ScheduleEpisode {
   episodeLabel: string;
   title: string;
   releaseDate: string;
+  releaseWindow: ReleaseWindowSeed | null;
+  sortKey: string | null;
   notes: string | null;
   links: ExternalLinkSeed[];
 }
@@ -557,6 +559,8 @@ function toScheduleEpisode(episode: CanonicalEpisodeSeedRow): ScheduleEpisode {
     episodeLabel: episode.episodeLabel ?? "",
     title: episode.title ?? "",
     releaseDate: formatWindow(episode.releaseWindow),
+    releaseWindow: episode.releaseWindow,
+    sortKey: episode.sortKey,
     notes: episode.notes,
     links: episode.externalLinks,
   };

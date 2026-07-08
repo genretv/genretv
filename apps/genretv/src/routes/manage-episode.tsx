@@ -1,6 +1,6 @@
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
-import { Alert, Button, Group, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Group, Select, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { eq, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
@@ -19,7 +19,9 @@ import {
   episodeDraftStorageKey,
   externalLinkTextToRows,
   externalLinksToText,
-  releaseDateDraftToWindow,
+  releaseWindowConfidence,
+  releaseWindowDraftToWindow,
+  releaseWindowPrecision,
   releaseWindowText,
   useManagementDraft,
   type ManagementEpisodeDraft,
@@ -194,6 +196,11 @@ function EditableEpisode({
     initialDraft,
   );
   const draftLinks = externalLinkTextToRows(draft.linksText);
+  const draftReleaseWindow = releaseWindowDraftToWindow(
+    draft.releaseDate,
+    draft.releasePrecision,
+    draft.dateConfidence,
+  );
   const canSaveOverlay = canEdit && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
   const canSubmitProposal =
     canEdit && canPropose && !personalEpisodes.loading && !personalSeasons.loading && !proposalSaving;
@@ -217,7 +224,7 @@ function EditableEpisode({
       const patch = {
         episodeLabel: nullableText(draft.episodeLabel),
         title: nullableText(draft.title),
-        releaseWindow: releaseDateDraftToWindow(draft.releaseDate),
+        releaseWindow: draftReleaseWindow,
         sortKey: nullableText(draft.sortKey),
         externalLinks: draftLinks,
         notes: nullableText(draft.notes),
@@ -283,11 +290,19 @@ function EditableEpisode({
             timing: season.timing,
             endedReason: season.endedReason,
             releasePattern: season.releasePattern,
+            releasePrecision: season.releasePrecision,
+            dateConfidence: season.dateConfidence,
+            seasonReleaseWindow: season.releaseWindow,
+            finaleWindow: season.finaleWindow,
+            seasonSortKey: season.sortKey,
             seasonEpisodeCount: season.episodeCount,
             sourceRow: season.sourceRow,
+            organizations: season.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
+            seasonExternalLinks: season.links,
+            seasonNotes: season.notes,
             episodeLabel: nullableText(draft.episodeLabel),
             title: nullableText(draft.title),
-            releaseWindow: releaseDateDraftToWindow(draft.releaseDate),
+            releaseWindow: draftReleaseWindow,
             sortKey: nullableText(draft.sortKey),
             externalLinks: draftLinks,
             notes: nullableText(draft.notes),
@@ -463,6 +478,34 @@ function EditableEpisode({
             onChange={(event) => setDraft((current) => ({ ...current, sortKey: event.currentTarget.value }))}
           />
         </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <Select
+            label="Date precision"
+            value={draft.releasePrecision}
+            disabled={!canEdit}
+            data={[
+              { value: "unknown", label: "Unknown" },
+              { value: "day", label: "Day" },
+              { value: "month", label: "Month" },
+              { value: "month_day", label: "Month/day" },
+              { value: "season", label: "Season" },
+              { value: "year", label: "Year" },
+            ]}
+            onChange={(value) => setDraft((current) => ({ ...current, releasePrecision: value ?? "unknown" }))}
+          />
+          <Select
+            label="Date confidence"
+            value={draft.dateConfidence}
+            disabled={!canEdit}
+            data={[
+              { value: "unknown", label: "Unknown" },
+              { value: "confirmed", label: "Confirmed" },
+              { value: "expected", label: "Expected" },
+              { value: "estimated", label: "Estimated" },
+            ]}
+            onChange={(value) => setDraft((current) => ({ ...current, dateConfidence: value ?? "unknown" }))}
+          />
+        </SimpleGrid>
         <Textarea
           label="Links"
           autosize
@@ -540,6 +583,8 @@ function episodeDraftFromPersonalRow(row: {
     episodeLabel: row.episodeLabel ?? "",
     title: row.title ?? "",
     releaseDate: releaseWindowText(row.releaseWindow),
+    releasePrecision: releaseWindowPrecision(row.releaseWindow),
+    dateConfidence: releaseWindowConfidence(row.releaseWindow),
     sortKey: row.sortKey ?? "",
     linksText: externalLinksToText(row.externalLinks),
     notes: row.notes ?? "",

@@ -33,6 +33,8 @@ export interface ManagementEpisodeDraft {
   episodeLabel: string;
   title: string;
   releaseDate: string;
+  releasePrecision: string;
+  dateConfidence: string;
   sortKey: string;
   linksText: string;
   notes: string;
@@ -73,8 +75,10 @@ export function episodeDraftFromEpisode(episode: ScheduleEpisode): ManagementEpi
   return {
     episodeLabel: episode.episodeLabel,
     title: episode.title,
-    releaseDate: episode.releaseDate,
-    sortKey: "",
+    releaseDate: releaseWindowText(episode.releaseWindow),
+    releasePrecision: releaseWindowPrecision(episode.releaseWindow),
+    dateConfidence: releaseWindowConfidence(episode.releaseWindow),
+    sortKey: episode.sortKey ?? "",
     linksText: externalLinksToText(episode.links),
     notes: episode.notes ?? "",
   };
@@ -85,6 +89,8 @@ export function emptyEpisodeDraft(): ManagementEpisodeDraft {
     episodeLabel: "",
     title: "",
     releaseDate: "",
+    releasePrecision: "unknown",
+    dateConfidence: "unknown",
     sortKey: "",
     linksText: "",
     notes: "",
@@ -199,6 +205,20 @@ export function releaseWindowText(value: unknown): string {
   if (typeof value === "string") return value;
   if (isRecord(value) && typeof value["raw"] === "string") return value["raw"];
   return "";
+}
+
+export function releaseWindowPrecision(value: unknown): string {
+  if (isRecord(value) && typeof value["precision"] === "string" && value["precision"].trim() !== "") {
+    return value["precision"];
+  }
+  return "unknown";
+}
+
+export function releaseWindowConfidence(value: unknown): string {
+  if (isRecord(value) && typeof value["confidence"] === "string" && value["confidence"].trim() !== "") {
+    return value["confidence"];
+  }
+  return "unknown";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
