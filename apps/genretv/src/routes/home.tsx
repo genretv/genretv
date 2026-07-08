@@ -201,12 +201,6 @@ export function HomeRoute() {
           ]}
           onChange={(value) => updatePreferences({ sort: parseSort(value) })}
         />
-        <Select
-          label="Rows"
-          value={String(preferences.pageSize)}
-          data={pageSizeOptions.map((size) => ({ value: String(size), label: String(size) }))}
-          onChange={(value) => updatePreferences({ pageSize: parsePageSize(value) })}
-        />
         {preferences.section === "past" && (
           <SegmentedControl
             classNames={{
@@ -224,18 +218,24 @@ export function HomeRoute() {
             onChange={(value) => updatePreferences({ ending: parseEnding(value) })}
           />
         )}
-        <Text size="sm" c="dimmed" ml="auto">
-          {visibleEntries.length} rows
-        </Text>
       </Group>
 
       <SectionTable entries={pageEntries} section={preferences.section} />
 
       <Group justify="space-between" align="center">
         <Text size="sm" c="dimmed">
-          Page {page} of {totalPages}
+          Page {page} of {totalPages} · {visibleEntries.length} rows
         </Text>
-        <Pagination value={page} total={totalPages} onChange={setPage} />
+        <Group className="pager-controls" gap="sm" align="flex-end">
+          <Select
+            className="page-size-select"
+            label="Rows"
+            value={String(preferences.pageSize)}
+            data={pageSizeOptions.map((size) => ({ value: String(size), label: String(size) }))}
+            onChange={(value) => updatePreferences({ pageSize: parsePageSize(value) })}
+          />
+          <Pagination value={page} total={totalPages} onChange={setPage} />
+        </Group>
       </Group>
     </Stack>
   );
