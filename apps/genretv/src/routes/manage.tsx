@@ -11,6 +11,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";
@@ -27,6 +28,7 @@ import {
 } from "../domain/schedule";
 
 export function ManageRoute() {
+  const navigate = useNavigate();
   const { schedule } = useCanonicalSchedule();
   const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
   const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), [schedule.entries]);
@@ -118,7 +120,13 @@ export function ManageRoute() {
             {pageShows.map((show) => (
               <Table.Tr key={show.id}>
                 <Table.Td>
-                  <Anchor href={`/manage/show/${show.id}`} fw={700}>
+                  <Anchor
+                    className="inline-link-button"
+                    component="button"
+                    type="button"
+                    fw={700}
+                    onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId: show.id } })}
+                  >
                     {show.title}
                   </Anchor>
                 </Table.Td>

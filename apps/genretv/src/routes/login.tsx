@@ -1,5 +1,5 @@
 import { Alert, Anchor, Button, Center, Group, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "../auth/auth";
@@ -148,23 +148,23 @@ function AuthRoute({ initialMode }: { initialMode: AuthMode }) {
           )}
           <Group gap="sm">
             {mode !== "sign-in" && (
-              <Anchor href="/login" size="sm">
+              <Anchor component={Link} to="/login" size="sm">
                 Sign in
               </Anchor>
             )}
             {mode !== "sign-up" && (
-              <Anchor href="/signup" size="sm">
+              <Anchor component={Link} to="/signup" size="sm">
                 Create account
               </Anchor>
             )}
             {mode !== "recover" && (
-              <Anchor href="/recover" size="sm">
+              <Anchor component={Link} to="/recover" size="sm">
                 Forgot password?
               </Anchor>
             )}
           </Group>
           <Group justify="space-between">
-            <Button className="auth-back-button" component="a" href="/" variant="subtle">
+            <Button className="auth-back-button" component={Link} to="/" variant="subtle">
               Back to schedule
             </Button>
             <Button type="submit" loading={pending} disabled={mode === "update-password" && session == null}>

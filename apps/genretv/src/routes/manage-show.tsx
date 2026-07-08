@@ -13,7 +13,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { useAuth } from "../auth/auth";
@@ -43,7 +43,7 @@ export function ManageShowRoute() {
     return (
       <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
         <Title order={1}>Show not found</Title>
-        <Button component="a" href="/manage" variant="default">
+        <Button component={Link} to="/manage" variant="default">
           Back to shows
         </Button>
       </Stack>
@@ -54,6 +54,7 @@ export function ManageShowRoute() {
 }
 
 function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolean }) {
+  const navigate = useNavigate();
   const initialDraft = useMemo(() => showDraftFromShow(show), [show]);
   const { draft, dirty, locallySaved, setDraft, saveLocalDraft, discardLocalDraft } = useManagementDraft(
     showDraftStorageKey(show.id),
@@ -76,7 +77,7 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
             ))}
           </Group>
         </div>
-        <Button component="a" href="/manage" variant="default">
+        <Button component={Link} to="/manage" variant="default">
           Shows
         </Button>
       </Group>
@@ -190,7 +191,19 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
               {show.seasons.map((season) => (
                 <Table.Tr key={season.id}>
                   <Table.Td>
-                    <Anchor href={`/manage/show/${show.id}/season/${season.id}`}>{season.seasonLabel}</Anchor>
+                    <Anchor
+                      className="inline-link-button"
+                      component="button"
+                      type="button"
+                      onClick={() =>
+                        void navigate({
+                          to: "/manage/show/$showId/season/$seasonId",
+                          params: { showId: show.id, seasonId: season.id },
+                        })
+                      }
+                    >
+                      {season.seasonLabel}
+                    </Anchor>
                   </Table.Td>
                   <Table.Td>{season.section === "past" ? season.endedReason : sectionLabels[season.section]}</Table.Td>
                   <Table.Td>{season.timing}</Table.Td>

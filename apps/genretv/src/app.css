@@ -206,3 +206,12 @@ body {
 .schedule-table a {
   color: #075b64;
 }
+
+.inline-link-button {
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}

@@ -1,5 +1,5 @@
 import { Anchor, AppShell, Button, Group, Text } from "@mantine/core";
-import { Outlet } from "@tanstack/react-router";
+import { Link, Outlet } from "@tanstack/react-router";
 
 import { useAuth } from "../auth/auth";
 
@@ -10,13 +10,13 @@ export function RootLayout() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group gap="lg">
-            <Anchor href="/" underline="never" c="dark">
+            <Anchor component={Link} to="/" underline="never" c="dark">
               <Text fw={800}>GenreTV</Text>
             </Anchor>
-            <Anchor href="/" size="sm">
+            <Anchor component={Link} to="/" size="sm">
               Schedule
             </Anchor>
-            <Anchor href="/manage" size="sm">
+            <Anchor component={Link} to="/manage" size="sm">
               Shows
             </Anchor>
           </Group>
@@ -30,7 +30,7 @@ export function RootLayout() {
               </Button>
             </Group>
           ) : (
-            <Button size="xs" component="a" href="/login" variant="default">
+            <Button size="xs" component={Link} to="/login" variant="default">
               Sign in
             </Button>
           )}

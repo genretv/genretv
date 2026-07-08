@@ -13,7 +13,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { useAuth } from "../auth/auth";
@@ -37,6 +37,7 @@ import {
 export function ManageSeasonRoute() {
   const { showId, seasonId } = useParams({ from: "/manage/show/$showId/season/$seasonId" });
   const { session } = useAuth();
+  const navigate = useNavigate();
   const { schedule } = useCanonicalSchedule();
   const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
   const result = findManagementSeason(shows, showId, seasonId);
@@ -46,10 +47,13 @@ export function ManageSeasonRoute() {
       <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
         <Title order={1}>Season not found</Title>
         <Group>
-          <Button component="a" href={`/manage/show/${showId}`} variant="default">
+          <Button
+            variant="default"
+            onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId } })}
+          >
             Show
           </Button>
-          <Button component="a" href="/manage" variant="default">
+          <Button component={Link} to="/manage" variant="default">
             Shows
           </Button>
         </Group>
@@ -69,6 +73,7 @@ function EditableSeason({
   season: ManagementSeason;
   canEdit: boolean;
 }) {
+  const navigate = useNavigate();
   const status = season.section === "past" ? season.endedReason : sectionLabels[season.section];
   const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
   const initialDraft = useMemo(() => seasonDraftFromSeason(season), [season]);
@@ -91,10 +96,13 @@ function EditableSeason({
           <Text c="dimmed">{status}</Text>
         </div>
         <Group>
-          <Button component="a" href={`/manage/show/${show.id}`} variant="default">
+          <Button
+            variant="default"
+            onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId: show.id } })}
+          >
             Show
           </Button>
-          <Button component="a" href="/manage" variant="default">
+          <Button component={Link} to="/manage" variant="default">
             Shows
           </Button>
         </Group>
