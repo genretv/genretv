@@ -60,7 +60,7 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
   if (error != null) {
     return (
       <Center h="100vh">
-        <Stack align="center" gap="xs" maw={460}>
+        <Stack className="loading-panel" align="center" gap="xs" maw={460}>
           <Text c="red" fw={600}>
             Could not start local sync
           </Text>
@@ -75,7 +75,7 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
   if (client == null) {
     return (
       <Center h="100vh">
-        <Stack align="center" gap="xs">
+        <Stack className="loading-panel" align="center" gap="xs">
           <Loader />
           <Text c="dimmed" size="sm">
             Starting local database and canonical sync…

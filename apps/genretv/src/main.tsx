@@ -1,6 +1,6 @@
 import "@mantine/core/styles.css";
 import "./app.css";
-import { Center, Loader, MantineProvider } from "@mantine/core";
+import { Center, Loader, MantineProvider, Stack, Text } from "@mantine/core";
 import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 
@@ -18,7 +18,10 @@ function AppRoot() {
   if (loading) {
     return (
       <Center h="100vh">
-        <Loader />
+        <Stack className="loading-panel" align="center" gap="xs">
+          <Loader />
+          <Text size="sm">Checking session...</Text>
+        </Stack>
       </Center>
     );
   }
