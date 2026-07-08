@@ -1,13 +1,18 @@
-import { Alert, Button, Group, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { eq } from "drizzle-orm";
-import { useMemo, useState } from "react";
-
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
+import { Alert, Button, Group, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { eq, or } from "drizzle-orm";
+import { useMemo, useState } from "react";
+
 import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
-import { findManagementSeason, type ManagementSeason, type ManagementShow, type ScheduleEpisode } from "../domain/schedule";
+import {
+  findManagementSeason,
+  type ManagementSeason,
+  type ManagementShow,
+  type ScheduleEpisode,
+} from "../domain/schedule";
 import {
   emptyEpisodeDraft,
   episodeDraftFromEpisode,
@@ -18,6 +23,7 @@ import {
 } from "../features/management/drafts";
 
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
+const personalSeason = genretvSyncRegistry.personal_season.view!;
 
 const newEpisodeId = "new";
 
@@ -35,10 +41,7 @@ export function ManageEpisodeRoute() {
       <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
         <Title order={1}>Season not found</Title>
         <Group>
-          <Button
-            variant="default"
-            onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId } })}
-          >
+          <Button variant="default" onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId } })}>
             Show
           </Button>
           <Button component={Link} to="/manage" variant="default">
@@ -49,7 +52,8 @@ export function ManageEpisodeRoute() {
     );
   }
 
-  const episode = episodeId === newEpisodeId ? null : result.season.episodes.find((item) => item.id === episodeId) ?? null;
+  const episode =
+    episodeId === newEpisodeId ? null : (result.season.episodes.find((item) => item.id === episodeId) ?? null);
   return (
     <EditableEpisode
       show={result.show}
@@ -86,6 +90,7 @@ function EditableEpisode({
           id: personalEpisode.id,
           canonicalEpisodeId: personalEpisode.canonicalEpisodeId,
           episodeLabel: personalEpisode.episodeLabel,
+          personalSeasonId: personalEpisode.personalSeasonId,
           title: personalEpisode.title,
           releaseWindow: personalEpisode.releaseWindow,
           sortKey: personalEpisode.sortKey,
@@ -93,7 +98,19 @@ function EditableEpisode({
           notes: personalEpisode.notes,
         })
         .from(personalEpisode)
-        .where(eq(personalEpisode.canonicalSeasonId, season.id)),
+        .where(or(eq(personalEpisode.canonicalSeasonId, season.id), eq(personalEpisode.personalSeasonId, season.id))),
+    [season.id],
+    { ready: canEdit },
+  );
+  const personalSeasons = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalSeason.id,
+          canonicalSeasonId: personalSeason.canonicalSeasonId,
+        })
+        .from(personalSeason)
+        .where(or(eq(personalSeason.id, season.id), eq(personalSeason.canonicalSeasonId, season.id))),
     [season.id],
     { ready: canEdit },
   );
@@ -101,6 +118,8 @@ function EditableEpisode({
     personalEpisodes.rows.find((row) => row.id === episodeId) ??
     personalEpisodes.rows.find((row) => row.canonicalEpisodeId === episodeId) ??
     null;
+  const personalSeasonRow = personalSeasons.rows[0] ?? null;
+  const isPersonalOnlySeason = personalSeasonRow != null && personalSeasonRow.canonicalSeasonId == null;
 
   if (episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null) {
     return (
@@ -122,14 +141,19 @@ function EditableEpisode({
   }
 
   const initialDraft = useMemo(
-    () => (personalRow == null ? (episode == null ? emptyEpisodeDraft() : episodeDraftFromEpisode(episode)) : episodeDraftFromPersonalRow(personalRow)),
+    () =>
+      personalRow == null
+        ? episode == null
+          ? emptyEpisodeDraft()
+          : episodeDraftFromEpisode(episode)
+        : episodeDraftFromPersonalRow(personalRow),
     [episode, personalRow],
   );
   const { draft, dirty, locallySaved, setDraft, saveLocalDraft, discardLocalDraft } = useManagementDraft(
     episodeDraftStorageKey(season.id, episodeId),
     initialDraft,
   );
-  const canSaveOverlay = canEdit && !personalEpisodes.loading && dirty && !savingOverlay;
+  const canSaveOverlay = canEdit && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -150,8 +174,9 @@ function EditableEpisode({
           tx.tables.personal_episode.create({
             id: createdId,
             canonicalShowId: show.id,
-            canonicalSeasonId: season.id,
+            canonicalSeasonId: isPersonalOnlySeason ? null : season.id,
             canonicalEpisodeId: episode == null ? null : episode.id,
+            personalSeasonId: isPersonalOnlySeason ? season.id : null,
             ...patch,
           });
         } else {
@@ -207,6 +232,11 @@ function EditableEpisode({
       {personalEpisodes.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this episode: {personalEpisodes.error.message}
+        </Alert>
+      )}
+      {personalSeasons.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your personal overlay for this season: {personalSeasons.error.message}
         </Alert>
       )}
       {overlayError != null && (

@@ -1,9 +1,8 @@
-import { useMemo } from "react";
-
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
-import { useAuth } from "../auth/auth";
+import { useMemo } from "react";
 
+import { useAuth } from "../auth/auth";
 import { canonicalSchedule as fallbackSchedule } from "./canonical-schedule";
 import {
   buildScheduleFromRegistryRows,
@@ -134,6 +133,7 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
         .select({
           id: personalEpisode.id,
           canonicalSeasonId: personalEpisode.canonicalSeasonId,
+          personalSeasonId: personalEpisode.personalSeasonId,
           canonicalEpisodeId: personalEpisode.canonicalEpisodeId,
           episodeLabel: personalEpisode.episodeLabel,
           title: personalEpisode.title,
@@ -216,7 +216,9 @@ function applyPersonalShows(
     originalTitle: string | null;
   }>,
 ): CanonicalShowSeedRow[] {
-  const overlays = new Map(personalRows.flatMap((row) => (row.canonicalShowId == null ? [] : [[row.canonicalShowId, row]])));
+  const overlays = new Map(
+    personalRows.flatMap((row) => (row.canonicalShowId == null ? [] : [[row.canonicalShowId, row]])),
+  );
   const additions = personalRows.flatMap((row) => (row.canonicalShowId == null ? [personalShowToSeedRow(row)] : []));
   return [
     ...canonicalRows.map((row) => {
@@ -271,11 +273,12 @@ function applyPersonalSeasons(
   ];
 }
 
-function applyPersonalEpisodes(
+export function applyPersonalEpisodes(
   canonicalRows: CanonicalEpisodeSeedRow[],
   personalRows: ReadonlyArray<{
     canonicalEpisodeId: string | null;
     canonicalSeasonId: string | null;
+    personalSeasonId: string | null;
     episodeLabel: string | null;
     externalLinks: unknown;
     id: string;
@@ -288,11 +291,11 @@ function applyPersonalEpisodes(
   const overlays = new Map(
     personalRows.flatMap((row) => (row.canonicalEpisodeId == null ? [] : [[row.canonicalEpisodeId, row]])),
   );
-  const additions = personalRows.flatMap((row) =>
-    row.canonicalEpisodeId != null || row.canonicalSeasonId == null
-      ? []
-      : [personalEpisodeToSeedRow(row, row.canonicalSeasonId)],
-  );
+  const additions = personalRows.flatMap((row) => {
+    if (row.canonicalEpisodeId != null) return [];
+    const seasonId = row.personalSeasonId ?? row.canonicalSeasonId;
+    return seasonId == null ? [] : [personalEpisodeToSeedRow(row, seasonId)];
+  });
   return [
     ...canonicalRows.map((row) => {
       const overlay = overlays.get(row.id);
