@@ -24,6 +24,7 @@ import {
 
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
+const personalListExclusion = genretvSyncRegistry.personal_list_exclusion.view!;
 const listImport = genretvSyncRegistry.list_import.view!;
 
 const newEpisodeId = "new";
@@ -82,6 +83,7 @@ function EditableEpisode({
   const navigate = useNavigate();
   const client = useSyncClient();
   const [savingOverlay, setSavingOverlay] = useState(false);
+  const [hidingEpisode, setHidingEpisode] = useState(false);
   const [deletingEpisode, setDeletingEpisode] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
@@ -134,6 +136,19 @@ function EditableEpisode({
     [personalRow?.id, episodeId],
     { ready: canEdit && episodeId !== newEpisodeId && personalRow != null },
   );
+  const episodeExclusions = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalListExclusion.id,
+          canonicalEpisodeId: personalListExclusion.canonicalEpisodeId,
+        })
+        .from(personalListExclusion)
+        .where(eq(personalListExclusion.canonicalEpisodeId, episodeId)),
+    [episodeId],
+    { ready: canEdit && episodeId !== newEpisodeId },
+  );
+  const existingEpisodeExclusion = episodeExclusions.rows[0] ?? null;
 
   if (episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null) {
     return (
@@ -170,6 +185,14 @@ function EditableEpisode({
   const canSaveOverlay = canEdit && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
   const canDeletePersonalEpisode =
     canEdit && personalRow != null && !importsForEpisode.loading && !savingOverlay && !deletingEpisode;
+  const canHideCanonicalEpisode =
+    canEdit &&
+    episode != null &&
+    existingEpisodeExclusion == null &&
+    (personalRow == null || personalRow.canonicalEpisodeId != null) &&
+    !personalEpisodes.loading &&
+    !episodeExclusions.loading &&
+    !hidingEpisode;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -210,6 +233,33 @@ function EditableEpisode({
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSavingOverlay(false);
+    }
+  };
+
+  const hideEpisode = async () => {
+    if (episode == null) return;
+    setHidingEpisode(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.personal_list_exclusion.create({
+          id: crypto.randomUUID(),
+          excludedKind: "episode",
+          canonicalShowId: show.id,
+          canonicalSeasonId: season.id,
+          canonicalEpisodeId: episode.id,
+          reason: null,
+        });
+      });
+      void navigate({
+        to: "/manage/show/$showId/season/$seasonId",
+        params: { showId: show.id, seasonId: season.id },
+      });
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setHidingEpisode(false);
     }
   };
 
@@ -283,6 +333,11 @@ function EditableEpisode({
           Could not load published-list import links for this episode: {importsForEpisode.error.message}
         </Alert>
       )}
+      {episodeExclusions.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your personal hidden rows: {episodeExclusions.error.message}
+        </Alert>
+      )}
       {overlayError != null && (
         <Alert color="red" variant="light">
           Could not save to your overlay: {overlayError}
@@ -340,6 +395,15 @@ function EditableEpisode({
           </Button>
           <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
             Save to overlay
+          </Button>
+          <Button
+            color="red"
+            variant="light"
+            disabled={!canHideCanonicalEpisode}
+            loading={hidingEpisode}
+            onClick={() => void hideEpisode()}
+          >
+            Hide from my list
           </Button>
           <Button
             color="red"

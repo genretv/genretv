@@ -33,6 +33,7 @@ import { canSendCanonicalProposal } from "../features/management/proposals";
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
+const personalListExclusion = genretvSyncRegistry.personal_list_exclusion.view!;
 const listImport = genretvSyncRegistry.list_import.view!;
 const newShowId = "new";
 
@@ -60,6 +61,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const navigate = useNavigate();
   const client = useSyncClient();
   const [savingOverlay, setSavingOverlay] = useState(false);
+  const [hidingShow, setHidingShow] = useState(false);
   const [deletingShow, setDeletingShow] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
@@ -158,6 +160,19 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     [personalEpisodeIdsKey],
     { ready: canEdit && isPersonalOnlyShow && personalEpisodeIds.length > 0 },
   );
+  const showExclusions = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalListExclusion.id,
+          canonicalShowId: personalListExclusion.canonicalShowId,
+        })
+        .from(personalListExclusion)
+        .where(eq(personalListExclusion.canonicalShowId, show.id)),
+    [show.id],
+    { ready: canEdit && show.id !== newShowId },
+  );
+  const existingShowExclusion = showExclusions.rows[0] ?? null;
   const initialDraft = useMemo(
     () => (personalRow == null ? showDraftFromShow(show) : showDraftFromPersonalRow(personalRow)),
     [personalRow, show],
@@ -182,6 +197,14 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     !importsForEpisodes.loading &&
     !savingOverlay &&
     !deletingShow;
+  const canHideCanonicalShow =
+    canEdit &&
+    show.id !== newShowId &&
+    existingShowExclusion == null &&
+    (personalRow == null || personalRow.canonicalShowId != null) &&
+    !personalShows.loading &&
+    !showExclusions.loading &&
+    !hidingShow;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -269,6 +292,29 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     }
   };
 
+  const hideShow = async () => {
+    setHidingShow(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.personal_list_exclusion.create({
+          id: crypto.randomUUID(),
+          excludedKind: "show",
+          canonicalShowId: show.id,
+          canonicalSeasonId: null,
+          canonicalEpisodeId: null,
+          reason: null,
+        });
+      });
+      void navigate({ to: "/manage" });
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setHidingShow(false);
+    }
+  };
+
   const deletePersonalShow = async () => {
     if (personalRow == null) return;
     const deleteChildren = personalRow.canonicalShowId == null;
@@ -349,7 +395,8 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         personalEpisodesForShow.error ??
         importsForShow.error ??
         importsForSeasons.error ??
-        importsForEpisodes.error) != null && (
+        importsForEpisodes.error ??
+        showExclusions.error) != null && (
         <Alert color="red" variant="light">
           Could not load the personal rows needed for deletion.
         </Alert>
@@ -451,6 +498,15 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             </Button>
             <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
               Save to overlay
+            </Button>
+            <Button
+              color="red"
+              variant="light"
+              disabled={!canHideCanonicalShow}
+              loading={hidingShow}
+              onClick={() => void hideShow()}
+            >
+              Hide from my list
             </Button>
             <Button
               color="red"
