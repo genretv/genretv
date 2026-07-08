@@ -556,13 +556,15 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
       <Stack gap="sm">
         <Title order={2}>Seasons</Title>
         <ScrollArea>
-          <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={820}>
+          <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={1100}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th w={120}>Season</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>When</Table.Th>
+                <Table.Th>Release</Table.Th>
                 <Table.Th w={140}>Lang</Table.Th>
+                <Table.Th w={140}>Country</Table.Th>
                 <Table.Th>Source</Table.Th>
                 <Table.Th>Genre</Table.Th>
                 <Table.Th w={120}>Episodes</Table.Th>
@@ -589,11 +591,36 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
                   <Table.Td>{season.section === "past" ? season.endedReason : sectionLabels[season.section]}</Table.Td>
                   <Table.Td>{season.timing}</Table.Td>
                   <Table.Td>
+                    <Stack gap={2}>
+                      <Text size="sm">{releaseWindowSummary(season.releaseWindow) || "Unknown"}</Text>
+                      {season.finaleWindow != null && (
+                        <Text size="xs" c="dimmed">
+                          Finale: {releaseWindowSummary(season.finaleWindow)}
+                        </Text>
+                      )}
+                      {season.sortKey != null && (
+                        <Text size="xs" c="dimmed">
+                          Sort: {season.sortKey}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td>
                     <Group gap={4}>
                       {season.languages.length === 0 && <Text>Unknown</Text>}
                       {season.languages.map((language) => (
                         <Badge key={`${season.id}-${language}`} size="xs" variant="light">
                           {language}
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
+                      {season.countries.length === 0 && <Text>Unknown</Text>}
+                      {season.countries.map((country) => (
+                        <Badge key={`${season.id}-${country}`} size="xs" variant="outline">
+                          {country}
                         </Badge>
                       ))}
                     </Group>
@@ -653,6 +680,18 @@ function orderedListToText(value: unknown): string {
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
+}
+
+function releaseWindowSummary(value: unknown): string {
+  if (!isRecord(value) || typeof value["raw"] !== "string" || value["raw"].trim() === "") return "";
+  const raw = value["raw"].trim();
+  const precision = typeof value["precision"] === "string" ? value["precision"] : "unknown";
+  const confidence = typeof value["confidence"] === "string" ? value["confidence"] : "unknown";
+  return [raw, precision, confidence].filter((item) => item !== "unknown").join(" · ");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null;
 }
 
 function uniqueIds(ids: readonly string[]): string[] {
