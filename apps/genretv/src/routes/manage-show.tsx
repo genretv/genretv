@@ -16,7 +16,7 @@ import {
   Title,
 } from "@mantine/core";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { eq, or } from "drizzle-orm";
+import { eq, inArray, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
@@ -31,6 +31,9 @@ import {
 import { canSendCanonicalProposal } from "../features/management/proposals";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
+const personalSeason = genretvSyncRegistry.personal_season.view!;
+const personalEpisode = genretvSyncRegistry.personal_episode.view!;
+const listImport = genretvSyncRegistry.list_import.view!;
 const newShowId = "new";
 
 export function ManageShowRoute() {
@@ -57,6 +60,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const navigate = useNavigate();
   const client = useSyncClient();
   const [savingOverlay, setSavingOverlay] = useState(false);
+  const [deletingShow, setDeletingShow] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
   const [proposalSaving, setProposalSaving] = useState(false);
@@ -82,6 +86,78 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     { ready: canEdit },
   );
   const personalRow = personalShows.rows[0] ?? null;
+  const isPersonalOnlyShow = personalRow != null && personalRow.canonicalShowId == null;
+  const personalSeasonsForShow = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalSeason.id,
+          personalShowId: personalSeason.personalShowId,
+          canonicalShowId: personalSeason.canonicalShowId,
+        })
+        .from(personalSeason)
+        .where(or(eq(personalSeason.personalShowId, show.id), eq(personalSeason.canonicalShowId, show.id))),
+    [show.id],
+    { ready: canEdit && personalRow != null },
+  );
+  const personalSeasonIds = useMemo(
+    () => personalSeasonsForShow.rows.map((season) => season.id),
+    [personalSeasonsForShow.rows],
+  );
+  const personalSeasonIdsKey = personalSeasonIds.join("\0");
+  const personalEpisodesForShow = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalEpisode.id,
+          personalSeasonId: personalEpisode.personalSeasonId,
+        })
+        .from(personalEpisode)
+        .where(inArray(personalEpisode.personalSeasonId, personalSeasonIds)),
+    [personalSeasonIdsKey],
+    { ready: canEdit && isPersonalOnlyShow && personalSeasonIds.length > 0 },
+  );
+  const personalEpisodeIds = useMemo(
+    () => personalEpisodesForShow.rows.map((episode) => episode.id),
+    [personalEpisodesForShow.rows],
+  );
+  const personalEpisodeIdsKey = personalEpisodeIds.join("\0");
+  const importsForShow = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: listImport.id,
+          targetPersonalShowId: listImport.targetPersonalShowId,
+        })
+        .from(listImport)
+        .where(eq(listImport.targetPersonalShowId, personalRow?.id ?? show.id)),
+    [personalRow?.id, show.id],
+    { ready: canEdit && personalRow != null },
+  );
+  const importsForSeasons = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: listImport.id,
+          targetPersonalSeasonId: listImport.targetPersonalSeasonId,
+        })
+        .from(listImport)
+        .where(inArray(listImport.targetPersonalSeasonId, personalSeasonIds)),
+    [personalSeasonIdsKey],
+    { ready: canEdit && isPersonalOnlyShow && personalSeasonIds.length > 0 },
+  );
+  const importsForEpisodes = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: listImport.id,
+          targetPersonalEpisodeId: listImport.targetPersonalEpisodeId,
+        })
+        .from(listImport)
+        .where(inArray(listImport.targetPersonalEpisodeId, personalEpisodeIds)),
+    [personalEpisodeIdsKey],
+    { ready: canEdit && isPersonalOnlyShow && personalEpisodeIds.length > 0 },
+  );
   const initialDraft = useMemo(
     () => (personalRow == null ? showDraftFromShow(show) : showDraftFromPersonalRow(personalRow)),
     [personalRow, show],
@@ -95,6 +171,17 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const draftGenres = orderedTextToList(draft.genresText);
   const canSaveOverlay = canEdit && !personalShows.loading && dirty && !savingOverlay;
   const canSubmitProposal = canEdit && canPropose && !personalShows.loading && !proposalSaving;
+  const canDeletePersonalShow =
+    canEdit &&
+    personalRow != null &&
+    !personalShows.loading &&
+    !personalSeasonsForShow.loading &&
+    !personalEpisodesForShow.loading &&
+    !importsForShow.loading &&
+    !importsForSeasons.loading &&
+    !importsForEpisodes.loading &&
+    !savingOverlay &&
+    !deletingShow;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -182,6 +269,40 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     }
   };
 
+  const deletePersonalShow = async () => {
+    if (personalRow == null) return;
+    const deleteChildren = personalRow.canonicalShowId == null;
+    const importIds = uniqueIds([
+      ...importsForEpisodes.rows.map((row) => row.id),
+      ...importsForSeasons.rows.map((row) => row.id),
+      ...importsForShow.rows.map((row) => row.id),
+    ]);
+    setDeletingShow(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        for (const importId of importIds) {
+          tx.tables.list_import.delete({ id: importId });
+        }
+        if (deleteChildren) {
+          for (const episode of personalEpisodesForShow.rows) {
+            tx.tables.personal_episode.delete({ id: episode.id });
+          }
+          for (const season of personalSeasonsForShow.rows) {
+            tx.tables.personal_season.delete({ id: season.id });
+          }
+        }
+        tx.tables.personal_show.delete({ id: personalRow.id });
+      });
+      void navigate({ to: "/manage" });
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setDeletingShow(false);
+    }
+  };
+
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
       <Group justify="space-between" align="flex-start">
@@ -222,6 +343,15 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
       {personalShows.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this show: {personalShows.error.message}
+        </Alert>
+      )}
+      {(personalSeasonsForShow.error ??
+        personalEpisodesForShow.error ??
+        importsForShow.error ??
+        importsForSeasons.error ??
+        importsForEpisodes.error) != null && (
+        <Alert color="red" variant="light">
+          Could not load the personal rows needed for deletion.
         </Alert>
       )}
       {overlayError != null && (
@@ -321,6 +451,15 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             </Button>
             <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
               Save to overlay
+            </Button>
+            <Button
+              color="red"
+              variant="outline"
+              disabled={!canDeletePersonalShow}
+              loading={deletingShow}
+              onClick={() => void deletePersonalShow()}
+            >
+              Delete personal show
             </Button>
             {canPropose && (
               <Button
@@ -439,4 +578,8 @@ function orderedListToText(value: unknown): string {
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
+}
+
+function uniqueIds(ids: readonly string[]): string[] {
+  return [...new Set(ids)];
 }

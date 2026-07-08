@@ -24,6 +24,7 @@ import {
 
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
+const listImport = genretvSyncRegistry.list_import.view!;
 
 const newEpisodeId = "new";
 
@@ -81,6 +82,7 @@ function EditableEpisode({
   const navigate = useNavigate();
   const client = useSyncClient();
   const [savingOverlay, setSavingOverlay] = useState(false);
+  const [deletingEpisode, setDeletingEpisode] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
   const personalEpisodes = useLiveDrizzleRows(
@@ -120,6 +122,18 @@ function EditableEpisode({
     null;
   const personalSeasonRow = personalSeasons.rows[0] ?? null;
   const isPersonalOnlySeason = personalSeasonRow != null && personalSeasonRow.canonicalSeasonId == null;
+  const importsForEpisode = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: listImport.id,
+          targetPersonalEpisodeId: listImport.targetPersonalEpisodeId,
+        })
+        .from(listImport)
+        .where(eq(listImport.targetPersonalEpisodeId, personalRow?.id ?? episodeId)),
+    [personalRow?.id, episodeId],
+    { ready: canEdit && episodeId !== newEpisodeId && personalRow != null },
+  );
 
   if (episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null) {
     return (
@@ -154,6 +168,8 @@ function EditableEpisode({
     initialDraft,
   );
   const canSaveOverlay = canEdit && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
+  const canDeletePersonalEpisode =
+    canEdit && personalRow != null && !importsForEpisode.loading && !savingOverlay && !deletingEpisode;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -197,6 +213,29 @@ function EditableEpisode({
     }
   };
 
+  const deletePersonalEpisode = async () => {
+    if (personalRow == null) return;
+    setDeletingEpisode(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        for (const importRow of importsForEpisode.rows) {
+          tx.tables.list_import.delete({ id: importRow.id });
+        }
+        tx.tables.personal_episode.delete({ id: personalRow.id });
+      });
+      void navigate({
+        to: "/manage/show/$showId/season/$seasonId",
+        params: { showId: show.id, seasonId: season.id },
+      });
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setDeletingEpisode(false);
+    }
+  };
+
   return (
     <Stack className="schedule-panel" gap="lg" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
       <Group justify="space-between" align="flex-start">
@@ -237,6 +276,11 @@ function EditableEpisode({
       {personalSeasons.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this season: {personalSeasons.error.message}
+        </Alert>
+      )}
+      {importsForEpisode.error != null && (
+        <Alert color="red" variant="light">
+          Could not load published-list import links for this episode: {importsForEpisode.error.message}
         </Alert>
       )}
       {overlayError != null && (
@@ -296,6 +340,15 @@ function EditableEpisode({
           </Button>
           <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
             Save to overlay
+          </Button>
+          <Button
+            color="red"
+            variant="outline"
+            disabled={!canDeletePersonalEpisode}
+            loading={deletingEpisode}
+            onClick={() => void deletePersonalEpisode()}
+          >
+            Delete personal episode
           </Button>
         </Group>
         {locallySaved && (
