@@ -63,7 +63,7 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
   if (error != null) {
     return (
       <Center h="100vh">
-        <Stack className="loading-panel" align="center" gap="xs" maw={460}>
+        <Stack className="loading-panel loading-panel-compact" align="center" gap="xs" maw={460}>
           <Text c="red" fw={600}>
             Could not start local sync
           </Text>
