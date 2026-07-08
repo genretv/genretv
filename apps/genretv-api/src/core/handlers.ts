@@ -1,5 +1,7 @@
 import type { JwtClaims } from "@pgxsinkit/contracts";
+import { proxyElectricShapeRequest } from "@pgxsinkit/server";
 
+import { genretvSyncRegistry } from "../domain/registry";
 import { routeToMutations } from "./routing";
 
 export type GenretvClaimsResolver = (request: Request) => Promise<JwtClaims | null> | JwtClaims | null;
@@ -24,8 +26,13 @@ export function createGenretvWriteHandler(options: GenretvHandlerOptions): Fetch
 
 export function createGenretvSyncHandler(options: GenretvSyncHandlerOptions): FetchHandler {
   return async (request) => {
-    await options.resolveAuthClaims(request);
-    return notImplemented("genretv-sync", request, options.allowedOrigins, { electricUrl: options.electricUrl });
+    const claims = await options.resolveAuthClaims(request);
+    return proxyElectricShapeRequest(request, claims, {
+      registry: genretvSyncRegistry,
+      electricUrl: options.electricUrl,
+      cors: { origins: options.allowedOrigins },
+      logTimings: true,
+    });
   };
 }
 
