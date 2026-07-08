@@ -45,6 +45,20 @@ export interface PublishedSeasonRow {
   timing: string;
 }
 
+export interface PublishedEpisodeRow {
+  canonicalEpisodeId: string | null;
+  episodeLabel: string | null;
+  externalLinks: unknown;
+  id: string;
+  notes: string | null;
+  publishedListId: string;
+  publishedSeasonId: string;
+  releaseWindow: unknown;
+  snapshotVersion: number;
+  sortKey: string | null;
+  title: string | null;
+}
+
 export interface ListImportRow {
   importMode: string;
   sourcePublishedSeasonId: string | null;
@@ -65,6 +79,7 @@ export interface PublishedSeasonSummary {
   displayTitle: string;
   endedReason: string;
   episodeCount: number | null;
+  episodes: PublishedEpisodeSummary[];
   externalLinks: ExternalLinkSeed[];
   genreTags: string[];
   id: string;
@@ -91,10 +106,22 @@ export interface PublishedSeasonSummary {
   timing: string;
 }
 
+export interface PublishedEpisodeSummary {
+  canonicalEpisodeId: string | null;
+  episodeLabel: string | null;
+  externalLinks: ExternalLinkSeed[];
+  id: string;
+  notes: string | null;
+  releaseWindow: ReleaseWindowSeed | null;
+  sortKey: string | null;
+  title: string | null;
+}
+
 export function buildPublishedListSummaries(
   lists: readonly PublishedListRow[],
   shows: readonly PublishedShowRow[],
   seasons: readonly PublishedSeasonRow[],
+  episodes: readonly PublishedEpisodeRow[],
   imports: readonly ListImportRow[],
 ): PublishedListSummary[] {
   const importsBySeason = new Map(
@@ -104,6 +131,7 @@ export function buildPublishedListSummaries(
   );
   const showsByList = groupBy(shows, (show) => show.publishedListId);
   const seasonsByList = groupBy(seasons, (season) => season.publishedListId);
+  const episodesBySeason = groupBy(episodes, (episode) => episode.publishedSeasonId);
 
   return lists
     .filter((list) => list.publicationStatus === "published")
@@ -151,6 +179,10 @@ export function buildPublishedListSummaries(
                 releaseWindow: releaseWindow(season.releaseWindow),
                 finaleWindow: releaseWindow(season.finaleWindow),
                 episodeCount: season.episodeCount,
+                episodes: (episodesBySeason.get(season.id) ?? [])
+                  .filter((episode) => episode.snapshotVersion === list.snapshotVersion)
+                  .map(toEpisodeSummary)
+                  .sort(compareEpisodes),
                 sortKey: season.sortKey,
                 sourceRow: season.sourceRow,
                 organizations: organizationSeeds.map((organization) => organization.name),
@@ -178,6 +210,27 @@ function groupBy<T>(rows: readonly T[], keyFor: (row: T) => string): Map<string,
 
 function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function toEpisodeSummary(episode: PublishedEpisodeRow): PublishedEpisodeSummary {
+  return {
+    id: episode.id,
+    canonicalEpisodeId: episode.canonicalEpisodeId,
+    episodeLabel: episode.episodeLabel,
+    title: episode.title,
+    releaseWindow: releaseWindow(episode.releaseWindow),
+    sortKey: episode.sortKey,
+    externalLinks: externalLinks(episode.externalLinks),
+    notes: episode.notes,
+  };
+}
+
+function compareEpisodes(left: PublishedEpisodeSummary, right: PublishedEpisodeSummary): number {
+  return (
+    (left.sortKey ?? "").localeCompare(right.sortKey ?? "") ||
+    (left.episodeLabel ?? "").localeCompare(right.episodeLabel ?? "") ||
+    left.id.localeCompare(right.id)
+  );
 }
 
 function organizations(value: unknown): CanonicalSeasonSeedRow["organizations"] {

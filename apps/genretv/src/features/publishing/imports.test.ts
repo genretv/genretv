@@ -95,6 +95,34 @@ describe("published list import summaries", () => {
           notes: null,
         },
       ],
+      [
+        {
+          id: "episode-current",
+          publishedListId: "list-1",
+          publishedSeasonId: "season-current",
+          snapshotVersion: 2,
+          canonicalEpisodeId: null,
+          episodeLabel: "E1",
+          title: "Pilot",
+          releaseWindow: { raw: "2026-07-08", precision: "day", confidence: "confirmed" },
+          sortKey: "001",
+          externalLinks: [],
+          notes: "Episode note",
+        },
+        {
+          id: "episode-stale",
+          publishedListId: "list-1",
+          publishedSeasonId: "season-current",
+          snapshotVersion: 1,
+          canonicalEpisodeId: null,
+          episodeLabel: "E0",
+          title: "Old pilot",
+          releaseWindow: null,
+          sortKey: "000",
+          externalLinks: [],
+          notes: null,
+        },
+      ],
       [{ sourcePublishedSeasonId: "season-current", importMode: "linked" }],
     );
 
@@ -116,6 +144,7 @@ describe("published list import summaries", () => {
       seasonExternalLinks: [{ label: "Wikipedia", url: "https://wikipedia.test/shared-show" }],
       releaseWindow: { raw: "2026-07-08", precision: "day", confidence: "confirmed" },
       sortKey: "002",
+      episodes: [{ id: "episode-current", episodeLabel: "E1", title: "Pilot", notes: "Episode note" }],
       importMode: "linked",
     });
   });

@@ -10,6 +10,7 @@ import { buildPublishedListSummaries, type PublishedSeasonSummary } from "../fea
 const publishedList = genretvSyncRegistry.published_list.view!;
 const publishedShow = genretvSyncRegistry.published_show.view!;
 const publishedSeason = genretvSyncRegistry.published_season.view!;
+const publishedEpisode = genretvSyncRegistry.published_episode.view!;
 const listImport = genretvSyncRegistry.list_import.view!;
 
 type ImportMode = "linked" | "detached";
@@ -79,6 +80,25 @@ export function PublishedRoute() {
         .from(publishedSeason),
     [],
   );
+  const episodes = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: publishedEpisode.id,
+          publishedListId: publishedEpisode.publishedListId,
+          publishedSeasonId: publishedEpisode.publishedSeasonId,
+          snapshotVersion: publishedEpisode.snapshotVersion,
+          canonicalEpisodeId: publishedEpisode.canonicalEpisodeId,
+          episodeLabel: publishedEpisode.episodeLabel,
+          title: publishedEpisode.title,
+          releaseWindow: publishedEpisode.releaseWindow,
+          sortKey: publishedEpisode.sortKey,
+          externalLinks: publishedEpisode.externalLinks,
+          notes: publishedEpisode.notes,
+        })
+        .from(publishedEpisode),
+    [],
+  );
   const imports = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -91,10 +111,11 @@ export function PublishedRoute() {
     { ready: session != null },
   );
   const summaries = useMemo(
-    () => buildPublishedListSummaries(lists.rows, shows.rows, seasons.rows, imports.rows),
-    [imports.rows, lists.rows, seasons.rows, shows.rows],
+    () => buildPublishedListSummaries(lists.rows, shows.rows, seasons.rows, episodes.rows, imports.rows),
+    [episodes.rows, imports.rows, lists.rows, seasons.rows, shows.rows],
   );
-  const loading = lists.loading || shows.loading || seasons.loading || (session != null && imports.loading);
+  const loading =
+    lists.loading || shows.loading || seasons.loading || episodes.loading || (session != null && imports.loading);
 
   const importSeason = async (season: PublishedSeasonSummary, importMode: ImportMode) => {
     const targetShowId = crypto.randomUUID();
@@ -135,6 +156,35 @@ export function PublishedRoute() {
           externalLinks: season.seasonExternalLinks,
           notes: season.notes,
         });
+        for (const episode of season.episodes) {
+          const targetEpisodeId = crypto.randomUUID();
+          tx.tables.personal_episode.create({
+            id: targetEpisodeId,
+            canonicalShowId: null,
+            canonicalSeasonId: null,
+            canonicalEpisodeId: null,
+            personalSeasonId: targetSeasonId,
+            episodeLabel: episode.episodeLabel,
+            title: episode.title,
+            releaseWindow: episode.releaseWindow,
+            sortKey: episode.sortKey,
+            externalLinks: episode.externalLinks,
+            notes: episode.notes,
+          });
+          tx.tables.list_import.create({
+            id: crypto.randomUUID(),
+            sourcePublishedListId: season.publishedListId,
+            sourcePublishedShowId: season.publishedShowId,
+            sourcePublishedSeasonId: season.id,
+            sourcePublishedEpisodeId: episode.id,
+            targetPersonalShowId: targetShowId,
+            targetPersonalSeasonId: targetSeasonId,
+            targetPersonalEpisodeId: targetEpisodeId,
+            importMode,
+            importedKind: "episode",
+            notes: null,
+          });
+        }
         tx.tables.list_import.create({
           id: crypto.randomUUID(),
           sourcePublishedListId: season.publishedListId,
@@ -175,7 +225,7 @@ export function PublishedRoute() {
           Could not import season: {actionError}
         </Alert>
       )}
-      {(lists.error ?? shows.error ?? seasons.error ?? imports.error) != null && (
+      {(lists.error ?? shows.error ?? seasons.error ?? episodes.error ?? imports.error) != null && (
         <Alert color="red" variant="light">
           Could not load published lists.
         </Alert>
@@ -249,6 +299,11 @@ export function PublishedRoute() {
                         {season.releasePattern != null && (
                           <Text size="xs" c="dimmed">
                             {season.releasePattern}
+                          </Text>
+                        )}
+                        {season.episodes.length > 0 && (
+                          <Text size="xs" c="dimmed">
+                            {season.episodes.length} episode rows
                           </Text>
                         )}
                       </Stack>
