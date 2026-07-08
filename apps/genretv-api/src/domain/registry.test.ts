@@ -41,6 +41,7 @@ describe("genretv sync registry", () => {
     expect(genretvSyncRegistry.published_show.mode).toBe("readwrite");
     expect(genretvSyncRegistry.published_season.mode).toBe("readwrite");
     expect(genretvSyncRegistry.published_episode.mode).toBe("readwrite");
+    expect(genretvSyncRegistry.user_profile.shape?.rowFilter?.revision).toBe("user-profile-public-or-owner-v1");
     expect(genretvSyncRegistry.publish_application.consistencyGroup).toBe("maintainer-workflow");
     expect(genretvSyncRegistry.canonical_proposal.consistencyGroup).toBe("maintainer-workflow");
     expect(genretvSyncRegistry.maintainer_notification.consistencyGroup).toBe("maintainer-workflow");

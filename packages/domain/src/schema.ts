@@ -55,11 +55,29 @@ function publicOrOwnerPublishedReadFilter(
   };
 }
 
+function publicOrOwnerProfileReadFilter(columns: { ownerId: AnyColumn; isPublic: AnyColumn }, revision: string) {
+  return {
+    customWhere: (claims: JwtClaims) => {
+      if (hasRole(claims, "canonical_maintainer")) return null;
+      if (claims.sub) return sql`${c(columns.isPublic)} = ${true} OR ${c(columns.ownerId)} = ${claims.sub}`;
+      return sql`${c(columns.isPublic)} = ${true}`;
+    },
+    revision,
+  };
+}
+
 const publicPublishedReadPolicy = (name: string, publicationStatus: AnyColumn) =>
   pgPolicy(name, {
     for: "select",
     to: [anonRole, authenticatedRole],
     using: sql`${c(publicationStatus)} = 'published'`,
+  });
+
+const publicProfileReadPolicy = (name: string, isPublic: AnyColumn) =>
+  pgPolicy(name, {
+    for: "select",
+    to: [anonRole, authenticatedRole],
+    using: sql`${c(isPublic)} IS TRUE`,
   });
 
 export const canonicalShowSyncEntry = defineSyncTable({
@@ -304,6 +322,7 @@ export const userProfileSyncEntry = defineSyncTable({
     updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
   }),
   extras: (self) => [
+    publicProfileReadPolicy("user_profile_public_read", self.isPublic),
     ...buildSupabaseOwnerOrAdminNativePolicies({
       ownerColumn: self.ownerId,
       role: authenticatedRole,
@@ -318,7 +337,7 @@ export const userProfileSyncEntry = defineSyncTable({
   subscription: "lazy",
   consistencyGroup: "user-workspace",
   shape: {
-    rowFilter: ownerReadFilter,
+    rowFilter: (columns) => publicOrOwnerProfileReadFilter(columns, "user-profile-public-or-owner-v1"),
   },
   governance: {
     managedFields: [
