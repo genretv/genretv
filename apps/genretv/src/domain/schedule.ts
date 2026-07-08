@@ -150,6 +150,7 @@ export interface ScheduleEntry {
   genres: string[];
   languages: string[];
   countries: string[];
+  showLinks: ExternalLinkSeed[];
   links: ExternalLinkSeed[];
   seasonLinks: ExternalLinkSeed[];
   notes: string | null;
@@ -369,7 +370,7 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
     show.countries = uniqueSorted([...show.countries, ...entry.countries]);
     show.organizations = uniqueSorted([...show.organizations, ...entry.organizations]);
     show.genres = uniqueSorted([...show.genres, ...entry.genres]);
-    show.links = mergeLinks(show.links, entry.links);
+    show.links = mergeLinks(show.links, entry.showLinks);
     show.notes = joinNotes([show.notes, entry.notes]);
     show.seasons.push({
       id: entry.id,
@@ -464,6 +465,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     genres: entry.genreTags,
     languages,
     countries,
+    showLinks: entry.show.externalLinks,
     links: entry.show.externalLinks,
     seasonLinks: [],
     notes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
@@ -501,6 +503,7 @@ function toRegistryScheduleEntry(
     genres: show.genreTags,
     languages,
     countries: show.countries,
+    showLinks: show.externalLinks,
     links,
     seasonLinks: season.externalLinks,
     notes: show.notes,

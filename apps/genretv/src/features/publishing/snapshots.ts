@@ -160,7 +160,7 @@ function showDraft(entry: ScheduleEntry, input: PublishedSnapshotPlanInput, id: 
     languages: entry.languages,
     countries: entry.countries,
     genreTags: entry.genres,
-    externalLinks: entry.links,
+    externalLinks: entry.showLinks,
     notes: entry.notes,
   };
 }
@@ -192,7 +192,7 @@ function seasonDraft(
     episodeCount: entry.episodeCount,
     sourceRow: entry.sourceRow,
     organizations: entry.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
-    externalLinks: [],
+    externalLinks: entry.seasonLinks,
     notes: entry.seasonNotes,
   };
 }

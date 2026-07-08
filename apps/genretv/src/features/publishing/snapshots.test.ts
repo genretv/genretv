@@ -27,8 +27,12 @@ const schedule: CanonicalSchedule = {
       genres: ["Fantasy"],
       languages: ["en"],
       countries: ["US"],
-      links: [{ label: "IMDb", url: "https://imdb.test/title/1" }],
-      seasonLinks: [],
+      showLinks: [{ label: "IMDb", url: "https://imdb.test/title/1" }],
+      links: [
+        { label: "IMDb", url: "https://imdb.test/title/1" },
+        { label: "Wikipedia", url: "https://wikipedia.test/season/1" },
+      ],
+      seasonLinks: [{ label: "Wikipedia", url: "https://wikipedia.test/season/1" }],
       notes: "Show note",
       seasonNotes: "Season note",
       releasePattern: "weekly",
@@ -62,6 +66,7 @@ const schedule: CanonicalSchedule = {
       genres: ["Fantasy"],
       languages: ["en"],
       countries: ["US"],
+      showLinks: [],
       links: [],
       seasonLinks: [],
       notes: null,
@@ -108,7 +113,9 @@ describe("published snapshot planning", () => {
       displayTitle: "Shared Show",
       canonicalShowId: null,
       sourcePersonalShowId: null,
+      externalLinks: [{ label: "IMDb", url: "https://imdb.test/title/1" }],
     });
+    expect(plan.seasons[0]?.externalLinks).toEqual([{ label: "Wikipedia", url: "https://wikipedia.test/season/1" }]);
     expect(plan.seasons.map((season) => [season.id, season.publishedShowId, season.snapshotVersion])).toEqual([
       ["season-published-1", "show-published", 2],
       ["season-published-2", "show-published", 2],
