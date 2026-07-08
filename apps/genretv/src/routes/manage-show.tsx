@@ -14,15 +14,14 @@ import {
   Title,
 } from "@mantine/core";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
 
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
-import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { useManagementShows } from "../domain/live-management-shows";
 import {
-  buildManagementShows,
   findManagementShow,
   formatEpisodeCount,
   sectionLabels,
@@ -36,13 +35,13 @@ import {
 } from "../features/management/drafts";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
+const newShowId = "new";
 
 export function ManageShowRoute() {
   const { showId } = useParams({ from: "/manage/show/$showId" });
   const { session } = useAuth();
-  const { schedule } = useCanonicalSchedule();
-  const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
-  const show = findManagementShow(shows, showId);
+  const { shows } = useManagementShows();
+  const show = showId === newShowId ? emptyManagementShow() : findManagementShow(shows, showId);
 
   if (show == null) {
     return (
@@ -79,7 +78,7 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
           notes: personalShow.notes,
         })
         .from(personalShow)
-        .where(eq(personalShow.canonicalShowId, show.id)),
+        .where(or(eq(personalShow.id, show.id), eq(personalShow.canonicalShowId, show.id))),
     [show.id],
     { ready: canEdit },
   );
@@ -98,6 +97,7 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
   const canSaveOverlay = canEdit && !personalShows.loading && dirty && !savingOverlay;
 
   const saveOverlay = async () => {
+    const createdId = personalRow?.id ?? crypto.randomUUID();
     setSavingOverlay(true);
     setOverlayError(null);
     setOverlaySaved(false);
@@ -114,8 +114,8 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
       await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (personalRow == null) {
           tx.tables.personal_show.create({
-            id: crypto.randomUUID(),
-            canonicalShowId: show.id,
+            id: createdId,
+            canonicalShowId: show.id === newShowId ? null : show.id,
             ...patch,
           });
         } else {
@@ -123,6 +123,9 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
         }
       });
       setOverlaySaved(true);
+      if (show.id === newShowId) {
+        void navigate({ to: "/manage/show/$showId", params: { showId: createdId } });
+      }
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -134,7 +137,7 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
       <Group justify="space-between" align="flex-start">
         <div>
-          <Title order={1}>{show.title}</Title>
+          <Title order={1}>{show.id === newShowId ? "New show" : show.title}</Title>
           <Group gap={6} mt={6}>
             {show.links.map((link) => (
               <Anchor key={`${show.id}-${link.url}`} href={link.url} target="_blank" size="sm">
@@ -143,9 +146,23 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
             ))}
           </Group>
         </div>
-        <Button component={Link} to="/manage" variant="default">
-          Shows
-        </Button>
+        <Group>
+          <Button
+            variant="light"
+            disabled={!canEdit || show.id === newShowId}
+            onClick={() =>
+              void navigate({
+                to: "/manage/show/$showId/season/$seasonId",
+                params: { showId: show.id, seasonId: "new" },
+              })
+            }
+          >
+            Add season
+          </Button>
+          <Button component={Link} to="/manage" variant="default">
+            Shows
+          </Button>
+        </Group>
       </Group>
 
       <Alert color={canEdit ? "teal" : "yellow"} variant="light">
@@ -328,6 +345,21 @@ function showDraftFromPersonalRow(row: {
     countriesText: orderedListToText(row.countries),
     genresText: orderedListToText(row.genreTags),
     notes: row.notes ?? "",
+  };
+}
+
+function emptyManagementShow(): ManagementShow {
+  return {
+    id: newShowId,
+    title: "",
+    originalTitle: null,
+    languages: ["en"],
+    organizations: [],
+    genres: [],
+    links: [],
+    countries: [],
+    notes: null,
+    seasons: [],
   };
 }
 

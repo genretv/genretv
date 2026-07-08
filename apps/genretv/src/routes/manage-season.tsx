@@ -15,15 +15,14 @@ import {
   Title,
 } from "@mantine/core";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
 
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
-import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { useManagementShows } from "../domain/live-management-shows";
 import {
-  buildManagementShows,
   findManagementSeason,
   formatEpisodeCount,
   sectionLabels,
@@ -38,15 +37,20 @@ import {
   type ManagementSeasonDraft,
 } from "../features/management/drafts";
 
+const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
+const newSeasonId = "new";
 
 export function ManageSeasonRoute() {
   const { showId, seasonId } = useParams({ from: "/manage/show/$showId/season/$seasonId" });
   const { session } = useAuth();
   const navigate = useNavigate();
-  const { schedule } = useCanonicalSchedule();
-  const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
-  const result = findManagementSeason(shows, showId, seasonId);
+  const { shows } = useManagementShows();
+  const show = shows.find((candidate) => candidate.id === showId) ?? null;
+  const result =
+    seasonId === newSeasonId && show != null
+      ? { show, season: emptyManagementSeason() }
+      : findManagementSeason(shows, showId, seasonId);
 
   if (result == null) {
     return (
@@ -91,6 +95,8 @@ function EditableSeason({
       sync.drizzle
         .select({
           id: personalSeason.id,
+          personalShowId: personalSeason.personalShowId,
+          canonicalShowId: personalSeason.canonicalShowId,
           canonicalSeasonId: personalSeason.canonicalSeasonId,
           section: personalSeason.section,
           seasonLabel: personalSeason.seasonLabel,
@@ -101,11 +107,24 @@ function EditableSeason({
           notes: personalSeason.notes,
         })
         .from(personalSeason)
-        .where(eq(personalSeason.canonicalSeasonId, season.id)),
+        .where(or(eq(personalSeason.id, season.id), eq(personalSeason.canonicalSeasonId, season.id))),
     [season.id],
     { ready: canEdit },
   );
   const personalRow = personalSeasons.rows[0] ?? null;
+  const personalShows = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalShow.id,
+          canonicalShowId: personalShow.canonicalShowId,
+        })
+        .from(personalShow)
+        .where(or(eq(personalShow.id, show.id), eq(personalShow.canonicalShowId, show.id))),
+    [show.id],
+    { ready: canEdit },
+  );
+  const personalShowRow = personalShows.rows[0] ?? null;
   const initialDraft = useMemo(
     () => (personalRow == null ? seasonDraftFromSeason(season) : seasonDraftFromPersonalRow(personalRow)),
     [personalRow, season],
@@ -118,9 +137,12 @@ function EditableSeason({
   const episodeCountValid = draft.episodeCount.trim() === "" || draftEpisodeCount != null;
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
-  const canSaveOverlay = canEdit && !personalSeasons.loading && dirty && episodeCountValid && !savingOverlay;
+  const canSaveOverlay =
+    canEdit && !personalSeasons.loading && !personalShows.loading && dirty && episodeCountValid && !savingOverlay;
 
   const saveOverlay = async () => {
+    const createdId = personalRow?.id ?? crypto.randomUUID();
+    const isPersonalOnlyShow = personalShowRow != null && personalShowRow.canonicalShowId == null;
     setSavingOverlay(true);
     setOverlayError(null);
     setOverlaySaved(false);
@@ -137,9 +159,10 @@ function EditableSeason({
       await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (personalRow == null) {
           tx.tables.personal_season.create({
-            id: crypto.randomUUID(),
-            canonicalShowId: show.id,
-            canonicalSeasonId: season.id,
+            id: createdId,
+            personalShowId: isPersonalOnlyShow ? show.id : null,
+            canonicalShowId: isPersonalOnlyShow ? null : show.id,
+            canonicalSeasonId: season.id === newSeasonId ? null : season.id,
             ...patch,
           });
         } else {
@@ -147,6 +170,12 @@ function EditableSeason({
         }
       });
       setOverlaySaved(true);
+      if (season.id === newSeasonId) {
+        void navigate({
+          to: "/manage/show/$showId/season/$seasonId",
+          params: { showId: show.id, seasonId: createdId },
+        });
+      }
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -159,7 +188,7 @@ function EditableSeason({
       <Group justify="space-between" align="flex-start">
         <div>
           <Title order={1}>
-            {show.title} {season.seasonLabel}
+            {show.title} {season.id === newSeasonId ? "New season" : season.seasonLabel}
           </Title>
           <Text c="dimmed">{status}</Text>
         </div>
@@ -184,6 +213,11 @@ function EditableSeason({
       {personalSeasons.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this season: {personalSeasons.error.message}
+        </Alert>
+      )}
+      {personalShows.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your personal overlay for this show: {personalShows.error.message}
         </Alert>
       )}
       {overlayError != null && (
@@ -372,6 +406,25 @@ function seasonDraftFromPersonalRow(row: {
     releasePattern: row.releasePattern ?? "",
     episodeCount: row.episodeCount == null ? "" : String(row.episodeCount),
     notes: row.notes ?? "",
+  };
+}
+
+function emptyManagementSeason(): ManagementSeason {
+  return {
+    id: newSeasonId,
+    section: "upcoming",
+    seasonLabel: "S?",
+    timing: "",
+    endedReason: "",
+    releasePattern: null,
+    organizationText: "",
+    genreText: "",
+    languages: [],
+    countries: [],
+    sourceRow: 1_000_000,
+    episodeCount: null,
+    notes: null,
+    episodes: [],
   };
 }
 

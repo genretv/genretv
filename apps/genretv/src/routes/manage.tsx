@@ -1,6 +1,7 @@
 import {
   Anchor,
   Badge,
+  Button,
   Group,
   Pagination,
   ScrollArea,
@@ -15,9 +16,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";
-import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { useManagementShows } from "../domain/live-management-shows";
 import {
-  buildManagementShows,
   defaultPageSize,
   filterManagementShows,
   pageCountFor,
@@ -29,8 +29,7 @@ import {
 
 export function ManageRoute() {
   const navigate = useNavigate();
-  const { schedule } = useCanonicalSchedule();
-  const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
+  const { schedule, shows } = useManagementShows();
   const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), [schedule.entries]);
   const [query, setQuery] = useState("");
   const [organization, setOrganization] = useState("all");
@@ -60,6 +59,9 @@ export function ManageRoute() {
             {visibleShows.length} of {shows.length}
           </Text>
         </div>
+        <Button onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId: "new" } })}>
+          Add show
+        </Button>
       </Group>
 
       <Group className="schedule-controls" align="flex-end" gap="sm">

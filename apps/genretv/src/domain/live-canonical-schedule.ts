@@ -94,6 +94,7 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     (client) =>
       client.drizzle
         .select({
+          id: personalShow.id,
           canonicalShowId: personalShow.canonicalShowId,
           displayTitle: personalShow.displayTitle,
           originalTitle: personalShow.originalTitle,
@@ -111,6 +112,9 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     (client) =>
       client.drizzle
         .select({
+          id: personalSeason.id,
+          personalShowId: personalSeason.personalShowId,
+          canonicalShowId: personalSeason.canonicalShowId,
           canonicalSeasonId: personalSeason.canonicalSeasonId,
           section: personalSeason.section,
           seasonLabel: personalSeason.seasonLabel,
@@ -206,36 +210,33 @@ function applyPersonalShows(
     displayTitle: string;
     externalLinks: unknown;
     genreTags: unknown;
+    id: string;
     languages: unknown;
     notes: string | null;
     originalTitle: string | null;
   }>,
 ): CanonicalShowSeedRow[] {
   const overlays = new Map(personalRows.flatMap((row) => (row.canonicalShowId == null ? [] : [[row.canonicalShowId, row]])));
-  if (overlays.size === 0) return canonicalRows;
-  return canonicalRows.map((row) => {
-    const overlay = overlays.get(row.id);
-    if (overlay == null) return row;
-    return {
-      ...row,
-      displayTitle: overlay.displayTitle,
-      originalTitle: overlay.originalTitle,
-      languages: stringArray(overlay.languages),
-      countries: stringArray(overlay.countries),
-      genreTags: stringArray(overlay.genreTags),
-      externalLinks: externalLinks(overlay.externalLinks),
-      notes: overlay.notes,
-    };
-  });
+  const additions = personalRows.flatMap((row) => (row.canonicalShowId == null ? [personalShowToSeedRow(row)] : []));
+  return [
+    ...canonicalRows.map((row) => {
+      const overlay = overlays.get(row.id);
+      return overlay == null ? row : personalShowToSeedRow(overlay, row.id);
+    }),
+    ...additions,
+  ];
 }
 
 function applyPersonalSeasons(
   canonicalRows: CanonicalSeasonSeedRow[],
   personalRows: ReadonlyArray<{
     canonicalSeasonId: string | null;
+    canonicalShowId: string | null;
     endedReason: string;
     episodeCount: number | null;
+    id: string;
     notes: string | null;
+    personalShowId: string | null;
     releasePattern: string | null;
     seasonLabel: string;
     section: string;
@@ -245,21 +246,29 @@ function applyPersonalSeasons(
   const overlays = new Map(
     personalRows.flatMap((row) => (row.canonicalSeasonId == null ? [] : [[row.canonicalSeasonId, row]])),
   );
-  if (overlays.size === 0) return canonicalRows;
-  return canonicalRows.map((row) => {
-    const overlay = overlays.get(row.id);
-    if (overlay == null) return row;
-    return {
-      ...row,
-      section: scheduleSection(overlay.section),
-      seasonLabel: overlay.seasonLabel,
-      timing: overlay.timing,
-      endedReason: overlay.endedReason,
-      releasePattern: overlay.releasePattern,
-      episodeCount: overlay.episodeCount,
-      notes: overlay.notes,
-    };
+  const additions = personalRows.flatMap((row, index) => {
+    if (row.canonicalSeasonId != null) return [];
+    const showId = row.personalShowId ?? row.canonicalShowId;
+    return showId == null ? [] : [personalSeasonToSeedRow(row, showId, index)];
   });
+  return [
+    ...canonicalRows.map((row) => {
+      const overlay = overlays.get(row.id);
+      return overlay == null
+        ? row
+        : {
+            ...row,
+            section: scheduleSection(overlay.section),
+            seasonLabel: overlay.seasonLabel,
+            timing: overlay.timing,
+            endedReason: overlay.endedReason,
+            releasePattern: overlay.releasePattern,
+            episodeCount: overlay.episodeCount,
+            notes: overlay.notes,
+          };
+    }),
+    ...additions,
+  ];
 }
 
 function applyPersonalEpisodes(
@@ -311,6 +320,66 @@ function toCanonicalShowSeedRow(row: {
     countries: stringArray(row.countries),
     genreTags: stringArray(row.genreTags),
     externalLinks: externalLinks(row.externalLinks),
+    notes: row.notes,
+  };
+}
+
+function personalShowToSeedRow(
+  row: {
+    countries: unknown;
+    displayTitle: string;
+    externalLinks: unknown;
+    genreTags: unknown;
+    id: string;
+    languages: unknown;
+    notes: string | null;
+    originalTitle: string | null;
+  },
+  id = row.id,
+): CanonicalShowSeedRow {
+  return {
+    id,
+    displayTitle: row.displayTitle,
+    originalTitle: row.originalTitle,
+    languages: stringArray(row.languages),
+    countries: stringArray(row.countries),
+    genreTags: stringArray(row.genreTags),
+    externalLinks: externalLinks(row.externalLinks),
+    notes: row.notes,
+  };
+}
+
+function personalSeasonToSeedRow(
+  row: {
+    endedReason: string;
+    episodeCount: number | null;
+    id: string;
+    notes: string | null;
+    releasePattern: string | null;
+    seasonLabel: string;
+    section: string;
+    timing: string;
+  },
+  showId: string,
+  index: number,
+): CanonicalSeasonSeedRow {
+  return {
+    id: row.id,
+    showId,
+    section: scheduleSection(row.section),
+    seasonLabel: row.seasonLabel,
+    timing: row.timing,
+    endedReason: row.endedReason,
+    releasePattern: row.releasePattern,
+    releasePrecision: "unknown",
+    dateConfidence: "unknown",
+    releaseWindow: null,
+    finaleWindow: null,
+    sortKey: null,
+    episodeCount: row.episodeCount,
+    sourceRow: 1_000_000 + index,
+    organizations: [],
+    externalLinks: [],
     notes: row.notes,
   };
 }

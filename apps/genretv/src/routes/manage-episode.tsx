@@ -6,8 +6,8 @@ import { useMemo, useState } from "react";
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
-import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
-import { buildManagementShows, findManagementSeason, type ManagementSeason, type ManagementShow, type ScheduleEpisode } from "../domain/schedule";
+import { useManagementShows } from "../domain/live-management-shows";
+import { findManagementSeason, type ManagementSeason, type ManagementShow, type ScheduleEpisode } from "../domain/schedule";
 import {
   emptyEpisodeDraft,
   episodeDraftFromEpisode,
@@ -27,8 +27,7 @@ export function ManageEpisodeRoute() {
   });
   const { session } = useAuth();
   const navigate = useNavigate();
-  const { schedule } = useCanonicalSchedule();
-  const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
+  const { shows } = useManagementShows();
   const result = findManagementSeason(shows, showId, seasonId);
 
   if (result == null) {
