@@ -6,6 +6,7 @@ import {
   defaultScheduleViewPreferences,
   filterManagementShows,
   findManagementShow,
+  findManagementSeason,
   filterScheduleEntries,
   pageCountFor,
   paginateItems,
@@ -148,6 +149,16 @@ describe("schedule read model", () => {
       },
     ]);
     expect(filterManagementShows(shows, "super", "Netflix", "en").map((show) => show.id)).toEqual(["c-show"]);
+  });
+
+  test("finds a management season by show and season id", () => {
+    const schedule = buildScheduleFromSeed(seed);
+    const shows = buildManagementShows(schedule.entries);
+    expect(findManagementSeason(shows, "b-show", "upcoming-b")).toMatchObject({
+      show: { title: "B Show" },
+      season: { seasonLabel: "S1?" },
+    });
+    expect(findManagementSeason(shows, "b-show", "missing")).toBeNull();
   });
 
   test("paginates lists with a minimum page count of one", () => {

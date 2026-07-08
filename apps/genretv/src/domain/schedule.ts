@@ -278,6 +278,16 @@ export function findManagementShow(shows: readonly ManagementShow[], showId: str
   return shows.find((show) => show.id === showId) ?? null;
 }
 
+export function findManagementSeason(
+  shows: readonly ManagementShow[],
+  showId: string,
+  seasonId: string,
+): { show: ManagementShow; season: ManagementSeason } | null {
+  const show = findManagementShow(shows, showId);
+  const season = show?.seasons.find((candidate) => candidate.id === seasonId);
+  return show != null && season != null ? { show, season } : null;
+}
+
 function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   const organizations = entry.organizations.map((organization) => organization.name).filter(Boolean);
   const genreText = entry.genreTags.join(", ") || entry.legacy.genreText;

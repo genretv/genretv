@@ -83,7 +83,9 @@ export function ManageShowRoute() {
             <Table.Tbody>
               {show.seasons.map((season) => (
                 <Table.Tr key={season.id}>
-                  <Table.Td>{season.seasonLabel}</Table.Td>
+                  <Table.Td>
+                    <Anchor href={`/manage/show/${show.id}/season/${season.id}`}>{season.seasonLabel}</Anchor>
+                  </Table.Td>
                   <Table.Td>{season.section === "past" ? season.endedReason : sectionLabels[season.section]}</Table.Td>
                   <Table.Td>{season.timing}</Table.Td>
                   <Table.Td>
