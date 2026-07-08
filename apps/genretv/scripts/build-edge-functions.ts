@@ -82,7 +82,11 @@ for (const { name } of functions) {
   }
 
   const outFile = join(outdir, "index.js");
-  writeFileSync(outFile, rewriteExternals(readFileSync(outFile, "utf8")));
+  const rewritten = rewriteExternals(readFileSync(outFile, "utf8"));
+  writeFileSync(outFile, rewritten);
+  // The self-hosted Supabase edge-runtime worker loader resolves a function directory by looking for
+  // index.ts. The bundled code is plain ESM JavaScript, but Deno accepts it under this extension.
+  writeFileSync(join(outdir, "index.ts"), rewritten);
 }
 
 const mainOutDir = resolve(root, distRoot, "main");
