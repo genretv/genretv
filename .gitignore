@@ -6,7 +6,9 @@ tmp/*
 node_modules/*
 coverage/*
 dist/*
-infra/
+infra/*
+!infra/seeds/
+!infra/seeds/*.sql
 packages/*/dist/*
 apps/genretv/dist/*
 apps/genretv-api/dist/*

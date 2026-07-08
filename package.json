@@ -19,6 +19,7 @@
     "preview:genretv": "cd apps/genretv && bun run preview",
     "seed:blogspot": "bun apps/genretv/scripts/extract-blogspot-seed.ts --out apps/genretv/seeds/blogspot-canonical.seed.json",
     "seed:canonical": "bun apps/genretv/scripts/build-canonical-registry-seed.ts --out apps/genretv/seeds/canonical-registry.seed.json",
+    "seed:canonical:sql": "bun apps/genretv/scripts/build-canonical-registry-seed-sql.ts --out infra/seeds/canonical-registry.sql",
     "test": "bun run test:genretv && bun run test:api",
     "test:api": "cd apps/genretv-api && bun run test",
     "test:genretv": "cd apps/genretv && bun run test",

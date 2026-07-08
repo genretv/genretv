@@ -23,3 +23,9 @@ Derive the canonical registry seed from the Blogspot artifact:
 ```sh
 bun run seed:canonical
 ```
+
+Generate a non-deleting SQL upsert seed for Postgres:
+
+```sh
+bun run seed:canonical:sql
+```
