@@ -14,8 +14,11 @@ import {
   Title,
 } from "@mantine/core";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { eq } from "drizzle-orm";
+import { useMemo, useState } from "react";
 
+import { genretvSyncRegistry } from "@genretv/domain/registry";
+import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import {
@@ -31,6 +34,8 @@ import {
   showDraftStorageKey,
   useManagementDraft,
 } from "../features/management/drafts";
+
+const personalShow = genretvSyncRegistry.personal_show.view!;
 
 export function ManageShowRoute() {
   const { showId } = useParams({ from: "/manage/show/$showId" });
@@ -55,7 +60,34 @@ export function ManageShowRoute() {
 
 function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolean }) {
   const navigate = useNavigate();
-  const initialDraft = useMemo(() => showDraftFromShow(show), [show]);
+  const client = useSyncClient();
+  const [savingOverlay, setSavingOverlay] = useState(false);
+  const [overlayError, setOverlayError] = useState<string | null>(null);
+  const [overlaySaved, setOverlaySaved] = useState(false);
+  const personalShows = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalShow.id,
+          canonicalShowId: personalShow.canonicalShowId,
+          displayTitle: personalShow.displayTitle,
+          originalTitle: personalShow.originalTitle,
+          languages: personalShow.languages,
+          countries: personalShow.countries,
+          genreTags: personalShow.genreTags,
+          externalLinks: personalShow.externalLinks,
+          notes: personalShow.notes,
+        })
+        .from(personalShow)
+        .where(eq(personalShow.canonicalShowId, show.id)),
+    [show.id],
+    { ready: canEdit },
+  );
+  const personalRow = personalShows.rows[0] ?? null;
+  const initialDraft = useMemo(
+    () => (personalRow == null ? showDraftFromShow(show) : showDraftFromPersonalRow(personalRow)),
+    [personalRow, show],
+  );
   const { draft, dirty, locallySaved, setDraft, saveLocalDraft, discardLocalDraft } = useManagementDraft(
     showDraftStorageKey(show.id),
     initialDraft,
@@ -63,6 +95,40 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
   const draftLanguages = orderedTextToList(draft.languagesText);
   const draftCountries = orderedTextToList(draft.countriesText);
   const draftGenres = orderedTextToList(draft.genresText);
+  const canSaveOverlay = canEdit && !personalShows.loading && dirty && !savingOverlay;
+
+  const saveOverlay = async () => {
+    setSavingOverlay(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      const patch = {
+        displayTitle: draft.title.trim() || show.title,
+        originalTitle: nullableText(draft.originalTitle),
+        languages: draftLanguages,
+        countries: draftCountries,
+        genreTags: draftGenres,
+        externalLinks: show.links,
+        notes: nullableText(draft.notes),
+      };
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        if (personalRow == null) {
+          tx.tables.personal_show.create({
+            id: crypto.randomUUID(),
+            canonicalShowId: show.id,
+            ...patch,
+          });
+        } else {
+          tx.tables.personal_show.update({ id: personalRow.id }, patch);
+        }
+      });
+      setOverlaySaved(true);
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSavingOverlay(false);
+    }
+  };
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -84,9 +150,24 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
 
       <Alert color={canEdit ? "teal" : "yellow"} variant="light">
         {canEdit
-          ? "Changes can be saved as a browser-local draft. Publishing to your overlay will be enabled when the writable pgxsinkit registry lands."
+          ? "Save a browser-local draft while editing, or save this show-level metadata to your personal overlay."
           : "Sign in to create a browser-local management draft."}
       </Alert>
+      {personalShows.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your personal overlay for this show: {personalShows.error.message}
+        </Alert>
+      )}
+      {overlayError != null && (
+        <Alert color="red" variant="light">
+          Could not save to your overlay: {overlayError}
+        </Alert>
+      )}
+      {overlaySaved && (
+        <Alert color="teal" variant="light">
+          Saved to your personal overlay.
+        </Alert>
+      )}
 
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -162,7 +243,9 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
             <Button variant="light" disabled={!canEdit || !dirty} onClick={saveLocalDraft}>
               Save draft
             </Button>
-            <Button disabled>Save to overlay</Button>
+            <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
+              Save to overlay
+            </Button>
           </Group>
         </Group>
         {locallySaved && (
@@ -228,4 +311,31 @@ function EditableShow({ show, canEdit }: { show: ManagementShow; canEdit: boolea
       </Stack>
     </Stack>
   );
+}
+
+function showDraftFromPersonalRow(row: {
+  countries: unknown;
+  displayTitle: string;
+  genreTags: unknown;
+  languages: unknown;
+  notes: string | null;
+  originalTitle: string | null;
+}): ReturnType<typeof showDraftFromShow> {
+  return {
+    title: row.displayTitle,
+    originalTitle: row.originalTitle ?? "",
+    languagesText: orderedListToText(row.languages),
+    countriesText: orderedListToText(row.countries),
+    genresText: orderedListToText(row.genreTags),
+    notes: row.notes ?? "",
+  };
+}
+
+function orderedListToText(value: unknown): string {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").join("\n") : "";
+}
+
+function nullableText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
 }

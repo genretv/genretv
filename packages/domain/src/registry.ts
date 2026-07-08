@@ -2,7 +2,12 @@ import type { SQL } from "drizzle-orm";
 
 import { defineSyncRegistry, type JwtClaims } from "@pgxsinkit/contracts";
 
-import { canonicalEpisodeSyncEntry, canonicalSeasonSyncEntry, canonicalShowSyncEntry } from "./schema";
+import {
+  canonicalEpisodeSyncEntry,
+  canonicalSeasonSyncEntry,
+  canonicalShowSyncEntry,
+  personalShowSyncEntry,
+} from "./schema";
 
 function publicCanonicalReadFilter(_claims: JwtClaims): SQL | null {
   return null;
@@ -21,4 +26,5 @@ export const genretvSyncRegistry = defineSyncRegistry({
     ...canonicalEpisodeSyncEntry,
     shape: { ...canonicalEpisodeSyncEntry.shape!, rowFilter: { customWhere: publicCanonicalReadFilter } },
   },
+  personal_show: personalShowSyncEntry,
 });

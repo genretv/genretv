@@ -1,8 +1,15 @@
-import { sql } from "drizzle-orm";
-import { bigint, integer, jsonb, pgPolicy, uuid, varchar } from "drizzle-orm/pg-core";
+import { sql, type AnyColumn } from "drizzle-orm";
+import { bigint, integer, jsonb, pgPolicy, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { anonRole, authenticatedRole } from "drizzle-orm/supabase";
 
-import { clockMicrosecondsSql, defineSyncTable } from "@pgxsinkit/contracts";
+import {
+  buildSupabaseOwnerOrAdminNativePolicies,
+  c,
+  clockMicrosecondsSql,
+  defineSyncTable,
+  DENY_ALL,
+  type JwtClaims,
+} from "@pgxsinkit/contracts";
 
 const publicReadPolicy = (name: string) =>
   pgPolicy(name, {
@@ -10,6 +17,13 @@ const publicReadPolicy = (name: string) =>
     to: [anonRole, authenticatedRole],
     using: sql`true`,
   });
+
+function ownerReadFilter(columns: { ownerId: AnyColumn }) {
+  return {
+    customWhere: (claims: JwtClaims) => (claims.sub ? sql`${c(columns.ownerId)} = ${claims.sub}` : DENY_ALL),
+    revision: "owner-v1",
+  };
+}
 
 export const canonicalShowSyncEntry = defineSyncTable({
   tableName: "canonical_show",
@@ -77,6 +91,44 @@ export const canonicalEpisodeSyncEntry = defineSyncTable({
   consistencyGroup: "canonical-schedule",
 });
 
+export const personalShowSyncEntry = defineSyncTable({
+  tableName: "personal_show",
+  makeColumns: () => ({
+    id: uuid("id").primaryKey(),
+    ownerId: uuid("owner_id").notNull(),
+    canonicalShowId: uuid("canonical_show_id").references(() => canonicalShowSyncEntry.table.id),
+    displayTitle: varchar("display_title", { length: 300 }).notNull(),
+    originalTitle: varchar("original_title", { length: 300 }),
+    languages: jsonb("languages").notNull().default([]),
+    countries: jsonb("countries").notNull().default([]),
+    genreTags: jsonb("genre_tags").notNull().default([]),
+    externalLinks: jsonb("external_links").notNull().default([]),
+    notes: varchar("notes", { length: 8000 }),
+    createdAtUs: bigint("created_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
+    updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
+  }),
+  extras: (self) => [
+    ...buildSupabaseOwnerOrAdminNativePolicies({ ownerColumn: self.ownerId, role: authenticatedRole }),
+    uniqueIndex("personal_show_owner_canonical_show_unique").on(self.ownerId, self.canonicalShowId),
+  ],
+  mode: "readwrite",
+  conflictPolicy: "reject-if-stale",
+  writeMode: "pessimistic",
+  subscription: "lazy",
+  consistencyGroup: "personal-overlay",
+  shape: {
+    rowFilter: ownerReadFilter,
+  },
+  governance: {
+    managedFields: [
+      { column: "ownerId", applyOn: ["create"], strategy: "authClaim", claimPath: ["sub"] },
+      { column: "createdAtUs", applyOn: ["create"], strategy: "nowMicroseconds" },
+      { column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" },
+    ],
+  },
+});
+
 export const canonicalShowTable = canonicalShowSyncEntry.table;
 export const canonicalSeasonTable = canonicalSeasonSyncEntry.table;
 export const canonicalEpisodeTable = canonicalEpisodeSyncEntry.table;
+export const personalShowTable = personalShowSyncEntry.table;
