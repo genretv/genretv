@@ -140,9 +140,16 @@ function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
           Episodes: {formatEpisodeCount(entry.episodeCount, entry.episodes)}
         </Text>
         {entry.episodes.map((episode) => (
-          <Text key={episode.id} size="xs" c="dimmed">
-            {[episode.episodeLabel, episode.title, episode.releaseDate].filter(Boolean).join(" · ")}
-          </Text>
+          <Group key={episode.id} gap={8}>
+            <Text size="xs" c="dimmed">
+              {[episode.episodeLabel, episode.title, episode.releaseDate].filter(Boolean).join(" · ")}
+            </Text>
+            {episode.links.map((link) => (
+              <Anchor key={`${episode.id}-${link.kind}-${link.url}`} href={link.url} target="_blank" size="xs">
+                {link.kind ?? link.label}
+              </Anchor>
+            ))}
+          </Group>
         ))}
       </Stack>
     </Box>
