@@ -8,6 +8,7 @@ import {
   findManagementShow,
   findManagementSeason,
   filterScheduleEntries,
+  formatEpisodeCount,
   pageCountFor,
   paginateItems,
   scheduleFilterOptions,
@@ -101,7 +102,7 @@ const seed: CanonicalRegistrySeed = {
         },
         finaleWindow: null,
         sortKey: null,
-        episodeCount: null,
+        episodeCount: 2,
         sourceRow: 2,
         organizations: [{ name: "Netflix", role: "streamer", externalLinks: [] }],
         externalLinks: [],
@@ -127,7 +128,36 @@ const seed: CanonicalRegistrySeed = {
         notes: null,
       },
     ],
-    episodes: [],
+    episodes: [
+      {
+        id: "episode-b-2",
+        seasonId: "upcoming-b",
+        episodeLabel: "E2",
+        title: "Second Landing",
+        releaseWindow: null,
+        sortKey: "002",
+        externalLinks: [],
+        notes: null,
+      },
+      {
+        id: "episode-b-1",
+        seasonId: "upcoming-b",
+        episodeLabel: "E1",
+        title: "Pilot",
+        releaseWindow: {
+          raw: "Mar.1",
+          precision: "month_day",
+          confidence: "confirmed",
+          year: null,
+          month: 3,
+          day: 1,
+          releaseSeason: null,
+        },
+        sortKey: "001",
+        externalLinks: [],
+        notes: "First episode",
+      },
+    ],
   },
 };
 
@@ -137,6 +167,12 @@ describe("schedule read model", () => {
     expect(schedule.entries[0]?.title).toBe("A Show");
     expect(schedule.entries[0]?.seasonLabel).toBe("S2");
     expect(schedule.entries[1]?.languages).toEqual(["en"]);
+    expect(schedule.entries[1]?.episodeCount).toBe(2);
+    expect(schedule.entries[1]?.episodes.map((episode) => episode.episodeLabel)).toEqual(["E1", "E2"]);
+    expect(schedule.entries[1]?.episodes[0]).toMatchObject({
+      releaseDate: "Mar.1",
+      notes: "First episode",
+    });
     expect(schedule.entries[2]?.endedReason).toBe("Canceled");
     expect(schedule.entries[2]?.endingKind).toBe("canceled");
   });
@@ -185,6 +221,10 @@ describe("schedule read model", () => {
       show: { title: "B Show" },
       season: { seasonLabel: "S1?" },
     });
+    expect(findManagementSeason(shows, "show-b", "upcoming-b")?.season).toMatchObject({
+      episodeCount: 2,
+      episodes: [{ title: "Pilot" }, { title: "Second Landing" }],
+    });
     expect(findManagementSeason(shows, "show-b", "missing")).toBeNull();
   });
 
@@ -193,5 +233,12 @@ describe("schedule read model", () => {
     expect(paginateItems(["a", "b", "c"], 1, 20)).toEqual(["a", "b", "c"]);
     expect(pageCountFor(0, 20)).toBe(1);
     expect(pageCountFor(101, 50)).toBe(3);
+  });
+
+  test("formats explicit and derived episode counts", () => {
+    const schedule = buildScheduleFromRegistrySeed(seed);
+    expect(formatEpisodeCount(null, [])).toBe("Unknown");
+    expect(formatEpisodeCount(null, schedule.entries[1]?.episodes ?? [])).toBe("2");
+    expect(formatEpisodeCount(10, schedule.entries[1]?.episodes ?? [])).toBe("10");
   });
 });

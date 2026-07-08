@@ -151,6 +151,17 @@ export interface ScheduleEntry {
   countries: string[];
   links: ExternalLinkSeed[];
   legacyCells: string[];
+  episodeCount: number | null;
+  episodes: ScheduleEpisode[];
+}
+
+export interface ScheduleEpisode {
+  id: string;
+  episodeLabel: string;
+  title: string;
+  releaseDate: string;
+  notes: string | null;
+  links: ExternalLinkSeed[];
 }
 
 export interface ManagementSeason {
@@ -164,6 +175,8 @@ export interface ManagementSeason {
   languages: string[];
   countries: string[];
   sourceRow: number;
+  episodeCount: number | null;
+  episodes: ScheduleEpisode[];
 }
 
 export interface ManagementShow {
@@ -236,10 +249,11 @@ export function buildScheduleFromSeed(seed: BlogspotCanonicalSeed): CanonicalSch
 
 export function buildScheduleFromRegistrySeed(seed: CanonicalRegistrySeed): CanonicalSchedule {
   const showsById = new Map(seed.rows.shows.map((show) => [show.id, show]));
+  const episodesBySeason = groupEpisodesBySeason(seed.rows.episodes);
   const entries = seed.rows.seasons
     .map((season) => {
       const show = showsById.get(season.showId);
-      return show == null ? null : toRegistryScheduleEntry(show, season);
+      return show == null ? null : toRegistryScheduleEntry(show, season, episodesBySeason.get(season.id) ?? []);
     })
     .filter((entry): entry is ScheduleEntry => entry != null);
 
@@ -303,6 +317,11 @@ export function pageCountFor(totalItems: number, pageSize: PageSize): number {
   return Math.max(1, Math.ceil(totalItems / pageSize));
 }
 
+export function formatEpisodeCount(episodeCount: number | null, episodes: readonly ScheduleEpisode[]): string {
+  const knownCount = episodeCount ?? (episodes.length > 0 ? episodes.length : null);
+  return knownCount == null ? "Unknown" : String(knownCount);
+}
+
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
@@ -337,6 +356,8 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       languages: entry.languages,
       countries: entry.countries,
       sourceRow: entry.sourceRow,
+      episodeCount: entry.episodeCount,
+      episodes: entry.episodes,
     });
 
     shows.set(id, show);
@@ -408,10 +429,16 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     countries,
     links: entry.show.externalLinks,
     legacyCells: entry.legacy.cells,
+    episodeCount: null,
+    episodes: [],
   };
 }
 
-function toRegistryScheduleEntry(show: CanonicalShowSeedRow, season: CanonicalSeasonSeedRow): ScheduleEntry {
+function toRegistryScheduleEntry(
+  show: CanonicalShowSeedRow,
+  season: CanonicalSeasonSeedRow,
+  episodes: readonly CanonicalEpisodeSeedRow[],
+): ScheduleEntry {
   const organizations = season.organizations.map((organization) => organization.name).filter(Boolean);
   const genreText = show.genreTags.join(", ");
   const languages = normalizeLanguages(show.languages);
@@ -434,6 +461,30 @@ function toRegistryScheduleEntry(show: CanonicalShowSeedRow, season: CanonicalSe
     countries: show.countries,
     links,
     legacyCells: [],
+    episodeCount: season.episodeCount,
+    episodes: episodes.map(toScheduleEpisode),
+  };
+}
+
+function groupEpisodesBySeason(episodes: readonly CanonicalEpisodeSeedRow[]): Map<string, CanonicalEpisodeSeedRow[]> {
+  const bySeason = new Map<string, CanonicalEpisodeSeedRow[]>();
+  for (const episode of episodes) {
+    bySeason.set(episode.seasonId, [...(bySeason.get(episode.seasonId) ?? []), episode]);
+  }
+  for (const [seasonId, seasonEpisodes] of bySeason) {
+    bySeason.set(seasonId, [...seasonEpisodes].sort(compareSeedEpisodes));
+  }
+  return bySeason;
+}
+
+function toScheduleEpisode(episode: CanonicalEpisodeSeedRow): ScheduleEpisode {
+  return {
+    id: episode.id,
+    episodeLabel: episode.episodeLabel ?? "",
+    title: episode.title ?? "",
+    releaseDate: formatWindow(episode.releaseWindow),
+    notes: episode.notes,
+    links: episode.externalLinks,
   };
 }
 
@@ -455,6 +506,22 @@ function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: Schedul
     return left.organizationText.localeCompare(right.organizationText) || left.sourceRow - right.sourceRow;
   }
   return left.sourceRow - right.sourceRow;
+}
+
+function compareSeedEpisodes(left: CanonicalEpisodeSeedRow, right: CanonicalEpisodeSeedRow): number {
+  return (
+    compareNullableStrings(left.sortKey, right.sortKey) ||
+    compareNullableStrings(left.episodeLabel, right.episodeLabel) ||
+    compareNullableStrings(left.title, right.title) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function compareNullableStrings(left: string | null, right: string | null): number {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return left.localeCompare(right);
 }
 
 function uniqueSorted(values: readonly string[]): string[] {

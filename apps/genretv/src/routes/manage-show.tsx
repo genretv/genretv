@@ -2,7 +2,7 @@ import { Anchor, Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } f
 import { useParams } from "@tanstack/react-router";
 
 import { canonicalSchedule } from "../domain/canonical-schedule";
-import { buildManagementShows, findManagementShow, sectionLabels } from "../domain/schedule";
+import { buildManagementShows, findManagementShow, formatEpisodeCount, sectionLabels } from "../domain/schedule";
 
 const shows = buildManagementShows(canonicalSchedule.entries);
 
@@ -113,7 +113,7 @@ export function ManageShowRoute() {
                   </Table.Td>
                   <Table.Td>{season.organizationText}</Table.Td>
                   <Table.Td>{season.genreText}</Table.Td>
-                  <Table.Td>Unknown</Table.Td>
+                  <Table.Td>{formatEpisodeCount(season.episodeCount, season.episodes)}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

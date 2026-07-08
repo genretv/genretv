@@ -21,6 +21,7 @@ import { canonicalSchedule as schedule } from "../domain/canonical-schedule";
 import {
   defaultScheduleViewPreferences,
   filterScheduleEntries,
+  formatEpisodeCount,
   pageCountFor,
   paginateItems,
   pageSizeOptions,
@@ -82,6 +83,14 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
                           Legacy cells: {entry.legacyCells.join(" | ")}
                         </Text>
                       )}
+                      <Text size="xs" c="dimmed">
+                        Episodes: {formatEpisodeCount(entry.episodeCount, entry.episodes)}
+                      </Text>
+                      {entry.episodes.map((episode) => (
+                        <Text key={episode.id} size="xs" c="dimmed">
+                          {[episode.episodeLabel, episode.title, episode.releaseDate].filter(Boolean).join(" · ")}
+                        </Text>
+                      ))}
                     </Stack>
                   </Box>
                 </details>

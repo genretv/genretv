@@ -2,7 +2,7 @@ import { Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } from "@ma
 import { useParams } from "@tanstack/react-router";
 
 import { canonicalSchedule } from "../domain/canonical-schedule";
-import { buildManagementShows, findManagementSeason, sectionLabels } from "../domain/schedule";
+import { buildManagementShows, findManagementSeason, formatEpisodeCount, sectionLabels } from "../domain/schedule";
 
 const shows = buildManagementShows(canonicalSchedule.entries);
 
@@ -28,6 +28,9 @@ export function ManageSeasonRoute() {
 
   const { show, season } = result;
   const status = season.section === "past" ? season.endedReason : sectionLabels[season.section];
+  const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
+  const emptyEpisodeText =
+    season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -94,7 +97,7 @@ export function ManageSeasonRoute() {
           </Table.Tr>
           <Table.Tr>
             <Table.Th>Episodes</Table.Th>
-            <Table.Td>Unknown</Table.Td>
+            <Table.Td>{episodeCount}</Table.Td>
           </Table.Tr>
         </Table.Tbody>
       </Table>
@@ -112,11 +115,24 @@ export function ManageSeasonRoute() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              <Table.Tr>
-                <Table.Td colSpan={4}>
-                  <Text c="dimmed">Episode count unknown</Text>
-                </Table.Td>
-              </Table.Tr>
+              {season.episodes.length > 0 ? (
+                season.episodes.map((episode) => (
+                  <Table.Tr key={episode.id}>
+                    <Table.Td>{episode.episodeLabel || "Unknown"}</Table.Td>
+                    <Table.Td>{episode.title || "Unknown"}</Table.Td>
+                    <Table.Td>{episode.releaseDate || "Unknown"}</Table.Td>
+                    <Table.Td>{episode.notes ?? ""}</Table.Td>
+                  </Table.Tr>
+                ))
+              ) : (
+                <Table.Tr>
+                  <Table.Td colSpan={4}>
+                    <Text c="dimmed">
+                      {season.episodeCount == null ? "Episode count unknown" : emptyEpisodeText}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
             </Table.Tbody>
           </Table>
         </ScrollArea>
