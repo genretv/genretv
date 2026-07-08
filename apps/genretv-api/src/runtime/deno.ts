@@ -1,5 +1,6 @@
 import { createGenretvClaimsResolver } from "../core/auth";
 import { createGenretvSyncHandler, createGenretvWriteHandler } from "../core/handlers";
+import { createDenoGenretvDb } from "./deno-db";
 import { parseAllowedOrigins, requireEnv } from "./env";
 
 interface DenoRuntime {
@@ -22,6 +23,9 @@ export function serveGenretvSync(): void {
 export function createDenoGenretvWriteHandler() {
   const env = readDenoEnv();
   return createGenretvWriteHandler({
+    db: createDenoGenretvDb(
+      requireEnv(env, ["SUPABASE_DB_URL"], "SUPABASE_DB_URL is not set — genretv-write cannot reach Postgres."),
+    ),
     resolveAuthClaims: createGenretvClaimsResolver({
       supabaseUrl: requireEnv(
         env,

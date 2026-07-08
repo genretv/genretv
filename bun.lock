@@ -5,7 +5,7 @@
     "": {
       "name": "genretv",
       "devDependencies": {
-        "@pgxsinkit/server": "0.1.36",
+        "@pgxsinkit/server": "dev",
         "@tanstack/intent": "^0.3.5",
         "@types/node": "26.1.0",
         "@types/react": "19.2.17",
@@ -27,9 +27,9 @@
         "@genretv/domain": "workspace:*",
         "@mantine/core": "9.4.1",
         "@mantine/hooks": "9.4.1",
-        "@pgxsinkit/client": "0.1.36",
-        "@pgxsinkit/contracts": "0.1.36",
-        "@pgxsinkit/react": "0.1.36",
+        "@pgxsinkit/client": "dev",
+        "@pgxsinkit/contracts": "dev",
+        "@pgxsinkit/react": "dev",
         "@supabase/supabase-js": "2.110.0",
         "@tanstack/react-router": "1.170.17",
         "react": "19.2.7",
@@ -45,17 +45,18 @@
       "name": "@genretv/genretv-api",
       "dependencies": {
         "@genretv/domain": "workspace:*",
-        "@pgxsinkit/contracts": "0.1.36",
-        "@pgxsinkit/server": "0.1.36",
+        "@pgxsinkit/contracts": "dev",
+        "@pgxsinkit/server": "dev",
         "drizzle-orm": "1.0.0-rc.4",
         "jose": "6.2.3",
+        "postgres": "3.4.9",
         "zod": "4.4.3",
       },
     },
     "packages/domain": {
       "name": "@genretv/domain",
       "dependencies": {
-        "@pgxsinkit/contracts": "0.1.36",
+        "@pgxsinkit/contracts": "dev",
         "drizzle-orm": "1.0.0-rc.4",
       },
     },
@@ -243,13 +244,13 @@
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.72.0", "", { "os": "win32", "cpu": "x64" }, "sha512-b2eKFD2hX7tIwmo/cyH6TDq8vzWRZ2qNHrzoGntUTmq0h3zQh/uX3eTSHCwI8OB/ADQfJCRelLItK8BsxuucDA=="],
 
-    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.36", "", { "dependencies": { "@electric-sql/client": "^1.5.23", "@electric-sql/experimental": "^6.0.23", "@pgxsinkit/contracts": "0.1.36" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-+/eLGUoFtnLWRkIRdOmmn8SqHF5wqTYTGvk28b+NcN0rJFDy1rhEk2mGolyoLv9tVYbSa+TjFM7pbd28E9O2Ew=="],
+    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.37-dev.1783487618.0de43b0", "https://npm.pkg.github.com/download/@pgxsinkit/client/0.1.37-dev.1783487618.0de43b0/075a34f11e132ebfb674da22e72d4de88b26564c", { "dependencies": { "@electric-sql/client": "^1.5.23", "@electric-sql/experimental": "^6.0.23", "@pgxsinkit/contracts": "0.1.37-dev.1783487618.0de43b0" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-tKV/O88rzGgCn2yqvmpGDak8wDYPUtRj04mLF9DGJofkhPOUTp4aJKy0f4NTIUojpxtMOZ0S+jXSJk0rg8ULfQ=="],
 
-    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.36", "", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-FiWwd+UILUj1LAO3z0tFdGQxEqZi00AU0vgkvkcl6I6aFW8gxDWoL6+d5mkpbHZ6G0FkT+uFQ2VFNp2tJbPq6Q=="],
+    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.37-dev.1783487618.0de43b0", "https://npm.pkg.github.com/download/@pgxsinkit/contracts/0.1.37-dev.1783487618.0de43b0/7eb505f17c21a519134bb7f9bfc3ddbab201a459", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-hWg+2/aDy29UYG/SzMY1iQYjYYKPunwIuA6/Bc+oxdgBRyGIvEGjjXUrrUuJ3ifwIjV0SUg9yA1+ii7rVa5N4Q=="],
 
-    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.36", "", { "dependencies": { "@pgxsinkit/client": "0.1.36", "@pgxsinkit/contracts": "0.1.36" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-nOqzXwQjFIMcNOk3Ed00mZSgexkgaSUnGDFApChcsb4KYtkpEAiVKUufvYnt+o6pCayrB1oH7e/G1aHfYPvLbg=="],
+    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.37-dev.1783487618.0de43b0", "https://npm.pkg.github.com/download/@pgxsinkit/react/0.1.37-dev.1783487618.0de43b0/2097d7e9600d961745fd9d452c08820ff95a82bb", { "dependencies": { "@pgxsinkit/client": "0.1.37-dev.1783487618.0de43b0", "@pgxsinkit/contracts": "0.1.37-dev.1783487618.0de43b0" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-0NU7Fyl8o0iP0sXzaHhCNbtvWI9igr48dOFgnYMPC32ce844Pf13TJ+SLGFYxvWujDRzMXAnc1LB0OxIKSIxSQ=="],
 
-    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.36", "", { "dependencies": { "@pgxsinkit/contracts": "0.1.36" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-OMTNq77SKvmPztlfV/4u1Vr1rSEXDG7ZV76R1ejhNZZDSOKYFHRkTgUZyDSM8W1ZumoSgVd+53qgWknuOOiG2Q=="],
+    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.37-dev.1783487618.0de43b0", "https://npm.pkg.github.com/download/@pgxsinkit/server/0.1.37-dev.1783487618.0de43b0/c28cf95aa2e50f811d441048ff84d34b5825297a", { "dependencies": { "@pgxsinkit/contracts": "0.1.37-dev.1783487618.0de43b0" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-u8PJti5TdcjGwESWr/nWDnY9cdnoSa/UcFiSQvph7D/cgqCyf3YLuy6yEf/O8n0e91JC2AH5Q9sUQsESHziG0g=="],
 
     "@rolldown/binding-android-arm64": ["@rolldown/binding-android-arm64@1.1.4", "", { "os": "android", "cpu": "arm64" }, "sha512-EZLpf/8y7GXkkra90ML47kzik/GMP3EMcE9bPyHmRfxLC6z9+aW5A8poCsoxjrT5GfEcNAAvWwUHjvP1pUQkfw=="],
 
@@ -414,6 +415,8 @@
     "picomatch": ["picomatch@4.0.5", "", {}, "sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A=="],
 
     "postcss": ["postcss@8.5.16", "", { "dependencies": { "nanoid": "^3.3.12", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg=="],
+
+    "postgres": ["postgres@3.4.9", "", {}, "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="],
 
     "react": ["react@19.2.7", "", {}, "sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ=="],
 

@@ -1,38 +1,92 @@
-import { copyFile, mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { builtinModules, createRequire } from "node:module";
+import { join, resolve } from "node:path";
+
+import type { BunPlugin } from "bun";
 
 const root = resolve(import.meta.dir, "../../..");
-const distRoot = resolve(root, "supabase/functions-dist");
+const requireFromApi = createRequire(join(root, "apps/genretv-api/package.json"));
+const sourceRoot = "supabase/functions";
+const distRoot = "supabase/functions-dist";
 
 const functions = [
   {
-    entrypoint: "supabase/functions/genretv-sync/index.ts",
-    outdir: "supabase/functions-dist/genretv-sync",
+    name: "genretv-sync",
   },
   {
-    entrypoint: "supabase/functions/genretv-write/index.ts",
-    outdir: "supabase/functions-dist/genretv-write",
+    name: "genretv-write",
   },
 ] as const;
 
-for (const fn of functions) {
+const externalLibs = ["drizzle-orm", "jose", "postgres", "zod"] as const;
+
+function installedVersion(lib: string): string {
+  const manifestPath = requireFromApi.resolve(`${lib}/package.json`);
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { version?: string };
+  if (typeof manifest.version !== "string" || manifest.version.length === 0) {
+    throw new Error(`Cannot read installed version of '${lib}' from node_modules.`);
+  }
+  return manifest.version;
+}
+
+const npmExternals: Record<string, string> = Object.fromEntries(
+  externalLibs.map((lib) => [lib, `npm:${lib}@${installedVersion(lib)}`]),
+);
+
+const externalsPlugin: BunPlugin = {
+  name: "deno-externals",
+  setup(build) {
+    const externalNames = [...Object.keys(npmExternals), ...builtinModules];
+    build.onResolve({ filter: /.*/ }, (args) => {
+      const base = args.path.replace(/^node:/, "").split("/")[0]!;
+      if (externalNames.includes(base)) return { path: args.path, external: true };
+      return undefined;
+    });
+  },
+};
+
+const builtinSet = new Set(builtinModules);
+
+function rewriteExternals(code: string): string {
+  return code.replace(/(\bfrom\s*|\bimport\s*\(\s*)(["'])([^"']+)\2/g, (match, head, quote, spec) => {
+    const base = spec.replace(/^node:/, "").split("/")[0];
+    if (npmExternals[base]) {
+      const remainder = spec.slice(base.length);
+      return `${head}${quote}${npmExternals[base]}${remainder}${quote}`;
+    }
+    if (builtinSet.has(base) && !spec.startsWith("node:")) {
+      return `${head}${quote}node:${spec}${quote}`;
+    }
+    return match;
+  });
+}
+
+rmSync(resolve(root, distRoot), { recursive: true, force: true });
+
+for (const { name } of functions) {
+  const outdir = resolve(root, distRoot, name);
   const result = await Bun.build({
-    entrypoints: [resolve(root, fn.entrypoint)],
-    outdir: resolve(root, fn.outdir),
-    target: "browser",
+    entrypoints: [resolve(root, sourceRoot, name, "index.ts")],
+    outdir,
+    target: "node",
     format: "esm",
     splitting: false,
     sourcemap: "none",
+    minify: false,
+    plugins: [externalsPlugin],
   });
 
   if (!result.success) {
     for (const log of result.logs) console.error(log);
     process.exit(1);
   }
+
+  const outFile = join(outdir, "index.js");
+  writeFileSync(outFile, rewriteExternals(readFileSync(outFile, "utf8")));
 }
 
-const mainOut = resolve(distRoot, "main/index.ts");
-await mkdir(dirname(mainOut), { recursive: true });
-await copyFile(resolve(root, "supabase/functions/main/index.ts"), mainOut);
+const mainOutDir = resolve(root, distRoot, "main");
+mkdirSync(mainOutDir, { recursive: true });
+copyFileSync(resolve(root, sourceRoot, "main/index.ts"), join(mainOutDir, "index.ts"));
 
 console.log("Built genretv edge functions into supabase/functions-dist");

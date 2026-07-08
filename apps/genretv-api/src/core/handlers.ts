@@ -1,10 +1,13 @@
-import type { JwtClaims } from "@pgxsinkit/contracts";
-import { proxyElectricShapeRequest } from "@pgxsinkit/server";
+import type { PgAsyncDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+
+import type { JwtClaims, RegistryRelations } from "@pgxsinkit/contracts";
+import { createSyncServer, proxyElectricShapeRequest } from "@pgxsinkit/server";
 
 import { genretvSyncRegistry } from "../domain/registry";
 import { routeToMutations } from "./routing";
 
 export type GenretvClaimsResolver = (request: Request) => Promise<JwtClaims | null> | JwtClaims | null;
+export type GenretvDb = PgAsyncDatabase<PgQueryResultHKT, RegistryRelations<typeof genretvSyncRegistry>>;
 export type FetchHandler = (request: Request) => Promise<Response>;
 
 export interface GenretvHandlerOptions {
@@ -12,55 +15,41 @@ export interface GenretvHandlerOptions {
   allowedOrigins: string[];
 }
 
+export interface GenretvWriteHandlerOptions extends GenretvHandlerOptions {
+  db: GenretvDb;
+}
+
 export interface GenretvSyncHandlerOptions extends GenretvHandlerOptions {
   electricUrl: string;
 }
 
-export function createGenretvWriteHandler(options: GenretvHandlerOptions): FetchHandler {
-  return async (request) => {
-    await options.resolveAuthClaims(request);
-    const routed = routeToMutations(request, "genretv-write");
-    return notImplemented("genretv-write", routed, options.allowedOrigins);
-  };
+export function createGenretvWriteHandler(options: GenretvWriteHandlerOptions): FetchHandler {
+  const server = createSyncServer({
+    registry: genretvSyncRegistry,
+    db: options.db,
+    resolveAuthClaims: options.resolveAuthClaims,
+    deployment: {
+      startupVerification: "deploy-time",
+      operationsLog: "disabled",
+    },
+    logTimings: true,
+    allowedOrigins: options.allowedOrigins,
+  });
+
+  return (request) => server.fetch(routeToMutations(request, "genretv-write"));
 }
 
 export function createGenretvSyncHandler(options: GenretvSyncHandlerOptions): FetchHandler {
   return async (request) => {
     const claims = await options.resolveAuthClaims(request);
-    return proxyElectricShapeRequest(request, claims, {
+    const response = await proxyElectricShapeRequest(request, claims, {
       registry: genretvSyncRegistry,
       electricUrl: options.electricUrl,
       cors: { origins: options.allowedOrigins },
       logTimings: true,
     });
+    const headers = new Headers(response.headers);
+    headers.set("cache-control", "no-store");
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   };
-}
-
-function notImplemented(
-  route: string,
-  request: Request,
-  allowedOrigins: readonly string[],
-  extra: Record<string, string> = {},
-): Response {
-  const headers = corsHeaders(request, allowedOrigins);
-  return Response.json(
-    {
-      error: "genretv_registry_not_implemented",
-      route,
-      ...extra,
-    },
-    { status: 501, headers },
-  );
-}
-
-function corsHeaders(request: Request, allowedOrigins: readonly string[]): Headers {
-  const headers = new Headers();
-  const origin = request.headers.get("origin");
-  if (origin != null && allowedOrigins.includes(origin)) {
-    headers.set("access-control-allow-origin", origin);
-    headers.set("vary", "origin");
-  }
-  headers.set("access-control-allow-headers", "authorization, content-type, apikey");
-  headers.set("access-control-allow-methods", "GET, POST, OPTIONS");
-  return headers;
 }

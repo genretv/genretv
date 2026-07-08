@@ -1,0 +1,13 @@
+# GitHub Packages dev-channel opt-in template.
+#
+# Copy to bunfig.toml only when consuming unreleased @pgxsinkit dev builds
+# locally. bunfig.toml is gitignored because it contains a GitHub token.
+#
+# The token needs read:packages. You can prepare one with:
+#   gh auth refresh -s read:packages
+#
+# With this file present, every @pgxsinkit package resolves from GitHub
+# Packages, so package.json specs must use the "dev" dist-tag.
+
+[install.scopes]
+"@pgxsinkit" = { url = "https://npm.pkg.github.com/", token = "ghp_YOUR_READ_PACKAGES_TOKEN" }
