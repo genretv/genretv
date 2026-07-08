@@ -37,6 +37,7 @@ import {
   type ManagementSeasonDraft,
 } from "../features/management/drafts";
 import { canSendCanonicalProposal } from "../features/management/proposals";
+import { sourcePublishedSeasonIdFromLinkedId } from "../features/publishing/linked-imports";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -176,6 +177,19 @@ function EditableSeason({
     [season.id],
     { ready: canEdit && season.id !== newSeasonId },
   );
+  const sourcePublishedSeasonId = sourcePublishedSeasonIdFromLinkedId(season.id);
+  const linkedImportsForSeason = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: listImport.id,
+          sourcePublishedSeasonId: listImport.sourcePublishedSeasonId,
+        })
+        .from(listImport)
+        .where(eq(listImport.sourcePublishedSeasonId, sourcePublishedSeasonId ?? "")),
+    [sourcePublishedSeasonId],
+    { ready: canEdit && sourcePublishedSeasonId != null },
+  );
   const seasonExclusions = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -189,6 +203,8 @@ function EditableSeason({
     { ready: canEdit && season.id !== newSeasonId },
   );
   const existingSeasonExclusion = seasonExclusions.rows[0] ?? null;
+  const isLinkedImportedSeason = sourcePublishedSeasonId != null;
+  const canEditDraft = canEdit && !isLinkedImportedSeason;
   const initialDraft = useMemo(
     () => (personalRow == null ? seasonDraftFromSeason(season) : seasonDraftFromPersonalRow(personalRow)),
     [personalRow, season],
@@ -202,11 +218,21 @@ function EditableSeason({
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
   const canSaveOverlay =
-    canEdit && !personalSeasons.loading && !personalShows.loading && dirty && episodeCountValid && !savingOverlay;
+    canEditDraft &&
+    !personalSeasons.loading &&
+    !personalShows.loading &&
+    dirty &&
+    episodeCountValid &&
+    !savingOverlay;
   const canSubmitProposal =
-    canEdit && canPropose && !personalSeasons.loading && !personalShows.loading && episodeCountValid && !proposalSaving;
+    canEditDraft &&
+    canPropose &&
+    !personalSeasons.loading &&
+    !personalShows.loading &&
+    episodeCountValid &&
+    !proposalSaving;
   const canHideCanonicalSeason =
-    canEdit &&
+    canEditDraft &&
     season.id !== newSeasonId &&
     !personalSeasons.loading &&
     !seasonExclusions.loading &&
@@ -220,6 +246,12 @@ function EditableSeason({
     !personalEpisodesForSeason.loading &&
     !importsForSeason.loading &&
     !personalSeasonSiblings.loading &&
+    !deletingSeason;
+  const canRemoveLinkedImport =
+    canEdit &&
+    isLinkedImportedSeason &&
+    linkedImportsForSeason.rows.length > 0 &&
+    !linkedImportsForSeason.loading &&
     !deletingSeason;
 
   const saveOverlay = async () => {
@@ -377,6 +409,24 @@ function EditableSeason({
     }
   };
 
+  const removeLinkedImport = async () => {
+    setDeletingSeason(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        for (const importRow of linkedImportsForSeason.rows) {
+          tx.tables.list_import.delete({ id: importRow.id });
+        }
+      });
+      void navigate({ to: "/manage" });
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setDeletingSeason(false);
+    }
+  };
+
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
       <Group justify="space-between" align="flex-start">
@@ -399,8 +449,10 @@ function EditableSeason({
         </Group>
       </Group>
 
-      <Alert color={canEdit ? "teal" : "yellow"} variant="light">
-        {canEdit
+      <Alert color={isLinkedImportedSeason ? "blue" : canEdit ? "teal" : "yellow"} variant="light">
+        {isLinkedImportedSeason
+          ? "This season is linked from a published list. Remove the link here, or use Copy on the published list for an editable personal version."
+          : canEdit
           ? "Save a browser-local draft while editing, or save this season-level metadata to your personal overlay."
           : "Sign in to create a browser-local management draft."}
       </Alert>
@@ -414,7 +466,10 @@ function EditableSeason({
           Could not load your personal overlay for this show: {personalShows.error.message}
         </Alert>
       )}
-      {(personalEpisodesForSeason.error ?? importsForSeason.error ?? personalSeasonSiblings.error) != null && (
+      {(personalEpisodesForSeason.error ??
+        importsForSeason.error ??
+        linkedImportsForSeason.error ??
+        personalSeasonSiblings.error) != null && (
         <Alert color="red" variant="light">
           Could not load the personal rows needed for deletion.
         </Alert>
@@ -450,13 +505,13 @@ function EditableSeason({
           <TextInput
             label="Season"
             value={draft.seasonLabel}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, seasonLabel: event.currentTarget.value }))}
           />
           <Select
             label="Section"
             value={draft.section}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             data={[
               { value: "current", label: sectionLabels.current },
               { value: "upcoming", label: sectionLabels.upcoming },
@@ -472,7 +527,7 @@ function EditableSeason({
           <TextInput
             label="Episodes"
             value={draft.episodeCount}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             error={!episodeCountValid ? "Use a whole number or leave blank" : null}
             onChange={(event) => setDraft((current) => ({ ...current, episodeCount: event.currentTarget.value }))}
           />
@@ -481,19 +536,19 @@ function EditableSeason({
           <TextInput
             label="When"
             value={draft.timing}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, timing: event.currentTarget.value }))}
           />
           <TextInput
             label="Release pattern"
             value={draft.releasePattern}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, releasePattern: event.currentTarget.value }))}
           />
           <TextInput
             label="Finished reason"
             value={draft.endedReason}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, endedReason: event.currentTarget.value }))}
           />
         </SimpleGrid>
@@ -502,7 +557,7 @@ function EditableSeason({
           autosize
           minRows={4}
           value={draft.notes}
-          disabled={!canEdit}
+          disabled={!canEditDraft}
           onChange={(event) => setDraft((current) => ({ ...current, notes: event.currentTarget.value }))}
         />
         <Group justify="space-between">
@@ -519,10 +574,10 @@ function EditableSeason({
             ))}
           </Group>
           <Group>
-            <Button variant="default" disabled={!canEdit || !dirty} onClick={discardLocalDraft}>
+            <Button variant="default" disabled={!canEditDraft || !dirty} onClick={discardLocalDraft}>
               Discard
             </Button>
-            <Button variant="light" disabled={!canEdit || !dirty || !episodeCountValid} onClick={saveLocalDraft}>
+            <Button variant="light" disabled={!canEditDraft || !dirty || !episodeCountValid} onClick={saveLocalDraft}>
               Save draft
             </Button>
             <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
@@ -545,6 +600,15 @@ function EditableSeason({
               onClick={() => void deletePersonalSeason()}
             >
               Delete personal season
+            </Button>
+            <Button
+              color="red"
+              variant="outline"
+              disabled={!canRemoveLinkedImport}
+              loading={deletingSeason}
+              onClick={() => void removeLinkedImport()}
+            >
+              Remove link
             </Button>
             {canPropose && (
               <Button
@@ -571,7 +635,7 @@ function EditableSeason({
           <Button
             size="xs"
             variant="light"
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onClick={() =>
               void navigate({
                 to: "/manage/show/$showId/season/$seasonId/episode/$episodeId",

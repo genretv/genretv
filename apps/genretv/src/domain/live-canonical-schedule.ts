@@ -3,6 +3,11 @@ import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
 import { useMemo } from "react";
 
 import { useAuth } from "../auth/auth";
+import {
+  linkedPublishedEpisodeId,
+  linkedPublishedSeasonId,
+  linkedPublishedShowId,
+} from "../features/publishing/linked-imports";
 import { canonicalSchedule as fallbackSchedule } from "./canonical-schedule";
 import {
   buildScheduleFromRegistryRows,
@@ -599,8 +604,8 @@ export function applyLinkedPublishedImports(
     const sourceShow = publishedShowsById.get(sourceSeason.publishedShowId);
     if (sourceShow == null) continue;
 
-    const localShowId = linkedShowId(sourceShow.id);
-    const localSeasonId = linkedSeasonId(sourceSeason.id);
+    const localShowId = linkedPublishedShowId(sourceShow.id);
+    const localSeasonId = linkedPublishedSeasonId(sourceSeason.id);
     if (!localShowIds.has(localShowId)) {
       shows.push(publishedShowToSeedRow(sourceShow, localShowId));
       localShowIds.add(localShowId);
@@ -610,7 +615,7 @@ export function applyLinkedPublishedImports(
       localSeasonIds.add(localSeasonId);
     }
     for (const sourceEpisode of publishedEpisodesBySeason.get(sourceSeason.id) ?? []) {
-      const localEpisodeId = linkedEpisodeId(sourceEpisode.id);
+      const localEpisodeId = linkedPublishedEpisodeId(sourceEpisode.id);
       if (!localEpisodeIds.has(localEpisodeId)) {
         episodes.push(publishedEpisodeToSeedRow(sourceEpisode, localSeasonId, localEpisodeId));
         localEpisodeIds.add(localEpisodeId);
@@ -887,18 +892,6 @@ function publishedEpisodeToSeedRow(
     externalLinks: externalLinks(row.externalLinks),
     notes: row.notes,
   };
-}
-
-function linkedShowId(sourceId: string): string {
-  return `published-show:${sourceId}`;
-}
-
-function linkedSeasonId(sourceId: string): string {
-  return `published-season:${sourceId}`;
-}
-
-function linkedEpisodeId(sourceId: string): string {
-  return `published-episode:${sourceId}`;
 }
 
 function unique(values: string[]): string[] {

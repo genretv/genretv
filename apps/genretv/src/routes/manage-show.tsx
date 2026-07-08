@@ -29,6 +29,7 @@ import {
   useManagementDraft,
 } from "../features/management/drafts";
 import { canSendCanonicalProposal } from "../features/management/proposals";
+import { isLinkedPublishedShowId } from "../features/publishing/linked-imports";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -173,6 +174,8 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     { ready: canEdit && show.id !== newShowId },
   );
   const existingShowExclusion = showExclusions.rows[0] ?? null;
+  const isLinkedImportedShow = isLinkedPublishedShowId(show.id);
+  const canEditDraft = canEdit && !isLinkedImportedShow;
   const initialDraft = useMemo(
     () => (personalRow == null ? showDraftFromShow(show) : showDraftFromPersonalRow(personalRow)),
     [personalRow, show],
@@ -184,10 +187,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const draftLanguages = orderedTextToList(draft.languagesText);
   const draftCountries = orderedTextToList(draft.countriesText);
   const draftGenres = orderedTextToList(draft.genresText);
-  const canSaveOverlay = canEdit && !personalShows.loading && dirty && !savingOverlay;
-  const canSubmitProposal = canEdit && canPropose && !personalShows.loading && !proposalSaving;
+  const canSaveOverlay = canEditDraft && !personalShows.loading && dirty && !savingOverlay;
+  const canSubmitProposal = canEditDraft && canPropose && !personalShows.loading && !proposalSaving;
   const canDeletePersonalShow =
-    canEdit &&
+    canEditDraft &&
     personalRow != null &&
     !personalShows.loading &&
     !personalSeasonsForShow.loading &&
@@ -198,7 +201,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     !savingOverlay &&
     !deletingShow;
   const canHideCanonicalShow =
-    canEdit &&
+    canEditDraft &&
     show.id !== newShowId &&
     existingShowExclusion == null &&
     (personalRow == null || personalRow.canonicalShowId != null) &&
@@ -365,7 +368,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         <Group>
           <Button
             variant="light"
-            disabled={!canEdit || show.id === newShowId}
+            disabled={!canEditDraft || show.id === newShowId}
             onClick={() =>
               void navigate({
                 to: "/manage/show/$showId/season/$seasonId",
@@ -381,8 +384,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         </Group>
       </Group>
 
-      <Alert color={canEdit ? "teal" : "yellow"} variant="light">
-        {canEdit
+      <Alert color={isLinkedImportedShow ? "blue" : canEdit ? "teal" : "yellow"} variant="light">
+        {isLinkedImportedShow
+          ? "This show is linked from a published list. Use Copy on the published list if you want an editable personal version."
+          : canEdit
           ? "Save a browser-local draft while editing, or save this show-level metadata to your personal overlay."
           : "Sign in to create a browser-local management draft."}
       </Alert>
@@ -427,13 +432,13 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           <TextInput
             label="Display title"
             value={draft.title}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, title: event.currentTarget.value }))}
           />
           <TextInput
             label="Original title"
             value={draft.originalTitle}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, originalTitle: event.currentTarget.value }))}
           />
         </SimpleGrid>
@@ -443,7 +448,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             autosize
             minRows={3}
             value={draft.languagesText}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, languagesText: event.currentTarget.value }))}
           />
           <Textarea
@@ -451,7 +456,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             autosize
             minRows={3}
             value={draft.countriesText}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, countriesText: event.currentTarget.value }))}
           />
           <Textarea
@@ -459,7 +464,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             autosize
             minRows={3}
             value={draft.genresText}
-            disabled={!canEdit}
+            disabled={!canEditDraft}
             onChange={(event) => setDraft((current) => ({ ...current, genresText: event.currentTarget.value }))}
           />
         </SimpleGrid>
@@ -468,7 +473,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           autosize
           minRows={4}
           value={draft.notes}
-          disabled={!canEdit}
+          disabled={!canEditDraft}
           onChange={(event) => setDraft((current) => ({ ...current, notes: event.currentTarget.value }))}
         />
         <Group justify="space-between" align="center">
@@ -490,10 +495,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             ))}
           </Group>
           <Group>
-            <Button variant="default" disabled={!canEdit || !dirty} onClick={discardLocalDraft}>
+            <Button variant="default" disabled={!canEditDraft || !dirty} onClick={discardLocalDraft}>
               Discard
             </Button>
-            <Button variant="light" disabled={!canEdit || !dirty} onClick={saveLocalDraft}>
+            <Button variant="light" disabled={!canEditDraft || !dirty} onClick={saveLocalDraft}>
               Save draft
             </Button>
             <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
