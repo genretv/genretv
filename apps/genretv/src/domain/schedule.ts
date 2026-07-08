@@ -1,6 +1,7 @@
 export type ScheduleSection = "current" | "upcoming" | "past";
 export type EndingFilter = "all" | "canceled" | "finished" | "unknown";
 export type ScheduleSort = "source" | "title" | "organization";
+export type ManagementSort = "title" | "seasonCount" | "organization";
 export type PageSize = (typeof pageSizeOptions)[number];
 
 export const pageSizeOptions = [20, 50, 100] as const;
@@ -234,6 +235,15 @@ export interface ScheduleViewPreferences {
   pageSize: PageSize;
 }
 
+export interface ManagementViewPreferences {
+  query: string;
+  organization: string;
+  languages: string[];
+  countries: string[];
+  sort: ManagementSort;
+  pageSize: PageSize;
+}
+
 export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
   section: "current",
   query: "",
@@ -242,6 +252,15 @@ export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
   organization: "all",
   ending: "all",
   sort: "source",
+  pageSize: defaultPageSize,
+};
+
+export const defaultManagementViewPreferences: ManagementViewPreferences = {
+  query: "",
+  organization: "all",
+  languages: [],
+  countries: [],
+  sort: "title",
   pageSize: defaultPageSize,
 };
 
@@ -421,16 +440,13 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
 
 export function filterManagementShows(
   shows: readonly ManagementShow[],
-  query: string,
-  organization: string,
-  languages: readonly string[],
-  countries: readonly string[],
+  preferences: ManagementViewPreferences,
 ): ManagementShow[] {
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  return shows.filter((show) => {
-    if (organization !== "all" && !show.organizations.includes(organization)) return false;
-    if (!hasAnySelected(show.languages, languages)) return false;
-    if (!hasAnySelected(show.countries, countries)) return false;
+  const normalizedQuery = preferences.query.trim().toLocaleLowerCase();
+  const filtered = shows.filter((show) => {
+    if (preferences.organization !== "all" && !show.organizations.includes(preferences.organization)) return false;
+    if (!hasAnySelected(show.languages, preferences.languages)) return false;
+    if (!hasAnySelected(show.countries, preferences.countries)) return false;
     if (normalizedQuery === "") return true;
     return [
       show.title,
@@ -443,6 +459,7 @@ export function filterManagementShows(
       .toLocaleLowerCase()
       .includes(normalizedQuery);
   });
+  return [...filtered].sort((left, right) => compareManagementShows(left, right, preferences.sort));
 }
 
 export function findManagementShow(shows: readonly ManagementShow[], showId: string): ManagementShow | null {
@@ -584,6 +601,18 @@ function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: Schedul
     return left.organizationText.localeCompare(right.organizationText) || left.sourceRow - right.sourceRow;
   }
   return left.sourceRow - right.sourceRow;
+}
+
+function compareManagementShows(left: ManagementShow, right: ManagementShow, sort: ManagementSort): number {
+  if (sort === "seasonCount")
+    return right.seasons.length - left.seasons.length || left.title.localeCompare(right.title);
+  if (sort === "organization") {
+    return (
+      left.organizations.join(", ").localeCompare(right.organizations.join(", ")) ||
+      left.title.localeCompare(right.title)
+    );
+  }
+  return left.title.localeCompare(right.title);
 }
 
 function compareSeedEpisodes(left: CanonicalEpisodeSeedRow, right: CanonicalEpisodeSeedRow): number {

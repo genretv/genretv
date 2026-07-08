@@ -4,6 +4,7 @@ import {
   buildManagementShows,
   buildScheduleFromRegistryRows,
   buildScheduleFromRegistrySeed,
+  defaultManagementViewPreferences,
   defaultScheduleViewPreferences,
   filterManagementShows,
   findManagementShow,
@@ -227,7 +228,20 @@ describe("schedule read model", () => {
         seasonLabel: "S1",
       },
     ]);
-    expect(filterManagementShows(shows, "super", "Netflix", ["en"], []).map((show) => show.id)).toEqual(["show-c"]);
+    expect(
+      filterManagementShows(shows, {
+        ...defaultManagementViewPreferences,
+        query: "super",
+        organization: "Netflix",
+        languages: ["en"],
+      }).map((show) => show.id),
+    ).toEqual(["show-c"]);
+    expect(
+      filterManagementShows(shows, {
+        ...defaultManagementViewPreferences,
+        sort: "seasonCount",
+      }).map((show) => show.id),
+    ).toEqual(["show-a", "show-b", "show-c"]);
   });
 
   test("finds a management season by show and season id", () => {

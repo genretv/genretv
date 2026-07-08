@@ -19,32 +19,36 @@ import { CheckboxFilter } from "../components/checkbox-filter";
 import { useManagementShows } from "../domain/live-management-shows";
 import {
   defaultPageSize,
+  defaultManagementViewPreferences,
   filterManagementShows,
   pageCountFor,
   paginateItems,
   pageSizeOptions,
   scheduleFilterOptions,
+  type ManagementSort,
+  type ManagementViewPreferences,
   type PageSize,
 } from "../domain/schedule";
+
+const storageKey = "genretv.management.view.v1";
 
 export function ManageRoute() {
   const navigate = useNavigate();
   const { schedule, shows } = useManagementShows();
   const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), [schedule.entries]);
-  const [query, setQuery] = useState("");
-  const [organization, setOrganization] = useState("all");
-  const [languages, setLanguages] = useState<string[]>([]);
-  const [countries, setCountries] = useState<string[]>([]);
-  const [pageSize, setPageSize] = useState<PageSize>(defaultPageSize);
+  const [preferences, setPreferences] = useStoredManagementViewPreferences();
   const [page, setPage] = useState(1);
-  const visibleShows = useMemo(
-    () => filterManagementShows(shows, query, organization, languages, countries),
-    [query, organization, languages, countries, shows],
+  const visibleShows = useMemo(() => filterManagementShows(shows, preferences), [preferences, shows]);
+  const totalPages = pageCountFor(visibleShows.length, preferences.pageSize);
+  const pageShows = useMemo(
+    () => paginateItems(visibleShows, page, preferences.pageSize),
+    [page, preferences.pageSize, visibleShows],
   );
-  const totalPages = pageCountFor(visibleShows.length, pageSize);
-  const pageShows = useMemo(() => paginateItems(visibleShows, page, pageSize), [page, pageSize, visibleShows]);
 
-  const resetToFirstPage = () => setPage(1);
+  const updatePreferences = (patch: Partial<ManagementViewPreferences>) => {
+    setPage(1);
+    setPreferences((current) => ({ ...current, ...patch }));
+  };
 
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
@@ -73,42 +77,40 @@ export function ManageRoute() {
         <TextInput
           className="schedule-search"
           label="Search"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.currentTarget.value);
-            resetToFirstPage();
-          }}
+          value={preferences.query}
+          onChange={(event) => updatePreferences({ query: event.currentTarget.value })}
         />
         <CheckboxFilter
           label="Language"
           options={filterOptions.languages}
-          selected={languages}
-          onChange={(selected) => {
-            setLanguages(selected);
-            resetToFirstPage();
-          }}
+          selected={preferences.languages}
+          onChange={(languages) => updatePreferences({ languages })}
         />
         <CheckboxFilter
           label="Country"
           options={filterOptions.countries}
-          selected={countries}
-          onChange={(selected) => {
-            setCountries(selected);
-            resetToFirstPage();
-          }}
+          selected={preferences.countries}
+          onChange={(countries) => updatePreferences({ countries })}
         />
         <Select
           label="Source"
-          value={organization}
+          value={preferences.organization}
           searchable
           data={[
             { value: "all", label: "All sources" },
             ...filterOptions.organizations.map((value) => ({ value, label: value })),
           ]}
-          onChange={(value) => {
-            setOrganization(value ?? "all");
-            resetToFirstPage();
-          }}
+          onChange={(value) => updatePreferences({ organization: value ?? "all" })}
+        />
+        <Select
+          label="Sort"
+          value={preferences.sort}
+          data={[
+            { value: "title", label: "Title" },
+            { value: "seasonCount", label: "Seasons" },
+            { value: "organization", label: "Source" },
+          ]}
+          onChange={(value) => updatePreferences({ sort: parseManagementSort(value) })}
         />
       </Group>
 
@@ -163,18 +165,56 @@ export function ManageRoute() {
           <Select
             className="page-size-select"
             label="Rows"
-            value={String(pageSize)}
+            value={String(preferences.pageSize)}
             data={pageSizeOptions.map((size) => ({ value: String(size), label: String(size) }))}
-            onChange={(value) => {
-              setPageSize(parsePageSize(value));
-              resetToFirstPage();
-            }}
+            onChange={(value) => updatePreferences({ pageSize: parsePageSize(value) })}
           />
           <Pagination value={page} total={totalPages} onChange={setPage} />
         </Group>
       </Group>
     </Stack>
   );
+}
+
+function useStoredManagementViewPreferences() {
+  const [preferences, setPreferences] = useState<ManagementViewPreferences>(readStoredPreferences);
+
+  useEffect(() => {
+    window.localStorage.setItem(storageKey, JSON.stringify(preferences));
+  }, [preferences]);
+
+  return [preferences, setPreferences] as const;
+}
+
+function readStoredPreferences(): ManagementViewPreferences {
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (raw == null) return defaultManagementViewPreferences;
+    const parsed = JSON.parse(raw) as Partial<ManagementViewPreferences> & { language?: unknown };
+    return {
+      query: typeof parsed.query === "string" ? parsed.query : defaultManagementViewPreferences.query,
+      organization:
+        typeof parsed.organization === "string" ? parsed.organization : defaultManagementViewPreferences.organization,
+      languages: parseStringArray(parsed.languages, parsed.language),
+      countries: parseStringArray(parsed.countries),
+      sort: parseManagementSort(parsed.sort),
+      pageSize: parsePageSize(parsed.pageSize),
+    };
+  } catch {
+    return defaultManagementViewPreferences;
+  }
+}
+
+function parseManagementSort(value: unknown): ManagementSort {
+  return value === "title" || value === "seasonCount" || value === "organization"
+    ? value
+    : defaultManagementViewPreferences.sort;
+}
+
+function parseStringArray(value: unknown, legacySingleValue?: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  if (typeof legacySingleValue === "string" && legacySingleValue !== "all") return [legacySingleValue];
+  return [];
 }
 
 function parsePageSize(value: unknown): PageSize {
