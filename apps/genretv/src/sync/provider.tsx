@@ -8,6 +8,7 @@ import type { AuthTokenSnapshot } from "@pgxsinkit/client";
 import { syncDebug } from "@pgxsinkit/client";
 import type { SyncRuntimeStatus } from "@pgxsinkit/contracts";
 
+import { LoadingSplash } from "../components/loading-splash";
 import { supabase } from "../lib/supabase";
 import { getGenretvWorkerPort } from "./worker-port";
 
@@ -76,6 +77,7 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
     return (
       <Center h="100vh">
         <Stack className="loading-panel" align="center" gap="xs">
+          <LoadingSplash />
           <Loader />
           <Text c="dimmed" size="sm">
             Starting local database and canonical sync…

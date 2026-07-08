@@ -5,6 +5,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 
 import { AuthProvider, useAuth } from "./auth/auth";
+import { LoadingSplash } from "./components/loading-splash";
 import { router } from "./router";
 import { GenretvSyncProvider } from "./sync/provider";
 import { theme } from "./theme";
@@ -19,6 +20,7 @@ function AppRoot() {
     return (
       <Center h="100vh">
         <Stack className="loading-panel" align="center" gap="xs">
+          <LoadingSplash />
           <Loader />
           <Text size="sm">Checking session...</Text>
         </Stack>
