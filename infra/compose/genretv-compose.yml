@@ -1,0 +1,171 @@
+name: genretv-local
+
+services:
+  db:
+    image: docker.io/supabase/postgres:17.6.1.136
+    container_name: genretv-db
+    volumes:
+      - ./genretv/db-init/99-auth-role-password.sql:/docker-entrypoint-initdb.d/init-scripts/99-auth-role-password.sql:ro
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      JWT_EXP: ${JWT_EXPIRY}
+    ports:
+      - "54322:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  schema-seed:
+    image: docker.io/supabase/postgres:17.6.1.136
+    container_name: genretv-schema-seed
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./genretv/db-seed:/db-seed:ro
+      - ../seeds/canonical-registry.sql:/db-seed/100-canonical-registry.sql:ro
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command:
+      - bash
+      - -lc
+      - |
+        psql "postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable" \
+          -v ON_ERROR_STOP=1 \
+          -f /db-seed/001-canonical-schema.sql \
+          -f /db-seed/100-canonical-registry.sql
+    restart: "no"
+
+  auth:
+    image: docker.io/supabase/gotrue:v2.192.0
+    container_name: genretv-auth
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: ${GENRETV_API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GOTRUE_SITE_URL: ${GENRETV_SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_KEYS: ${GOTRUE_JWT_KEYS}
+      GOTRUE_JWT_ISSUER: ${GENRETV_API_EXTERNAL_URL}/auth/v1
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+    ports:
+      - "54334:9999"
+
+  meta:
+    image: docker.io/supabase/postgres-meta:v0.96.6
+    container_name: genretv-meta
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: "8080"
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: "5432"
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+  studio:
+    image: docker.io/supabase/studio:2026.06.03-sha-0bca601
+    container_name: genretv-studio
+    depends_on:
+      - meta
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEFAULT_ORGANIZATION_NAME: genretv
+      DEFAULT_PROJECT_NAME: genretv-local
+      SUPABASE_URL: http://envoy:8000
+      SUPABASE_PUBLIC_URL: ${GENRETV_API_EXTERNAL_URL}
+      SUPABASE_ANON_KEY: ${GENRETV_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_KEY: ${GENRETV_SECRET_KEY}
+    ports:
+      - "54333:3000"
+
+  functions:
+    image: docker.io/supabase/edge-runtime:v1.74.0
+    container_name: genretv-functions
+    depends_on:
+      db:
+        condition: service_healthy
+      schema-seed:
+        condition: service_completed_successfully
+    command: ["start", "--main-service", "/home/deno/functions/main"]
+    volumes:
+      - ../../supabase/functions-dist:/home/deno/functions:ro
+    environment:
+      VERIFY_JWT: "false"
+      SUPABASE_URL: http://envoy:8000
+      SUPABASE_ANON_KEY: ${GENRETV_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${GENRETV_SECRET_KEY}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      ELECTRIC_SHAPE_URL: http://electric:3000/v1/shape
+      GENRETV_ALLOWED_ORIGINS: ${GENRETV_ALLOWED_ORIGINS}
+      EDGE_WORKER_TIMEOUT_MS: "600000"
+
+  electric:
+    image: docker.io/electricsql/electric:1.7.6
+    container_name: genretv-electric
+    depends_on:
+      db:
+        condition: service_healthy
+      schema-seed:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      ELECTRIC_INSECURE: "true"
+      ELECTRIC_FEATURE_FLAGS: allow_subqueries,tagged_subqueries
+    ports:
+      - "54330:3000"
+
+  envoy:
+    image: docker.io/envoyproxy/envoy:v1.37.2
+    container_name: genretv-envoy
+    depends_on:
+      - auth
+      - functions
+    volumes:
+      - ./genretv/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "54331:8000"
+
+  caddy:
+    image: docker.io/caddy:2.11.4-alpine
+    container_name: genretv-caddy
+    depends_on:
+      - envoy
+    volumes:
+      - ./genretv/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+    ports:
+      - "54343:54343/tcp"
+      - "54343:54343/udp"
+
+  user-seed:
+    image: docker.io/curlimages/curl:8.11.1
+    container_name: genretv-user-seed
+    depends_on:
+      - envoy
+    volumes:
+      - ./genretv/seed-users.sh:/seed-users.sh:ro
+    environment:
+      GENRETV_INTERNAL_API_URL: http://envoy:8000
+      GENRETV_SECRET_KEY: ${GENRETV_SECRET_KEY}
+      GENRETV_LOCAL_USER_PASSWORD: ${GENRETV_LOCAL_USER_PASSWORD:-genretv-local-password}
+    entrypoint: ["sh", "/seed-users.sh"]
+    restart: "no"

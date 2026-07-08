@@ -1,0 +1,13 @@
+{
+	servers {
+		protocols h1 h2 h3
+	}
+	auto_https off
+}
+
+:54343 {
+	tls /certs/localhost.pem /certs/localhost-key.pem
+	reverse_proxy envoy:8000 {
+		flush_interval -1
+	}
+}
