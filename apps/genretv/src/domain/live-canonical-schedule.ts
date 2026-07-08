@@ -1,5 +1,6 @@
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
+import { inArray } from "drizzle-orm";
 import { useMemo } from "react";
 
 import { useAuth } from "../auth/auth";
@@ -191,24 +192,16 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     [],
     { ready: personalReady },
   );
-  const publishedShows = useLiveDrizzleRows(
-    (client) =>
-      client.drizzle
-        .select({
-          id: publishedShow.id,
-          publicationStatus: publishedShow.publicationStatus,
-          displayTitle: publishedShow.displayTitle,
-          originalTitle: publishedShow.originalTitle,
-          languages: publishedShow.languages,
-          countries: publishedShow.countries,
-          genreTags: publishedShow.genreTags,
-          externalLinks: publishedShow.externalLinks,
-          notes: publishedShow.notes,
-        })
-        .from(publishedShow),
-    [],
-    { ready: personalReady },
+  const linkedPublishedSeasonIds = useMemo(
+    () =>
+      unique(
+        listImports.rows.flatMap((row) =>
+          row.importMode === "linked" && row.sourcePublishedSeasonId != null ? [row.sourcePublishedSeasonId] : [],
+        ),
+      ),
+    [listImports.rows],
   );
+  const linkedPublishedSeasonIdsKey = linkedPublishedSeasonIds.join("\0");
   const publishedSeasons = useLiveDrizzleRows(
     (client) =>
       client.drizzle
@@ -232,9 +225,34 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           externalLinks: publishedSeason.externalLinks,
           notes: publishedSeason.notes,
         })
-        .from(publishedSeason),
-    [],
-    { ready: personalReady },
+        .from(publishedSeason)
+        .where(inArray(publishedSeason.id, linkedPublishedSeasonIds)),
+    [linkedPublishedSeasonIdsKey],
+    { ready: personalReady && linkedPublishedSeasonIds.length > 0 },
+  );
+  const linkedPublishedShowIds = useMemo(
+    () => unique(publishedSeasons.rows.map((season) => season.publishedShowId)),
+    [publishedSeasons.rows],
+  );
+  const linkedPublishedShowIdsKey = linkedPublishedShowIds.join("\0");
+  const publishedShows = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          id: publishedShow.id,
+          publicationStatus: publishedShow.publicationStatus,
+          displayTitle: publishedShow.displayTitle,
+          originalTitle: publishedShow.originalTitle,
+          languages: publishedShow.languages,
+          countries: publishedShow.countries,
+          genreTags: publishedShow.genreTags,
+          externalLinks: publishedShow.externalLinks,
+          notes: publishedShow.notes,
+        })
+        .from(publishedShow)
+        .where(inArray(publishedShow.id, linkedPublishedShowIds)),
+    [linkedPublishedShowIdsKey],
+    { ready: personalReady && linkedPublishedShowIds.length > 0 },
   );
   const publishedEpisodes = useLiveDrizzleRows(
     (client) =>
@@ -250,9 +268,10 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           externalLinks: publishedEpisode.externalLinks,
           notes: publishedEpisode.notes,
         })
-        .from(publishedEpisode),
-    [],
-    { ready: personalReady },
+        .from(publishedEpisode)
+        .where(inArray(publishedEpisode.publishedSeasonId, linkedPublishedSeasonIds)),
+    [linkedPublishedSeasonIdsKey],
+    { ready: personalReady && linkedPublishedSeasonIds.length > 0 },
   );
 
   const usingFallback = shows.rows.length === 0 || seasons.rows.length === 0;
