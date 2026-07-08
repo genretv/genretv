@@ -19,6 +19,10 @@ import { useMemo, useState } from "react";
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import {
+  unreadNotificationIdsForCanonicalProposal,
+  unreadNotificationIdsForPublishApplication,
+} from "../features/management/notifications";
+import {
   canPublishList,
   hasApprovedPublishApplication,
   hasOpenPublishApplication,
@@ -231,11 +235,15 @@ export function PublishingRoute() {
   };
 
   const updateApplicationStatus = async (id: string, status: "approved" | "rejected" | "closed") => {
+    const notificationIds = unreadNotificationIdsForPublishApplication(notifications.rows, id);
     setSaving(true);
     setActionError(null);
     try {
       await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.publish_application.update({ id }, { status });
+        for (const notificationId of notificationIds) {
+          tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
+        }
       });
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -245,11 +253,15 @@ export function PublishingRoute() {
   };
 
   const updateProposalStatus = async (id: string, status: "approved" | "rejected" | "closed") => {
+    const notificationIds = unreadNotificationIdsForCanonicalProposal(notifications.rows, id);
     setSaving(true);
     setActionError(null);
     try {
       await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.canonical_proposal.update({ id }, { status });
+        for (const notificationId of notificationIds) {
+          tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
+        }
       });
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
