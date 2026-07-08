@@ -1,5 +1,5 @@
-import seedJson from "../../seeds/blogspot-canonical.seed.json";
+import seedJson from "../../seeds/canonical-registry.seed.json";
 
-import { buildScheduleFromSeed, type BlogspotCanonicalSeed } from "./schedule";
+import { buildScheduleFromRegistrySeed, type CanonicalRegistrySeed } from "./schedule";
 
-export const canonicalSchedule = buildScheduleFromSeed(seedJson as unknown as BlogspotCanonicalSeed);
+export const canonicalSchedule = buildScheduleFromRegistrySeed(seedJson as unknown as CanonicalRegistrySeed);

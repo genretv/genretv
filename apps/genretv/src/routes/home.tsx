@@ -77,9 +77,11 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
                           ))}
                         </Group>
                       )}
-                      <Text size="xs" c="dimmed">
-                        Legacy cells: {entry.legacyCells.join(" | ")}
-                      </Text>
+                      {entry.legacyCells.length > 0 && (
+                        <Text size="xs" c="dimmed">
+                          Legacy cells: {entry.legacyCells.join(" | ")}
+                        </Text>
+                      )}
                     </Stack>
                   </Box>
                 </details>

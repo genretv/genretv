@@ -71,8 +71,71 @@ export interface BlogspotCanonicalSeed {
   entries: BlogspotEntrySeed[];
 }
 
+export interface CanonicalShowSeedRow {
+  id: string;
+  displayTitle: string;
+  originalTitle: string | null;
+  languages: string[];
+  countries: string[];
+  genreTags: string[];
+  externalLinks: ExternalLinkSeed[];
+  notes: string | null;
+}
+
+export interface CanonicalSeasonSeedRow {
+  id: string;
+  showId: string;
+  section: ScheduleSection;
+  seasonLabel: string;
+  timing: string;
+  endedReason: string;
+  releasePattern: string | null;
+  releasePrecision: string;
+  dateConfidence: string;
+  releaseWindow: ReleaseWindowSeed | null;
+  finaleWindow: ReleaseWindowSeed | null;
+  sortKey: string | null;
+  episodeCount: number | null;
+  sourceRow: number;
+  organizations: Array<{ name: string; role: string; externalLinks: ExternalLinkSeed[] }>;
+  externalLinks: ExternalLinkSeed[];
+  notes: string | null;
+}
+
+export interface CanonicalEpisodeSeedRow {
+  id: string;
+  seasonId: string;
+  episodeLabel: string | null;
+  title: string | null;
+  releaseWindow: ReleaseWindowSeed | null;
+  sortKey: string | null;
+  externalLinks: ExternalLinkSeed[];
+  notes: string | null;
+}
+
+export interface CanonicalRegistrySeed {
+  schemaVersion: 1;
+  generatedAt: string | null;
+  source: {
+    pageTitle?: string;
+    updatedLabel?: string;
+    url?: string;
+  } | null;
+  summary: {
+    shows: number;
+    seasons: number;
+    episodes: number;
+  };
+  rows: {
+    shows: CanonicalShowSeedRow[];
+    seasons: CanonicalSeasonSeedRow[];
+    episodes: CanonicalEpisodeSeedRow[];
+  };
+}
+
 export interface ScheduleEntry {
   id: string;
+  showId: string;
   sourceRow: number;
   section: ScheduleSection;
   title: string;
@@ -171,6 +234,25 @@ export function buildScheduleFromSeed(seed: BlogspotCanonicalSeed): CanonicalSch
   };
 }
 
+export function buildScheduleFromRegistrySeed(seed: CanonicalRegistrySeed): CanonicalSchedule {
+  const showsById = new Map(seed.rows.shows.map((show) => [show.id, show]));
+  const entries = seed.rows.seasons
+    .map((season) => {
+      const show = showsById.get(season.showId);
+      return show == null ? null : toRegistryScheduleEntry(show, season);
+    })
+    .filter((entry): entry is ScheduleEntry => entry != null);
+
+  return {
+    title: seed.source?.pageTitle ?? "GenreTV",
+    sourceUrl: seed.source?.url ?? "",
+    updatedLabel: seed.source?.updatedLabel ?? "",
+    generatedAt: seed.generatedAt ?? "",
+    counts: countBySection(entries),
+    entries,
+  };
+}
+
 export function filterScheduleEntries(
   entries: readonly ScheduleEntry[],
   preferences: ScheduleViewPreferences,
@@ -224,7 +306,7 @@ export function pageCountFor(totalItems: number, pageSize: PageSize): number {
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
-    const id = showIdForTitle(entry.title);
+    const id = entry.showId;
     const existing = shows.get(id);
     const show =
       existing ??
@@ -310,6 +392,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   const countries = entry.show.countries ?? [];
   return {
     id: entry.id,
+    showId: showIdForTitle(entry.show.displayTitle),
     sourceRow: entry.sourceRow,
     section: entry.section,
     title: entry.show.displayTitle,
@@ -325,6 +408,40 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     countries,
     links: entry.show.externalLinks,
     legacyCells: entry.legacy.cells,
+  };
+}
+
+function toRegistryScheduleEntry(show: CanonicalShowSeedRow, season: CanonicalSeasonSeedRow): ScheduleEntry {
+  const organizations = season.organizations.map((organization) => organization.name).filter(Boolean);
+  const genreText = show.genreTags.join(", ");
+  const languages = normalizeLanguages(show.languages);
+  const links = mergeLinks(show.externalLinks, season.externalLinks);
+  return {
+    id: season.id,
+    showId: show.id,
+    sourceRow: season.sourceRow,
+    section: season.section,
+    title: show.displayTitle,
+    seasonLabel: season.seasonLabel,
+    timing: season.timing || formatRegistryTiming(season),
+    endedReason: season.endedReason || "Unknown",
+    endingKind: endingKindFor(season.endedReason),
+    organizationText: organizations.join(", "),
+    organizations,
+    genreText,
+    genres: show.genreTags,
+    languages,
+    countries: show.countries,
+    links,
+    legacyCells: [],
+  };
+}
+
+function countBySection(entries: readonly ScheduleEntry[]): Record<ScheduleSection, number> {
+  return {
+    current: entries.filter((entry) => entry.section === "current").length,
+    upcoming: entries.filter((entry) => entry.section === "upcoming").length,
+    past: entries.filter((entry) => entry.section === "past").length,
   };
 }
 
@@ -384,6 +501,12 @@ function timingFor(entry: BlogspotEntrySeed): string {
     return [release || entry.season.legacyTiming, finale ? `finale ${finale}` : ""].filter(Boolean).join(" · ");
   }
   return entry.legacy.detailText || entry.season.legacyStatus || "past";
+}
+
+function formatRegistryTiming(season: CanonicalSeasonSeedRow): string {
+  const release = formatWindow(season.releaseWindow);
+  const finale = formatWindow(season.finaleWindow);
+  return [release, finale ? `finale ${finale}` : ""].filter(Boolean).join(" · ");
 }
 
 function stopReasonFor(entry: BlogspotEntrySeed): string {
