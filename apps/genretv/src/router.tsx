@@ -6,6 +6,7 @@ import { ManageEpisodeRoute } from "./routes/manage-episode";
 import { ManageRoute } from "./routes/manage";
 import { ManageSeasonRoute } from "./routes/manage-season";
 import { ManageShowRoute } from "./routes/manage-show";
+import { PublishingRoute } from "./routes/publishing";
 import { RootLayout } from "./routes/root";
 
 const rootRoute = createRootRoute({ component: RootLayout });
@@ -64,6 +65,12 @@ const manageEpisodeRoute = createRoute({
   component: ManageEpisodeRoute,
 });
 
+const publishingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/publishing",
+  component: PublishingRoute,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   loginRoute,
@@ -74,6 +81,7 @@ const routeTree = rootRoute.addChildren([
   manageShowRoute,
   manageSeasonRoute,
   manageEpisodeRoute,
+  publishingRoute,
 ]);
 
 const hashRouting = import.meta.env["VITE_GENRETV_HASH_ROUTING"] === "1";
