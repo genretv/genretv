@@ -1,5 +1,6 @@
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   Group,
@@ -289,7 +290,22 @@ function EditableSeason({
       </Stack>
 
       <Stack gap="sm">
-        <Title order={2}>Episodes</Title>
+        <Group justify="space-between">
+          <Title order={2}>Episodes</Title>
+          <Button
+            size="xs"
+            variant="light"
+            disabled={!canEdit}
+            onClick={() =>
+              void navigate({
+                to: "/manage/show/$showId/season/$seasonId/episode/$episodeId",
+                params: { showId: show.id, seasonId: season.id, episodeId: "new" },
+              })
+            }
+          >
+            Add episode
+          </Button>
+        </Group>
         <ScrollArea>
           <Table className="schedule-table" striped verticalSpacing="sm" miw={720}>
             <Table.Thead>
@@ -304,7 +320,21 @@ function EditableSeason({
               {season.episodes.length > 0 ? (
                 season.episodes.map((episode) => (
                   <Table.Tr key={episode.id}>
-                    <Table.Td>{episode.episodeLabel || "Unknown"}</Table.Td>
+                    <Table.Td>
+                      <Anchor
+                        className="inline-link-button"
+                        component="button"
+                        type="button"
+                        onClick={() =>
+                          void navigate({
+                            to: "/manage/show/$showId/season/$seasonId/episode/$episodeId",
+                            params: { showId: show.id, seasonId: season.id, episodeId: episode.id },
+                          })
+                        }
+                      >
+                        {episode.episodeLabel || "Unknown"}
+                      </Anchor>
+                    </Table.Td>
                     <Table.Td>{episode.title || "Unknown"}</Table.Td>
                     <Table.Td>{episode.releaseDate || "Unknown"}</Table.Td>
                     <Table.Td>{episode.notes ?? ""}</Table.Td>

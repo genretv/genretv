@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { ManagementSeason, ManagementShow, ScheduleSection } from "../../domain/schedule";
+import type { ManagementSeason, ManagementShow, ScheduleEpisode, ScheduleSection } from "../../domain/schedule";
 
 export interface ManagementShowDraft {
   title: string;
@@ -18,6 +18,14 @@ export interface ManagementSeasonDraft {
   endedReason: string;
   releasePattern: string;
   episodeCount: string;
+  notes: string;
+}
+
+export interface ManagementEpisodeDraft {
+  episodeLabel: string;
+  title: string;
+  releaseDate: string;
+  sortKey: string;
   notes: string;
 }
 
@@ -41,6 +49,26 @@ export function seasonDraftFromSeason(season: ManagementSeason): ManagementSeaso
     releasePattern: season.releasePattern ?? "",
     episodeCount: season.episodeCount == null ? "" : String(season.episodeCount),
     notes: season.notes ?? "",
+  };
+}
+
+export function episodeDraftFromEpisode(episode: ScheduleEpisode): ManagementEpisodeDraft {
+  return {
+    episodeLabel: episode.episodeLabel,
+    title: episode.title,
+    releaseDate: episode.releaseDate,
+    sortKey: "",
+    notes: episode.notes ?? "",
+  };
+}
+
+export function emptyEpisodeDraft(): ManagementEpisodeDraft {
+  return {
+    episodeLabel: "",
+    title: "",
+    releaseDate: "",
+    sortKey: "",
+    notes: "",
   };
 }
 
@@ -73,6 +101,15 @@ export function showDraftStorageKey(showId: string): string {
 
 export function seasonDraftStorageKey(seasonId: string): string {
   return `genretv.management.seasonDraft.${seasonId}`;
+}
+
+export function episodeDraftStorageKey(seasonId: string, episodeId: string): string {
+  return `genretv.management.episodeDraft.${seasonId}.${episodeId}`;
+}
+
+export function releaseDateDraftToWindow(value: string): { raw: string; precision: string; confidence: string } | null {
+  const raw = value.trim();
+  return raw === "" ? null : { raw, precision: "unknown", confidence: "unknown" };
 }
 
 export function useManagementDraft<T>(storageKey: string, initialDraft: T) {

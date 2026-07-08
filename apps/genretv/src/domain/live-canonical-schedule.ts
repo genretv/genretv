@@ -21,6 +21,7 @@ const canonicalSeason = genretvSyncRegistry.canonical_season.table;
 const canonicalEpisode = genretvSyncRegistry.canonical_episode.table;
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
+const personalEpisode = genretvSyncRegistry.personal_episode.view!;
 
 export interface LiveCanonicalSchedule {
   error: Error | null;
@@ -123,6 +124,24 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     [],
     { ready: personalReady },
   );
+  const personalEpisodes = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          id: personalEpisode.id,
+          canonicalSeasonId: personalEpisode.canonicalSeasonId,
+          canonicalEpisodeId: personalEpisode.canonicalEpisodeId,
+          episodeLabel: personalEpisode.episodeLabel,
+          title: personalEpisode.title,
+          releaseWindow: personalEpisode.releaseWindow,
+          sortKey: personalEpisode.sortKey,
+          externalLinks: personalEpisode.externalLinks,
+          notes: personalEpisode.notes,
+        })
+        .from(personalEpisode),
+    [],
+    { ready: personalReady },
+  );
 
   const usingFallback = shows.rows.length === 0 || seasons.rows.length === 0;
   const schedule = useMemo(() => {
@@ -135,11 +154,15 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
       seasons.rows.map(toCanonicalSeasonSeedRow),
       personalReady ? personalSeasons.rows : [],
     );
+    const episodeRows = applyPersonalEpisodes(
+      episodes.rows.map(toCanonicalEpisodeSeedRow),
+      personalReady ? personalEpisodes.rows : [],
+    );
     return buildScheduleFromRegistryRows(
       {
         shows: showRows,
         seasons: seasonRows,
-        episodes: episodes.rows.map(toCanonicalEpisodeSeedRow),
+        episodes: episodeRows,
       },
       {
         title: fallbackSchedule.title,
@@ -148,7 +171,16 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
         generatedAt: fallbackSchedule.generatedAt,
       },
     );
-  }, [episodes.rows, personalReady, personalSeasons.rows, personalShows.rows, seasons.rows, shows.rows, usingFallback]);
+  }, [
+    episodes.rows,
+    personalEpisodes.rows,
+    personalReady,
+    personalSeasons.rows,
+    personalShows.rows,
+    seasons.rows,
+    shows.rows,
+    usingFallback,
+  ]);
 
   return {
     schedule,
@@ -157,12 +189,12 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
       shows.loading ||
       seasons.loading ||
       episodes.loading ||
-      (personalReady && (personalShows.loading || personalSeasons.loading)),
+      (personalReady && (personalShows.loading || personalSeasons.loading || personalEpisodes.loading)),
     error:
       shows.error ??
       seasons.error ??
       episodes.error ??
-      (personalReady ? (personalShows.error ?? personalSeasons.error) : null),
+      (personalReady ? (personalShows.error ?? personalSeasons.error ?? personalEpisodes.error) : null),
   };
 }
 
@@ -228,6 +260,37 @@ function applyPersonalSeasons(
       notes: overlay.notes,
     };
   });
+}
+
+function applyPersonalEpisodes(
+  canonicalRows: CanonicalEpisodeSeedRow[],
+  personalRows: ReadonlyArray<{
+    canonicalEpisodeId: string | null;
+    canonicalSeasonId: string | null;
+    episodeLabel: string | null;
+    externalLinks: unknown;
+    id: string;
+    notes: string | null;
+    releaseWindow: unknown;
+    sortKey: string | null;
+    title: string | null;
+  }>,
+): CanonicalEpisodeSeedRow[] {
+  const overlays = new Map(
+    personalRows.flatMap((row) => (row.canonicalEpisodeId == null ? [] : [[row.canonicalEpisodeId, row]])),
+  );
+  const additions = personalRows.flatMap((row) =>
+    row.canonicalEpisodeId != null || row.canonicalSeasonId == null
+      ? []
+      : [personalEpisodeToSeedRow(row, row.canonicalSeasonId)],
+  );
+  return [
+    ...canonicalRows.map((row) => {
+      const overlay = overlays.get(row.id);
+      return overlay == null ? row : personalEpisodeToSeedRow(overlay, row.seasonId, row.id);
+    }),
+    ...additions,
+  ];
 }
 
 function toCanonicalShowSeedRow(row: {
@@ -305,6 +368,31 @@ function toCanonicalEpisodeSeedRow(row: {
   return {
     id: row.id,
     seasonId: row.seasonId,
+    episodeLabel: row.episodeLabel,
+    title: row.title,
+    releaseWindow: releaseWindow(row.releaseWindow),
+    sortKey: row.sortKey,
+    externalLinks: externalLinks(row.externalLinks),
+    notes: row.notes,
+  };
+}
+
+function personalEpisodeToSeedRow(
+  row: {
+    episodeLabel: string | null;
+    externalLinks: unknown;
+    id: string;
+    notes: string | null;
+    releaseWindow: unknown;
+    sortKey: string | null;
+    title: string | null;
+  },
+  seasonId: string,
+  id = row.id,
+): CanonicalEpisodeSeedRow {
+  return {
+    id,
+    seasonId,
     episodeLabel: row.episodeLabel,
     title: row.title,
     releaseWindow: releaseWindow(row.releaseWindow),

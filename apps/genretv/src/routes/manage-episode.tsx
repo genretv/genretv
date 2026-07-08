@@ -1,0 +1,312 @@
+import { Alert, Button, Group, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { eq } from "drizzle-orm";
+import { useMemo, useState } from "react";
+
+import { genretvSyncRegistry } from "@genretv/domain/registry";
+import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
+import { useAuth } from "../auth/auth";
+import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { buildManagementShows, findManagementSeason, type ManagementSeason, type ManagementShow, type ScheduleEpisode } from "../domain/schedule";
+import {
+  emptyEpisodeDraft,
+  episodeDraftFromEpisode,
+  episodeDraftStorageKey,
+  releaseDateDraftToWindow,
+  useManagementDraft,
+  type ManagementEpisodeDraft,
+} from "../features/management/drafts";
+
+const personalEpisode = genretvSyncRegistry.personal_episode.view!;
+
+const newEpisodeId = "new";
+
+export function ManageEpisodeRoute() {
+  const { showId, seasonId, episodeId } = useParams({
+    from: "/manage/show/$showId/season/$seasonId/episode/$episodeId",
+  });
+  const { session } = useAuth();
+  const navigate = useNavigate();
+  const { schedule } = useCanonicalSchedule();
+  const shows = useMemo(() => buildManagementShows(schedule.entries), [schedule.entries]);
+  const result = findManagementSeason(shows, showId, seasonId);
+
+  if (result == null) {
+    return (
+      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Season not found</Title>
+        <Group>
+          <Button
+            variant="default"
+            onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId } })}
+          >
+            Show
+          </Button>
+          <Button component={Link} to="/manage" variant="default">
+            Shows
+          </Button>
+        </Group>
+      </Stack>
+    );
+  }
+
+  const episode = episodeId === newEpisodeId ? null : result.season.episodes.find((item) => item.id === episodeId) ?? null;
+  return (
+    <EditableEpisode
+      show={result.show}
+      season={result.season}
+      episode={episode}
+      episodeId={episodeId}
+      canEdit={session != null}
+    />
+  );
+}
+
+function EditableEpisode({
+  show,
+  season,
+  episode,
+  episodeId,
+  canEdit,
+}: {
+  show: ManagementShow;
+  season: ManagementSeason;
+  episode: ScheduleEpisode | null;
+  episodeId: string;
+  canEdit: boolean;
+}) {
+  const navigate = useNavigate();
+  const client = useSyncClient();
+  const [savingOverlay, setSavingOverlay] = useState(false);
+  const [overlayError, setOverlayError] = useState<string | null>(null);
+  const [overlaySaved, setOverlaySaved] = useState(false);
+  const personalEpisodes = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalEpisode.id,
+          canonicalEpisodeId: personalEpisode.canonicalEpisodeId,
+          episodeLabel: personalEpisode.episodeLabel,
+          title: personalEpisode.title,
+          releaseWindow: personalEpisode.releaseWindow,
+          sortKey: personalEpisode.sortKey,
+          externalLinks: personalEpisode.externalLinks,
+          notes: personalEpisode.notes,
+        })
+        .from(personalEpisode)
+        .where(eq(personalEpisode.canonicalSeasonId, season.id)),
+    [season.id],
+    { ready: canEdit },
+  );
+  const personalRow =
+    personalEpisodes.rows.find((row) => row.id === episodeId) ??
+    personalEpisodes.rows.find((row) => row.canonicalEpisodeId === episodeId) ??
+    null;
+
+  if (episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null) {
+    return (
+      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Episode not found</Title>
+        <Button
+          variant="default"
+          onClick={() =>
+            void navigate({
+              to: "/manage/show/$showId/season/$seasonId",
+              params: { showId: show.id, seasonId: season.id },
+            })
+          }
+        >
+          Season
+        </Button>
+      </Stack>
+    );
+  }
+
+  const initialDraft = useMemo(
+    () => (personalRow == null ? (episode == null ? emptyEpisodeDraft() : episodeDraftFromEpisode(episode)) : episodeDraftFromPersonalRow(personalRow)),
+    [episode, personalRow],
+  );
+  const { draft, dirty, locallySaved, setDraft, saveLocalDraft, discardLocalDraft } = useManagementDraft(
+    episodeDraftStorageKey(season.id, episodeId),
+    initialDraft,
+  );
+  const canSaveOverlay = canEdit && !personalEpisodes.loading && dirty && !savingOverlay;
+
+  const saveOverlay = async () => {
+    const createdId = personalRow?.id ?? crypto.randomUUID();
+    setSavingOverlay(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      const patch = {
+        episodeLabel: nullableText(draft.episodeLabel),
+        title: nullableText(draft.title),
+        releaseWindow: releaseDateDraftToWindow(draft.releaseDate),
+        sortKey: nullableText(draft.sortKey),
+        externalLinks: episode?.links ?? [],
+        notes: nullableText(draft.notes),
+      };
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        if (personalRow == null) {
+          tx.tables.personal_episode.create({
+            id: createdId,
+            canonicalShowId: show.id,
+            canonicalSeasonId: season.id,
+            canonicalEpisodeId: episode == null ? null : episode.id,
+            ...patch,
+          });
+        } else {
+          tx.tables.personal_episode.update({ id: personalRow.id }, patch);
+        }
+      });
+      setOverlaySaved(true);
+      if (episodeId === newEpisodeId) {
+        void navigate({
+          to: "/manage/show/$showId/season/$seasonId/episode/$episodeId",
+          params: { showId: show.id, seasonId: season.id, episodeId: createdId },
+        });
+      }
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSavingOverlay(false);
+    }
+  };
+
+  return (
+    <Stack className="schedule-panel" gap="lg" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+      <Group justify="space-between" align="flex-start">
+        <div>
+          <Title order={1}>{episode == null ? "New episode" : episode.episodeLabel || "Episode"}</Title>
+          <Text c="dimmed">
+            {show.title} {season.seasonLabel}
+          </Text>
+        </div>
+        <Group>
+          <Button
+            variant="default"
+            onClick={() =>
+              void navigate({
+                to: "/manage/show/$showId/season/$seasonId",
+                params: { showId: show.id, seasonId: season.id },
+              })
+            }
+          >
+            Season
+          </Button>
+          <Button component={Link} to="/manage" variant="default">
+            Shows
+          </Button>
+        </Group>
+      </Group>
+
+      <Alert color={canEdit ? "teal" : "yellow"} variant="light">
+        {canEdit
+          ? "Save a browser-local draft while editing, or save this episode to your personal overlay."
+          : "Sign in to create a browser-local management draft."}
+      </Alert>
+      {personalEpisodes.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your personal overlay for this episode: {personalEpisodes.error.message}
+        </Alert>
+      )}
+      {overlayError != null && (
+        <Alert color="red" variant="light">
+          Could not save to your overlay: {overlayError}
+        </Alert>
+      )}
+      {overlaySaved && (
+        <Alert color="teal" variant="light">
+          Saved to your personal overlay.
+        </Alert>
+      )}
+
+      <Stack gap="md">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <TextInput
+            label="Episode"
+            value={draft.episodeLabel}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, episodeLabel: event.currentTarget.value }))}
+          />
+          <TextInput
+            label="Release date"
+            value={draft.releaseDate}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, releaseDate: event.currentTarget.value }))}
+          />
+        </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <TextInput
+            label="Title"
+            value={draft.title}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, title: event.currentTarget.value }))}
+          />
+          <TextInput
+            label="Sort key"
+            value={draft.sortKey}
+            disabled={!canEdit}
+            onChange={(event) => setDraft((current) => ({ ...current, sortKey: event.currentTarget.value }))}
+          />
+        </SimpleGrid>
+        <Textarea
+          label="Notes"
+          autosize
+          minRows={4}
+          value={draft.notes}
+          disabled={!canEdit}
+          onChange={(event) => setDraft((current) => ({ ...current, notes: event.currentTarget.value }))}
+        />
+        <Group justify="flex-end">
+          <Button variant="default" disabled={!canEdit || !dirty} onClick={discardLocalDraft}>
+            Discard
+          </Button>
+          <Button variant="light" disabled={!canEdit || !dirty} onClick={saveLocalDraft}>
+            Save draft
+          </Button>
+          <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
+            Save to overlay
+          </Button>
+        </Group>
+        {locallySaved && (
+          <Text size="sm" c="dimmed">
+            Local draft saved.
+          </Text>
+        )}
+      </Stack>
+    </Stack>
+  );
+}
+
+function episodeDraftFromPersonalRow(row: {
+  episodeLabel: string | null;
+  notes: string | null;
+  releaseWindow: unknown;
+  sortKey: string | null;
+  title: string | null;
+}): ManagementEpisodeDraft {
+  return {
+    episodeLabel: row.episodeLabel ?? "",
+    title: row.title ?? "",
+    releaseDate: releaseWindowText(row.releaseWindow),
+    sortKey: row.sortKey ?? "",
+    notes: row.notes ?? "",
+  };
+}
+
+function releaseWindowText(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (isRecord(value) && typeof value["raw"] === "string") return value["raw"];
+  return "";
+}
+
+function nullableText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null;
+}
