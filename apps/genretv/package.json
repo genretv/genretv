@@ -11,6 +11,7 @@
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
     "@genretv/domain": "workspace:*",
+    "@genretv/offline-data": "workspace:*",
     "@mantine/core": "9.4.1",
     "@mantine/hooks": "9.4.1",
     "@pgxsinkit/client": "dev",

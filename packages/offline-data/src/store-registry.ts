@@ -1,0 +1,73 @@
+export interface GenretvStoreClaim {
+  dataDir: string;
+  fresh: boolean;
+  storeId: string;
+}
+
+interface StoreRegistryState {
+  spareStoreId: string;
+  userStores: Record<string, string>;
+  version: 1;
+}
+
+const storageKey = "genretv.sync.stores.v1";
+const storePrefix = "pgxsinkit-genretv-";
+
+export function dataDirForStore(storeId: string): string {
+  return `idb://${storePrefix}${storeId}`;
+}
+
+export function claimGenretvStore(userId: string | null): GenretvStoreClaim {
+  const state = readState();
+  if (userId == null) {
+    writeState(state);
+    return { storeId: state.spareStoreId, dataDir: dataDirForStore(state.spareStoreId), fresh: false };
+  }
+
+  const existing = state.userStores[userId];
+  if (existing != null) {
+    writeState(state);
+    return { storeId: existing, dataDir: dataDirForStore(existing), fresh: false };
+  }
+
+  const claimed = state.spareStoreId;
+  const nextSpare = randomStoreId();
+  writeState({
+    version: 1,
+    spareStoreId: nextSpare,
+    userStores: { ...state.userStores, [userId]: claimed },
+  });
+  return { storeId: claimed, dataDir: dataDirForStore(claimed), fresh: true };
+}
+
+function readState(): StoreRegistryState {
+  const parsed = readStoredState();
+  if (parsed != null) return parsed;
+  const state = { version: 1, spareStoreId: randomStoreId(), userStores: {} } satisfies StoreRegistryState;
+  writeState(state);
+  return state;
+}
+
+function readStoredState(): StoreRegistryState | null {
+  try {
+    const raw = globalThis.localStorage.getItem(storageKey);
+    if (raw == null) return null;
+    const parsed = JSON.parse(raw) as Partial<StoreRegistryState>;
+    if (parsed.version !== 1 || typeof parsed.spareStoreId !== "string" || parsed.userStores == null) return null;
+    const userStores: Record<string, string> = {};
+    for (const [userId, storeId] of Object.entries(parsed.userStores)) {
+      if (typeof storeId === "string") userStores[userId] = storeId;
+    }
+    return { version: 1, spareStoreId: parsed.spareStoreId, userStores };
+  } catch {
+    return null;
+  }
+}
+
+function writeState(state: StoreRegistryState): void {
+  globalThis.localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+function randomStoreId(): string {
+  return globalThis.crypto.randomUUID();
+}

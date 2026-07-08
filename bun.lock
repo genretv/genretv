@@ -25,6 +25,7 @@
       "dependencies": {
         "@electric-sql/pglite": "0.5.4",
         "@genretv/domain": "workspace:*",
+        "@genretv/offline-data": "workspace:*",
         "@mantine/core": "9.4.1",
         "@mantine/hooks": "9.4.1",
         "@pgxsinkit/client": "dev",
@@ -58,6 +59,15 @@
       "dependencies": {
         "@pgxsinkit/contracts": "dev",
         "drizzle-orm": "1.0.0-rc.4",
+      },
+    },
+    "packages/offline-data": {
+      "name": "@genretv/offline-data",
+      "dependencies": {
+        "@genretv/domain": "workspace:*",
+        "@pgxsinkit/client": "dev",
+        "@pgxsinkit/contracts": "dev",
+        "@pgxsinkit/react": "dev",
       },
     },
   },
@@ -143,6 +153,8 @@
     "@genretv/genretv": ["@genretv/genretv@workspace:apps/genretv"],
 
     "@genretv/genretv-api": ["@genretv/genretv-api@workspace:apps/genretv-api"],
+
+    "@genretv/offline-data": ["@genretv/offline-data@workspace:packages/offline-data"],
 
     "@js-temporal/polyfill": ["@js-temporal/polyfill@0.5.1", "", { "dependencies": { "jsbi": "^4.3.0" } }, "sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ=="],
 

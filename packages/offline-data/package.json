@@ -1,0 +1,17 @@
+{
+  "name": "@genretv/offline-data",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./client": "./src/client.ts",
+    "./hooks": "./src/hooks.ts",
+    "./store-registry": "./src/store-registry.ts",
+    "./worker": "./src/worker.ts"
+  },
+  "dependencies": {
+    "@genretv/domain": "workspace:*",
+    "@pgxsinkit/client": "dev",
+    "@pgxsinkit/contracts": "dev",
+    "@pgxsinkit/react": "dev"
+  }
+}
