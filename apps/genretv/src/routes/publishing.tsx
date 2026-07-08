@@ -103,8 +103,10 @@ export function PublishingRoute() {
           reviewerNote: canonicalProposal.reviewerNote,
           canonicalShowId: canonicalProposal.canonicalShowId,
           canonicalSeasonId: canonicalProposal.canonicalSeasonId,
+          canonicalEpisodeId: canonicalProposal.canonicalEpisodeId,
           personalShowId: canonicalProposal.personalShowId,
           personalSeasonId: canonicalProposal.personalSeasonId,
+          personalEpisodeId: canonicalProposal.personalEpisodeId,
           proposedPayload: canonicalProposal.proposedPayload,
           createdAtUs: canonicalProposal.createdAtUs,
           updatedAtUs: canonicalProposal.updatedAtUs,
@@ -277,6 +279,7 @@ export function PublishingRoute() {
 
   const approveCanonicalProposal = async (
     proposal: {
+      canonicalEpisodeId: string | null;
       canonicalSeasonId: string | null;
       canonicalShowId: string | null;
       id: string;
@@ -297,6 +300,10 @@ export function PublishingRoute() {
         if (plan.seasonCreate != null) tx.tables.canonical_season.create(plan.seasonCreate);
         if (plan.seasonUpdate != null) {
           tx.tables.canonical_season.update({ id: plan.seasonUpdate.id }, plan.seasonUpdate.patch);
+        }
+        if (plan.episodeCreate != null) tx.tables.canonical_episode.create(plan.episodeCreate);
+        if (plan.episodeUpdate != null) {
+          tx.tables.canonical_episode.update({ id: plan.episodeUpdate.id }, plan.episodeUpdate.patch);
         }
         tx.tables.canonical_proposal.update(
           { id: proposal.id },
@@ -740,13 +747,17 @@ function formatMicroseconds(value: bigint): string {
 }
 
 function proposalTargetText(proposal: {
+  canonicalEpisodeId: string | null;
   canonicalSeasonId: string | null;
   canonicalShowId: string | null;
+  personalEpisodeId: string | null;
   personalSeasonId: string | null;
   personalShowId: string | null;
 }): string {
+  if (proposal.canonicalEpisodeId != null) return "Canonical episode";
   if (proposal.canonicalSeasonId != null) return "Canonical season";
   if (proposal.canonicalShowId != null) return "Canonical show";
+  if (proposal.personalEpisodeId != null) return "Personal episode";
   if (proposal.personalSeasonId != null) return "Personal season";
   if (proposal.personalShowId != null) return "Personal show";
   return "New canonical entry";
@@ -754,7 +765,7 @@ function proposalTargetText(proposal: {
 
 function proposalPayloadSummary(value: unknown): string {
   if (!isRecord(value)) return "";
-  const fields = ["displayTitle", "seasonLabel", "showTitle"]
+  const fields = ["displayTitle", "seasonLabel", "episodeLabel", "title", "showTitle"]
     .map((key) => value[key])
     .filter((item): item is string => typeof item === "string" && item.trim() !== "");
   return fields.join(" · ");

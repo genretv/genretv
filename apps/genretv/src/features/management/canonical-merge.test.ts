@@ -8,6 +8,7 @@ describe("canonical proposal merge planning", () => {
     const plan = buildCanonicalProposalMergePlan(
       {
         proposalKind: "show",
+        canonicalEpisodeId: null,
         canonicalShowId: null,
         canonicalSeasonId: null,
         title: "New Show",
@@ -39,6 +40,7 @@ describe("canonical proposal merge planning", () => {
     const plan = buildCanonicalProposalMergePlan(
       {
         proposalKind: "show",
+        canonicalEpisodeId: null,
         canonicalShowId: "show-1",
         canonicalSeasonId: null,
         title: "Fallback",
@@ -67,6 +69,7 @@ describe("canonical proposal merge planning", () => {
     const plan = buildCanonicalProposalMergePlan(
       {
         proposalKind: "season",
+        canonicalEpisodeId: null,
         canonicalShowId: null,
         canonicalSeasonId: null,
         title: "Show Season 1",
@@ -97,6 +100,7 @@ describe("canonical proposal merge planning", () => {
     const plan = buildCanonicalProposalMergePlan(
       {
         proposalKind: "season",
+        canonicalEpisodeId: null,
         canonicalShowId: "show-1",
         canonicalSeasonId: "season-1",
         title: "Show Season 2",
@@ -121,6 +125,109 @@ describe("canonical proposal merge planning", () => {
         endedReason: "finished",
         releasePattern: "weekly",
       },
+    });
+  });
+
+  test("updates an existing canonical episode", () => {
+    const plan = buildCanonicalProposalMergePlan(
+      {
+        proposalKind: "episode",
+        canonicalEpisodeId: "episode-1",
+        canonicalShowId: "show-1",
+        canonicalSeasonId: "season-1",
+        title: "Show S1E2",
+        proposedPayload: {
+          episodeLabel: "2",
+          title: "Better Episode",
+          releaseWindow: { date: "2026-07-08" },
+          sortKey: "002",
+          notes: "Corrected title",
+        },
+      },
+      () => "unused",
+    );
+
+    expect(plan.showCreate).toBeNull();
+    expect(plan.seasonCreate).toBeNull();
+    expect(plan.episodeCreate).toBeNull();
+    expect(plan.episodeUpdate).toEqual({
+      id: "episode-1",
+      patch: {
+        seasonId: "season-1",
+        episodeLabel: "2",
+        title: "Better Episode",
+        releaseWindow: { date: "2026-07-08" },
+        sortKey: "002",
+        externalLinks: [],
+        notes: "Corrected title",
+      },
+    });
+  });
+
+  test("creates a canonical episode under an existing season", () => {
+    const ids = idSequence("episode-new");
+    const plan = buildCanonicalProposalMergePlan(
+      {
+        proposalKind: "episode",
+        canonicalEpisodeId: null,
+        canonicalShowId: "show-1",
+        canonicalSeasonId: "season-1",
+        title: "Show S1E3",
+        proposedPayload: {
+          episodeLabel: "3",
+          title: "New Episode",
+        },
+      },
+      ids,
+    );
+
+    expect(plan.showCreate).toBeNull();
+    expect(plan.seasonCreate).toBeNull();
+    expect(plan.episodeCreate).toMatchObject({
+      id: "episode-new",
+      seasonId: "season-1",
+      episodeLabel: "3",
+      title: "New Episode",
+    });
+  });
+
+  test("creates parent canonical show and season for a standalone episode proposal", () => {
+    const ids = idSequence("show-new", "season-new", "episode-new");
+    const plan = buildCanonicalProposalMergePlan(
+      {
+        proposalKind: "episode",
+        canonicalEpisodeId: null,
+        canonicalShowId: null,
+        canonicalSeasonId: null,
+        title: "New Show Season 1 Episode 1",
+        proposedPayload: {
+          showTitle: "New Show",
+          seasonLabel: "Season 1",
+          section: "current",
+          timing: "Mondays",
+          seasonEpisodeCount: 6,
+          episodeLabel: "1",
+          title: "Pilot",
+        },
+      },
+      ids,
+    );
+
+    expect(plan.showCreate).toMatchObject({ id: "show-new", displayTitle: "New Show" });
+    expect(plan.seasonCreate).toMatchObject({
+      id: "season-new",
+      showId: "show-new",
+      section: "current",
+      seasonLabel: "Season 1",
+      timing: "Mondays",
+      episodeCount: 6,
+      sourceRow: 1_000_000,
+    });
+    expect(plan.episodeCreate).toMatchObject({
+      id: "episode-new",
+      seasonId: "season-new",
+      episodeLabel: "1",
+      title: "Pilot",
     });
   });
 });

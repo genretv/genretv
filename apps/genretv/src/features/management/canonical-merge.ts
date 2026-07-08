@@ -1,6 +1,7 @@
 const defaultSourceRow = 1_000_000;
 
 export interface CanonicalProposalMergeInput {
+  canonicalEpisodeId: string | null;
   canonicalSeasonId: string | null;
   canonicalShowId: string | null;
   proposalKind: string;
@@ -43,7 +44,22 @@ export interface CanonicalSeasonCreate {
 
 export type CanonicalSeasonPatch = Omit<CanonicalSeasonCreate, "id" | "sourceRow">;
 
+export interface CanonicalEpisodeCreate {
+  episodeLabel: string | null;
+  externalLinks: unknown[];
+  id: string;
+  notes: string | null;
+  releaseWindow: unknown;
+  seasonId: string;
+  sortKey: string | null;
+  title: string | null;
+}
+
+export type CanonicalEpisodePatch = Omit<CanonicalEpisodeCreate, "id">;
+
 export interface CanonicalProposalMergePlan {
+  episodeCreate: CanonicalEpisodeCreate | null;
+  episodeUpdate: { id: string; patch: CanonicalEpisodePatch } | null;
   seasonCreate: CanonicalSeasonCreate | null;
   seasonUpdate: { id: string; patch: CanonicalSeasonPatch } | null;
   showCreate: CanonicalShowCreate | null;
@@ -56,6 +72,7 @@ export function buildCanonicalProposalMergePlan(
 ): CanonicalProposalMergePlan {
   if (proposal.proposalKind === "show") return showMergePlan(proposal, makeId);
   if (proposal.proposalKind === "season") return seasonMergePlan(proposal, makeId);
+  if (proposal.proposalKind === "episode") return episodeMergePlan(proposal, makeId);
   return emptyPlan();
 }
 
@@ -124,8 +141,92 @@ function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => st
   };
 }
 
+function episodeMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => string): CanonicalProposalMergePlan {
+  const payload = record(proposal.proposedPayload);
+  const showId = proposal.canonicalShowId ?? makeId();
+  const seasonId = proposal.canonicalSeasonId ?? makeId();
+  const episodePatch: CanonicalEpisodePatch = {
+    seasonId,
+    episodeLabel: nullableText(payload["episodeLabel"]),
+    title: nullableText(payload["title"]),
+    releaseWindow: payload["releaseWindow"] ?? null,
+    sortKey: nullableText(payload["sortKey"]),
+    externalLinks: arrayValue(payload["externalLinks"]),
+    notes: nullableText(payload["notes"]),
+  };
+  const parentPlan =
+    proposal.canonicalSeasonId == null
+      ? parentRowsForEpisodeProposal(proposal, payload, showId, seasonId)
+      : { showCreate: null, seasonCreate: null };
+  if (proposal.canonicalEpisodeId != null) {
+    return {
+      ...emptyPlan(),
+      ...parentPlan,
+      episodeUpdate: { id: proposal.canonicalEpisodeId, patch: episodePatch },
+    };
+  }
+  return {
+    ...emptyPlan(),
+    ...parentPlan,
+    episodeCreate: {
+      id: makeId(),
+      ...episodePatch,
+    },
+  };
+}
+
+function parentRowsForEpisodeProposal(
+  proposal: CanonicalProposalMergeInput,
+  payload: Record<string, unknown>,
+  showId: string,
+  seasonId: string,
+): Pick<CanonicalProposalMergePlan, "seasonCreate" | "showCreate"> {
+  const showCreate =
+    proposal.canonicalShowId == null
+      ? {
+          id: showId,
+          displayTitle: text(payload["showTitle"]) ?? proposal.title,
+          originalTitle: null,
+          languages: [],
+          countries: [],
+          genreTags: [],
+          externalLinks: [],
+          notes: null,
+        }
+      : null;
+  return {
+    showCreate,
+    seasonCreate: {
+      id: seasonId,
+      showId,
+      section: scheduleSection(text(payload["section"])),
+      seasonLabel: text(payload["seasonLabel"]) ?? "Season",
+      timing: text(payload["timing"]) ?? "",
+      endedReason: text(payload["endedReason"]) ?? "",
+      releasePattern: nullableText(payload["releasePattern"]),
+      releasePrecision: text(payload["releasePrecision"]) ?? "unknown",
+      dateConfidence: text(payload["dateConfidence"]) ?? "unknown",
+      releaseWindow: payload["seasonReleaseWindow"] ?? null,
+      finaleWindow: payload["finaleWindow"] ?? null,
+      sortKey: nullableText(payload["seasonSortKey"]),
+      episodeCount: integerOrNull(payload["seasonEpisodeCount"]),
+      sourceRow: integerOrNull(payload["sourceRow"]) ?? defaultSourceRow,
+      organizations: arrayValue(payload["organizations"]),
+      externalLinks: arrayValue(payload["seasonExternalLinks"]),
+      notes: nullableText(payload["seasonNotes"]),
+    },
+  };
+}
+
 function emptyPlan(): CanonicalProposalMergePlan {
-  return { seasonCreate: null, seasonUpdate: null, showCreate: null, showUpdate: null };
+  return {
+    episodeCreate: null,
+    episodeUpdate: null,
+    seasonCreate: null,
+    seasonUpdate: null,
+    showCreate: null,
+    showUpdate: null,
+  };
 }
 
 function scheduleSection(value: string | null): "current" | "upcoming" | "past" {

@@ -21,6 +21,7 @@ import {
   useManagementDraft,
   type ManagementEpisodeDraft,
 } from "../features/management/drafts";
+import { canSendCanonicalProposal } from "../features/management/proposals";
 
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -33,7 +34,7 @@ export function ManageEpisodeRoute() {
   const { showId, seasonId, episodeId } = useParams({
     from: "/manage/show/$showId/season/$seasonId/episode/$episodeId",
   });
-  const { session } = useAuth();
+  const { roles, session } = useAuth();
   const navigate = useNavigate();
   const { shows } = useManagementShows();
   const result = findManagementSeason(shows, showId, seasonId);
@@ -63,6 +64,7 @@ export function ManageEpisodeRoute() {
       episode={episode}
       episodeId={episodeId}
       canEdit={session != null}
+      canPropose={canSendCanonicalProposal(roles)}
     />
   );
 }
@@ -73,20 +75,25 @@ function EditableEpisode({
   episode,
   episodeId,
   canEdit,
+  canPropose,
 }: {
   show: ManagementShow;
   season: ManagementSeason;
   episode: ScheduleEpisode | null;
   episodeId: string;
   canEdit: boolean;
+  canPropose: boolean;
 }) {
   const navigate = useNavigate();
   const client = useSyncClient();
   const [savingOverlay, setSavingOverlay] = useState(false);
   const [hidingEpisode, setHidingEpisode] = useState(false);
   const [deletingEpisode, setDeletingEpisode] = useState(false);
+  const [proposalSaving, setProposalSaving] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [proposalSent, setProposalSent] = useState(false);
   const personalEpisodes = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -111,6 +118,7 @@ function EditableEpisode({
       sync.drizzle
         .select({
           id: personalSeason.id,
+          canonicalShowId: personalSeason.canonicalShowId,
           canonicalSeasonId: personalSeason.canonicalSeasonId,
         })
         .from(personalSeason)
@@ -183,6 +191,8 @@ function EditableEpisode({
     initialDraft,
   );
   const canSaveOverlay = canEdit && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
+  const canSubmitProposal =
+    canEdit && canPropose && !personalEpisodes.loading && !personalSeasons.loading && !proposalSaving;
   const canDeletePersonalEpisode =
     canEdit && personalRow != null && !importsForEpisode.loading && !savingOverlay && !deletingEpisode;
   const canHideCanonicalEpisode =
@@ -233,6 +243,67 @@ function EditableEpisode({
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSavingOverlay(false);
+    }
+  };
+
+  const sendCanonicalProposal = async () => {
+    const proposalId = crypto.randomUUID();
+    const targetCanonicalEpisodeId =
+      personalRow == null ? (episode == null ? null : episode.id) : personalRow.canonicalEpisodeId;
+    const targetCanonicalSeasonId = personalSeasonRow == null ? season.id : personalSeasonRow.canonicalSeasonId;
+    const targetCanonicalShowId = personalSeasonRow == null ? show.id : personalSeasonRow.canonicalShowId;
+    const episodeLabel = draft.episodeLabel.trim() || episode?.episodeLabel || "Episode";
+    const title = `${show.title} ${season.seasonLabel} ${episodeLabel}`.trim();
+    setProposalSaving(true);
+    setProposalError(null);
+    setProposalSent(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.canonical_proposal.create({
+          id: proposalId,
+          proposalKind: "episode",
+          status: "open",
+          title,
+          message: nullableText(draft.notes),
+          personalShowId: null,
+          personalSeasonId: personalSeasonRow?.id ?? null,
+          personalEpisodeId: personalRow?.id ?? null,
+          canonicalShowId: targetCanonicalShowId,
+          canonicalSeasonId: targetCanonicalSeasonId,
+          canonicalEpisodeId: targetCanonicalEpisodeId,
+          proposedPayload: {
+            kind: "episode",
+            showTitle: show.title,
+            seasonLabel: season.seasonLabel,
+            section: season.section,
+            timing: season.timing,
+            endedReason: season.endedReason,
+            releasePattern: season.releasePattern,
+            seasonEpisodeCount: season.episodeCount,
+            sourceRow: season.sourceRow,
+            episodeLabel: nullableText(draft.episodeLabel),
+            title: nullableText(draft.title),
+            releaseWindow: releaseDateDraftToWindow(draft.releaseDate),
+            sortKey: nullableText(draft.sortKey),
+            externalLinks: personalRow?.externalLinks ?? episode?.links ?? [],
+            notes: nullableText(draft.notes),
+          },
+        });
+        tx.tables.maintainer_notification.create({
+          id: crypto.randomUUID(),
+          notificationKind: "canonical_proposal",
+          status: "unread",
+          title: `Canonical proposal: ${title}`,
+          body: nullableText(draft.notes),
+          relatedPublishApplicationId: null,
+          relatedCanonicalProposalId: proposalId,
+        });
+      });
+      setProposalSent(true);
+    } catch (cause) {
+      setProposalError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setProposalSaving(false);
     }
   };
 
@@ -348,6 +419,16 @@ function EditableEpisode({
           Saved to your personal overlay.
         </Alert>
       )}
+      {proposalError != null && (
+        <Alert color="red" variant="light">
+          Could not send canonical proposal: {proposalError}
+        </Alert>
+      )}
+      {proposalSent && (
+        <Alert color="teal" variant="light">
+          Sent to the canonical maintainers.
+        </Alert>
+      )}
 
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -396,6 +477,16 @@ function EditableEpisode({
           <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
             Save to overlay
           </Button>
+          {canPropose && (
+            <Button
+              variant="light"
+              disabled={!canSubmitProposal}
+              loading={proposalSaving}
+              onClick={() => void sendCanonicalProposal()}
+            >
+              Send to canonical
+            </Button>
+          )}
           <Button
             color="red"
             variant="light"
