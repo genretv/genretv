@@ -10,6 +10,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -50,8 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       resetPassword: async (email: string) => {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/login`,
+          redirectTo: authRedirectUrl("/reset-password"),
         });
+        if (error) throw error;
+      },
+      updatePassword: async (password: string) => {
+        const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
       },
       signOut: async () => {
@@ -62,6 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function authRedirectUrl(path: string): string {
+  if (import.meta.env["VITE_GENRETV_HASH_ROUTING"] === "1") {
+    return `${window.location.origin}${window.location.pathname}#${path}`;
+  }
+  return `${window.location.origin}${path}`;
 }
 
 export function useAuth(): AuthState {

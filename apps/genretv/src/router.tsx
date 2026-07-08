@@ -1,7 +1,7 @@
 import { createHashHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 
 import { HomeRoute } from "./routes/home";
-import { LoginRoute } from "./routes/login";
+import { LoginRoute, RecoverRoute, ResetPasswordRoute, SignUpRoute } from "./routes/login";
 import { ManageRoute } from "./routes/manage";
 import { ManageSeasonRoute } from "./routes/manage-season";
 import { ManageShowRoute } from "./routes/manage-show";
@@ -19,6 +19,24 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginRoute,
+});
+
+const signUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/signup",
+  component: SignUpRoute,
+});
+
+const recoverRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recover",
+  component: RecoverRoute,
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  component: ResetPasswordRoute,
 });
 
 const manageRoute = createRoute({
@@ -39,7 +57,16 @@ const manageSeasonRoute = createRoute({
   component: ManageSeasonRoute,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, loginRoute, manageRoute, manageShowRoute, manageSeasonRoute]);
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  loginRoute,
+  signUpRoute,
+  recoverRoute,
+  resetPasswordRoute,
+  manageRoute,
+  manageShowRoute,
+  manageSeasonRoute,
+]);
 
 const hashRouting = import.meta.env["VITE_GENRETV_HASH_ROUTING"] === "1";
 
