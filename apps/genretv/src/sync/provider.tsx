@@ -16,6 +16,7 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
   const [client, setClient] = useState<GenretvSyncClient | null>(null);
   const [status, setStatus] = useState<SyncRuntimeStatus | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [initialSyncReady, setInitialSyncReady] = useState(false);
   const userId = session?.user.id ?? null;
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
         created = next;
         setStatus(next.status);
         setClient(next);
+        setInitialSyncReady(true);
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause : new Error(String(cause)));
       }
@@ -74,13 +76,14 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
   }
 
   if (client == null) {
+    const showSplash = !initialSyncReady;
     return (
       <Center h="100vh">
-        <Stack className="loading-panel" align="center" gap="xs">
-          <LoadingSplash />
+        <Stack className={showSplash ? "loading-panel" : "loading-panel loading-panel-compact"} align="center" gap="xs">
+          {showSplash && <LoadingSplash />}
           <Loader />
           <Text c="dimmed" size="sm">
-            Starting local database and canonical sync…
+            {showSplash ? "Starting local database and canonical sync…" : "Updating local sync…"}
           </Text>
           {status != null && (
             <Text c="dimmed" size="xs">

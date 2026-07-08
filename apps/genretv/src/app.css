@@ -76,6 +76,10 @@ body {
   color: #415256;
 }
 
+.loading-panel-compact {
+  width: min(360px, calc(100vw - 32px));
+}
+
 .loading-splash {
   display: block;
   width: 100%;
@@ -92,6 +96,10 @@ body {
 @media (min-width: 760px) {
   .loading-panel {
     width: 70vw;
+  }
+
+  .loading-panel-compact {
+    width: 360px;
   }
 }
 
