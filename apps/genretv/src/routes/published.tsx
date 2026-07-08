@@ -12,6 +12,7 @@ const publishedShow = genretvSyncRegistry.published_show.view!;
 const publishedSeason = genretvSyncRegistry.published_season.view!;
 const publishedEpisode = genretvSyncRegistry.published_episode.view!;
 const listImport = genretvSyncRegistry.list_import.view!;
+const userProfile = genretvSyncRegistry.user_profile.view!;
 
 type ImportMode = "linked" | "detached";
 
@@ -25,6 +26,7 @@ export function PublishedRoute() {
       sync.drizzle
         .select({
           id: publishedList.id,
+          ownerId: publishedList.ownerId,
           slug: publishedList.slug,
           title: publishedList.title,
           description: publishedList.description,
@@ -110,12 +112,28 @@ export function PublishedRoute() {
     [],
     { ready: session != null },
   );
+  const profiles = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          ownerId: userProfile.ownerId,
+          displayName: userProfile.displayName,
+          publicSlug: userProfile.publicSlug,
+        })
+        .from(userProfile),
+    [],
+  );
   const summaries = useMemo(
-    () => buildPublishedListSummaries(lists.rows, shows.rows, seasons.rows, episodes.rows, imports.rows),
-    [episodes.rows, imports.rows, lists.rows, seasons.rows, shows.rows],
+    () => buildPublishedListSummaries(lists.rows, shows.rows, seasons.rows, episodes.rows, imports.rows, profiles.rows),
+    [episodes.rows, imports.rows, lists.rows, profiles.rows, seasons.rows, shows.rows],
   );
   const loading =
-    lists.loading || shows.loading || seasons.loading || episodes.loading || (session != null && imports.loading);
+    lists.loading ||
+    shows.loading ||
+    seasons.loading ||
+    episodes.loading ||
+    profiles.loading ||
+    (session != null && imports.loading);
 
   const importSeason = async (season: PublishedSeasonSummary, importMode: ImportMode) => {
     const targetShowId = crypto.randomUUID();
@@ -242,7 +260,7 @@ export function PublishedRoute() {
           Could not import season: {actionError}
         </Alert>
       )}
-      {(lists.error ?? shows.error ?? seasons.error ?? episodes.error ?? imports.error) != null && (
+      {(lists.error ?? shows.error ?? seasons.error ?? episodes.error ?? profiles.error ?? imports.error) != null && (
         <Alert color="red" variant="light">
           Could not load published lists.
         </Alert>
@@ -274,6 +292,9 @@ export function PublishedRoute() {
                   {list.description}
                 </Text>
               )}
+              <Text size="sm" c="dimmed" mt={4}>
+                {publisherLabel(list)}
+              </Text>
             </div>
             <Text size="sm" c="dimmed">
               {list.seasons.length} rows
@@ -376,4 +397,9 @@ export function PublishedRoute() {
 
 function scheduleSection(value: string): "current" | "upcoming" | "past" {
   return value === "current" || value === "upcoming" || value === "past" ? value : "upcoming";
+}
+
+function publisherLabel(list: { publisherDisplayName: string | null; publisherSlug: string | null }): string {
+  if (list.publisherDisplayName == null) return "By a GenreTV publisher";
+  return list.publisherSlug == null ? `By ${list.publisherDisplayName}` : `By ${list.publisherDisplayName} @${list.publisherSlug}`;
 }

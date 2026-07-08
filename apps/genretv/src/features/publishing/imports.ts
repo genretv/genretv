@@ -3,6 +3,7 @@ import type { CanonicalSeasonSeedRow, ExternalLinkSeed, ReleaseWindowSeed } from
 export interface PublishedListRow {
   description: string | null;
   id: string;
+  ownerId: string;
   publicationStatus: string;
   slug: string;
   snapshotVersion: number;
@@ -64,9 +65,18 @@ export interface ListImportRow {
   sourcePublishedSeasonId: string | null;
 }
 
+export interface UserProfileRow {
+  displayName: string;
+  ownerId: string;
+  publicSlug: string | null;
+}
+
 export interface PublishedListSummary {
   description: string | null;
   id: string;
+  ownerId: string;
+  publisherDisplayName: string | null;
+  publisherSlug: string | null;
   seasons: PublishedSeasonSummary[];
   slug: string;
   snapshotVersion: number;
@@ -123,6 +133,7 @@ export function buildPublishedListSummaries(
   seasons: readonly PublishedSeasonRow[],
   episodes: readonly PublishedEpisodeRow[],
   imports: readonly ListImportRow[],
+  profiles: readonly UserProfileRow[] = [],
 ): PublishedListSummary[] {
   const importsBySeason = new Map(
     imports.flatMap((row) =>
@@ -132,6 +143,7 @@ export function buildPublishedListSummaries(
   const showsByList = groupBy(shows, (show) => show.publishedListId);
   const seasonsByList = groupBy(seasons, (season) => season.publishedListId);
   const episodesBySeason = groupBy(episodes, (episode) => episode.publishedSeasonId);
+  const profilesByOwner = new Map(profiles.map((profile) => [profile.ownerId, profile]));
 
   return lists
     .filter((list) => list.publicationStatus === "published")
@@ -146,9 +158,12 @@ export function buildPublishedListSummaries(
       );
       return {
         id: list.id,
+        ownerId: list.ownerId,
         slug: list.slug,
         title: list.title,
         description: list.description,
+        publisherDisplayName: profilesByOwner.get(list.ownerId)?.displayName ?? null,
+        publisherSlug: profilesByOwner.get(list.ownerId)?.publicSlug ?? null,
         snapshotVersion: list.snapshotVersion,
         updatedAtUs: list.updatedAtUs,
         seasons: currentSeasons

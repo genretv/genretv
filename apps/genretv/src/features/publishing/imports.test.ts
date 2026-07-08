@@ -8,6 +8,7 @@ describe("published list import summaries", () => {
       [
         {
           id: "list-1",
+          ownerId: "publisher-1",
           slug: "published",
           title: "Published list",
           description: "Public",
@@ -17,6 +18,7 @@ describe("published list import summaries", () => {
         },
         {
           id: "draft-list",
+          ownerId: "publisher-2",
           slug: "draft",
           title: "Draft list",
           description: null,
@@ -124,12 +126,16 @@ describe("published list import summaries", () => {
         },
       ],
       [{ sourcePublishedSeasonId: "season-current", importMode: "linked" }],
+      [{ ownerId: "publisher-1", displayName: "Curator One", publicSlug: "curator-one" }],
     );
 
     expect(summaries).toHaveLength(1);
     expect(summaries[0]).toMatchObject({
       id: "list-1",
       title: "Published list",
+      ownerId: "publisher-1",
+      publisherDisplayName: "Curator One",
+      publisherSlug: "curator-one",
       snapshotVersion: 2,
     });
     expect(summaries[0]?.seasons).toHaveLength(1);
