@@ -56,6 +56,7 @@ describe("management draft helpers", () => {
       title: "",
       releaseDate: "",
       sortKey: "",
+      linksText: "",
       notes: "",
     });
     expect(releaseDateDraftToWindow("")).toBeNull();

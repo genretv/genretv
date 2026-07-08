@@ -20,6 +20,7 @@ export interface ManagementSeasonDraft {
   releasePattern: string;
   episodeCount: string;
   organizationsText: string;
+  linksText: string;
   notes: string;
 }
 
@@ -28,6 +29,7 @@ export interface ManagementEpisodeDraft {
   title: string;
   releaseDate: string;
   sortKey: string;
+  linksText: string;
   notes: string;
 }
 
@@ -52,6 +54,7 @@ export function seasonDraftFromSeason(season: ManagementSeason): ManagementSeaso
     releasePattern: season.releasePattern ?? "",
     episodeCount: season.episodeCount == null ? "" : String(season.episodeCount),
     organizationsText: orderedListToText(season.organizations),
+    linksText: externalLinksToText(season.links),
     notes: season.notes ?? "",
   };
 }
@@ -62,6 +65,7 @@ export function episodeDraftFromEpisode(episode: ScheduleEpisode): ManagementEpi
     title: episode.title,
     releaseDate: episode.releaseDate,
     sortKey: "",
+    linksText: externalLinksToText(episode.links),
     notes: episode.notes ?? "",
   };
 }
@@ -72,6 +76,7 @@ export function emptyEpisodeDraft(): ManagementEpisodeDraft {
     title: "",
     releaseDate: "",
     sortKey: "",
+    linksText: "",
     notes: "",
   };
 }

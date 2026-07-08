@@ -151,6 +151,7 @@ export interface ScheduleEntry {
   languages: string[];
   countries: string[];
   links: ExternalLinkSeed[];
+  seasonLinks: ExternalLinkSeed[];
   notes: string | null;
   seasonNotes: string | null;
   releasePattern: string | null;
@@ -183,6 +184,7 @@ export interface ManagementSeason {
   sourceRow: number;
   episodeCount: number | null;
   notes: string | null;
+  links: ExternalLinkSeed[];
   episodes: ScheduleEpisode[];
 }
 
@@ -384,6 +386,7 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       sourceRow: entry.sourceRow,
       episodeCount: entry.episodeCount,
       notes: entry.seasonNotes,
+      links: entry.seasonLinks,
       episodes: entry.episodes,
     });
 
@@ -462,6 +465,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     languages,
     countries,
     links: entry.show.externalLinks,
+    seasonLinks: [],
     notes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
     seasonNotes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
     releasePattern: entry.season.releasePattern,
@@ -498,6 +502,7 @@ function toRegistryScheduleEntry(
     languages,
     countries: show.countries,
     links,
+    seasonLinks: season.externalLinks,
     notes: show.notes,
     seasonNotes: season.notes,
     releasePattern: season.releasePattern,

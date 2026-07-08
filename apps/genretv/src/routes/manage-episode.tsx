@@ -17,6 +17,8 @@ import {
   emptyEpisodeDraft,
   episodeDraftFromEpisode,
   episodeDraftStorageKey,
+  externalLinkTextToRows,
+  externalLinksToText,
   releaseDateDraftToWindow,
   useManagementDraft,
   type ManagementEpisodeDraft,
@@ -190,6 +192,7 @@ function EditableEpisode({
     episodeDraftStorageKey(season.id, episodeId),
     initialDraft,
   );
+  const draftLinks = externalLinkTextToRows(draft.linksText);
   const canSaveOverlay = canEdit && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
   const canSubmitProposal =
     canEdit && canPropose && !personalEpisodes.loading && !personalSeasons.loading && !proposalSaving;
@@ -215,7 +218,7 @@ function EditableEpisode({
         title: nullableText(draft.title),
         releaseWindow: releaseDateDraftToWindow(draft.releaseDate),
         sortKey: nullableText(draft.sortKey),
-        externalLinks: episode?.links ?? [],
+        externalLinks: draftLinks,
         notes: nullableText(draft.notes),
       };
       await client.transaction({ mode: "pessimistic" }, (tx) => {
@@ -285,7 +288,7 @@ function EditableEpisode({
             title: nullableText(draft.title),
             releaseWindow: releaseDateDraftToWindow(draft.releaseDate),
             sortKey: nullableText(draft.sortKey),
-            externalLinks: personalRow?.externalLinks ?? episode?.links ?? [],
+            externalLinks: draftLinks,
             notes: nullableText(draft.notes),
           },
         });
@@ -460,6 +463,14 @@ function EditableEpisode({
           />
         </SimpleGrid>
         <Textarea
+          label="Links"
+          autosize
+          minRows={3}
+          value={draft.linksText}
+          disabled={!canEdit}
+          onChange={(event) => setDraft((current) => ({ ...current, linksText: event.currentTarget.value }))}
+        />
+        <Textarea
           label="Notes"
           autosize
           minRows={4}
@@ -518,6 +529,7 @@ function EditableEpisode({
 
 function episodeDraftFromPersonalRow(row: {
   episodeLabel: string | null;
+  externalLinks: unknown;
   notes: string | null;
   releaseWindow: unknown;
   sortKey: string | null;
@@ -528,6 +540,7 @@ function episodeDraftFromPersonalRow(row: {
     title: row.title ?? "",
     releaseDate: releaseWindowText(row.releaseWindow),
     sortKey: row.sortKey ?? "",
+    linksText: externalLinksToText(row.externalLinks),
     notes: row.notes ?? "",
   };
 }

@@ -30,6 +30,8 @@ import {
   type ManagementShow,
 } from "../domain/schedule";
 import {
+  externalLinkTextToRows,
+  externalLinksToText,
   organizationRowsToText,
   organizationTextToRows,
   parseEpisodeCountDraft,
@@ -123,6 +125,7 @@ function EditableSeason({
           releasePattern: personalSeason.releasePattern,
           episodeCount: personalSeason.episodeCount,
           organizations: personalSeason.organizations,
+          externalLinks: personalSeason.externalLinks,
           notes: personalSeason.notes,
         })
         .from(personalSeason)
@@ -217,6 +220,7 @@ function EditableSeason({
     initialDraft,
   );
   const draftEpisodeCount = parseEpisodeCountDraft(draft.episodeCount);
+  const draftLinks = externalLinkTextToRows(draft.linksText);
   const episodeCountValid = draft.episodeCount.trim() === "" || draftEpisodeCount != null;
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
@@ -267,6 +271,7 @@ function EditableSeason({
         releasePattern: nullableText(draft.releasePattern),
         episodeCount: draftEpisodeCount,
         organizations: organizationTextToRows(draft.organizationsText),
+        externalLinks: draftLinks,
         notes: nullableText(draft.notes),
       };
       await client.transaction({ mode: "pessimistic" }, (tx) => {
@@ -277,7 +282,6 @@ function EditableSeason({
             canonicalShowId: isPersonalOnlyShow ? null : show.id,
             canonicalSeasonId: season.id === newSeasonId ? null : season.id,
             sourceRow: season.sourceRow,
-            externalLinks: [],
             ...patch,
           });
         } else {
@@ -330,6 +334,7 @@ function EditableSeason({
             releasePattern: nullableText(draft.releasePattern),
             episodeCount: draftEpisodeCount,
             organizations: organizationTextToRows(draft.organizationsText),
+            externalLinks: draftLinks,
             notes: nullableText(draft.notes),
           },
         });
@@ -560,6 +565,14 @@ function EditableSeason({
           onChange={(event) => setDraft((current) => ({ ...current, organizationsText: event.currentTarget.value }))}
         />
         <Textarea
+          label="Links"
+          autosize
+          minRows={3}
+          value={draft.linksText}
+          disabled={!canEditDraft}
+          onChange={(event) => setDraft((current) => ({ ...current, linksText: event.currentTarget.value }))}
+        />
+        <Textarea
           label="Notes"
           autosize
           minRows={4}
@@ -707,6 +720,7 @@ function seasonDraftFromPersonalRow(row: {
   episodeCount: number | null;
   notes: string | null;
   organizations: unknown;
+  externalLinks: unknown;
   releasePattern: string | null;
   seasonLabel: string;
   section: string;
@@ -720,6 +734,7 @@ function seasonDraftFromPersonalRow(row: {
     releasePattern: row.releasePattern ?? "",
     episodeCount: row.episodeCount == null ? "" : String(row.episodeCount),
     organizationsText: organizationRowsToText(row.organizations),
+    linksText: externalLinksToText(row.externalLinks),
     notes: row.notes ?? "",
   };
 }
@@ -740,6 +755,7 @@ function emptyManagementSeason(): ManagementSeason {
     sourceRow: 1_000_000,
     episodeCount: null,
     notes: null,
+    links: [],
     episodes: [],
   };
 }
