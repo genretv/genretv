@@ -200,7 +200,7 @@ function applyPersonalShows(
 function applyPersonalSeasons(
   canonicalRows: CanonicalSeasonSeedRow[],
   personalRows: ReadonlyArray<{
-    canonicalSeasonId: string;
+    canonicalSeasonId: string | null;
     endedReason: string;
     episodeCount: number | null;
     notes: string | null;
@@ -210,7 +210,9 @@ function applyPersonalSeasons(
     timing: string;
   }>,
 ): CanonicalSeasonSeedRow[] {
-  const overlays = new Map(personalRows.map((row) => [row.canonicalSeasonId, row]));
+  const overlays = new Map(
+    personalRows.flatMap((row) => (row.canonicalSeasonId == null ? [] : [[row.canonicalSeasonId, row]])),
+  );
   if (overlays.size === 0) return canonicalRows;
   return canonicalRows.map((row) => {
     const overlay = overlays.get(row.id);

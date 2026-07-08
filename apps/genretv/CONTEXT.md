@@ -223,3 +223,23 @@ _Avoid_: Username-as-id, list UUID URL
 **Published Snapshot**:
 A public, importable version of a list created when its owner publishes. It represents the latest intentionally released state, not the owner's in-progress working edits.
 _Avoid_: Live list, public draft
+
+**Published Show**:
+A Show row captured inside a Published Snapshot. It may come from a Canonical List item, a Personal List overlay item, or a user-owned addition, and is read by other users as public source material for imports.
+_Avoid_: Live show, public draft show
+
+**Published Season**:
+A Season row captured inside a Published Snapshot, including its parent Published Show relationship and schedule metadata at publish time.
+_Avoid_: Live season, public draft season
+
+**Published Episode**:
+An Episode row captured inside a Published Snapshot, including its parent Published Season relationship and episode metadata at publish time.
+_Avoid_: Live episode, public draft episode
+
+**List Import Record**:
+A Personal List record that remembers a Linked Import or Detached Copy from a Published Snapshot, including the imported source item and the user's target overlay item.
+_Avoid_: Import log, copy flag
+
+**User Profile**:
+A user-owned public identity record used for display names and future public list attribution. It is distinct from Supabase Auth identity and does not replace auth roles.
+_Avoid_: Auth user, account row
