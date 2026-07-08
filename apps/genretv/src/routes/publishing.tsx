@@ -1,11 +1,13 @@
+import { genretvSyncRegistry } from "@genretv/domain/registry";
+import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { Alert, Badge, Button, Group, ScrollArea, Stack, Table, Text, Textarea, Title } from "@mantine/core";
 import { useState } from "react";
 
-import { genretvSyncRegistry } from "@genretv/domain/registry";
-import { useLiveDrizzleRows, useSyncClient } from "@genretv/offline-data/hooks";
 import { useAuth } from "../auth/auth";
+import { workflowStatusColor } from "../features/management/proposals";
 
 const publishApplication = genretvSyncRegistry.publish_application.view!;
+const canonicalProposal = genretvSyncRegistry.canonical_proposal.view!;
 const maintainerNotification = genretvSyncRegistry.maintainer_notification.view!;
 
 export function PublishingRoute() {
@@ -32,6 +34,29 @@ export function PublishingRoute() {
     [],
     { ready: session != null },
   );
+  const proposals = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: canonicalProposal.id,
+          ownerId: canonicalProposal.ownerId,
+          proposalKind: canonicalProposal.proposalKind,
+          status: canonicalProposal.status,
+          title: canonicalProposal.title,
+          message: canonicalProposal.message,
+          reviewerNote: canonicalProposal.reviewerNote,
+          canonicalShowId: canonicalProposal.canonicalShowId,
+          canonicalSeasonId: canonicalProposal.canonicalSeasonId,
+          personalShowId: canonicalProposal.personalShowId,
+          personalSeasonId: canonicalProposal.personalSeasonId,
+          proposedPayload: canonicalProposal.proposedPayload,
+          createdAtUs: canonicalProposal.createdAtUs,
+          updatedAtUs: canonicalProposal.updatedAtUs,
+        })
+        .from(canonicalProposal),
+    [],
+    { ready: session != null },
+  );
   const notifications = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -41,6 +66,7 @@ export function PublishingRoute() {
           title: maintainerNotification.title,
           body: maintainerNotification.body,
           relatedPublishApplicationId: maintainerNotification.relatedPublishApplicationId,
+          relatedCanonicalProposalId: maintainerNotification.relatedCanonicalProposalId,
           createdAtUs: maintainerNotification.createdAtUs,
         })
         .from(maintainerNotification),
@@ -92,6 +118,34 @@ export function PublishingRoute() {
     }
   };
 
+  const updateProposalStatus = async (id: string, status: "approved" | "rejected" | "closed") => {
+    setSaving(true);
+    setActionError(null);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.canonical_proposal.update({ id }, { status });
+      });
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    setSaving(true);
+    setActionError(null);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.maintainer_notification.update({ id }, { status: "read" });
+      });
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (session == null) {
     return (
       <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -116,6 +170,11 @@ export function PublishingRoute() {
       {applications.error != null && (
         <Alert color="red" variant="light">
           Could not load publish applications: {applications.error.message}
+        </Alert>
+      )}
+      {proposals.error != null && (
+        <Alert color="red" variant="light">
+          Could not load canonical proposals: {proposals.error.message}
         </Alert>
       )}
       {notifications.error != null && (
@@ -173,7 +232,9 @@ export function PublishingRoute() {
                 applications.rows.map((application) => (
                   <Table.Tr key={application.id}>
                     <Table.Td>
-                      <Badge variant="light">{application.status}</Badge>
+                      <Badge color={workflowStatusColor(application.status)} variant="light">
+                        {application.status}
+                      </Badge>
                     </Table.Td>
                     <Table.Td>{application.message ?? ""}</Table.Td>
                     <Table.Td>{formatMicroseconds(application.updatedAtUs)}</Table.Td>
@@ -208,6 +269,85 @@ export function PublishingRoute() {
         </ScrollArea>
       </Stack>
 
+      <Stack gap="sm">
+        <Title order={2}>{isMaintainer ? "Canonical proposals" : "Your canonical proposals"}</Title>
+        <ScrollArea>
+          <Table className="schedule-table" striped verticalSpacing="sm" miw={900}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Kind</Table.Th>
+                <Table.Th>Title</Table.Th>
+                <Table.Th>Message</Table.Th>
+                <Table.Th>Updated</Table.Th>
+                {isMaintainer && <Table.Th>Actions</Table.Th>}
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {proposals.rows.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={isMaintainer ? 6 : 5}>
+                    <Text c="dimmed">No canonical proposals yet.</Text>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                proposals.rows.map((proposal) => (
+                  <Table.Tr key={proposal.id}>
+                    <Table.Td>
+                      <Badge color={workflowStatusColor(proposal.status)} variant="light">
+                        {proposal.status}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge variant="outline">{proposal.proposalKind}</Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fw={700}>{proposal.title}</Text>
+                      <Text size="xs" c="dimmed">
+                        {proposalTargetText(proposal)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>{proposal.message ?? proposalPayloadSummary(proposal.proposedPayload)}</Table.Td>
+                    <Table.Td>{formatMicroseconds(proposal.updatedAtUs)}</Table.Td>
+                    {isMaintainer && (
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Button
+                            size="xs"
+                            variant="light"
+                            disabled={saving}
+                            onClick={() => void updateProposalStatus(proposal.id, "approved")}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="xs"
+                            color="red"
+                            variant="light"
+                            disabled={saving}
+                            onClick={() => void updateProposalStatus(proposal.id, "rejected")}
+                          >
+                            Reject
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="default"
+                            disabled={saving}
+                            onClick={() => void updateProposalStatus(proposal.id, "closed")}
+                          >
+                            Close
+                          </Button>
+                        </Group>
+                      </Table.Td>
+                    )}
+                  </Table.Tr>
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      </Stack>
+
       {isMaintainer && (
         <Stack gap="sm">
           <Title order={2}>Notifications</Title>
@@ -216,8 +356,27 @@ export function PublishingRoute() {
           ) : (
             notifications.rows.map((notification) => (
               <Alert key={notification.id} color={notification.status === "unread" ? "yellow" : "gray"} variant="light">
-                <Text fw={700}>{notification.title}</Text>
-                <Text size="sm">{notification.body ?? ""}</Text>
+                <Group justify="space-between" align="flex-start">
+                  <div>
+                    <Text fw={700}>{notification.title}</Text>
+                    <Text size="sm">{notification.body ?? ""}</Text>
+                    {notification.relatedCanonicalProposalId != null && (
+                      <Text size="xs" c="dimmed">
+                        Proposal {notification.relatedCanonicalProposalId}
+                      </Text>
+                    )}
+                  </div>
+                  {notification.status === "unread" && (
+                    <Button
+                      size="xs"
+                      variant="default"
+                      disabled={saving}
+                      onClick={() => void markNotificationRead(notification.id)}
+                    >
+                      Mark read
+                    </Button>
+                  )}
+                </Group>
               </Alert>
             ))
           )}
@@ -235,4 +394,29 @@ function nullableText(value: string): string | null {
 function formatMicroseconds(value: bigint): string {
   const millis = Number(value / 1000n);
   return Number.isFinite(millis) ? new Date(millis).toLocaleString() : "";
+}
+
+function proposalTargetText(proposal: {
+  canonicalSeasonId: string | null;
+  canonicalShowId: string | null;
+  personalSeasonId: string | null;
+  personalShowId: string | null;
+}): string {
+  if (proposal.canonicalSeasonId != null) return "Canonical season";
+  if (proposal.canonicalShowId != null) return "Canonical show";
+  if (proposal.personalSeasonId != null) return "Personal season";
+  if (proposal.personalShowId != null) return "Personal show";
+  return "New canonical entry";
+}
+
+function proposalPayloadSummary(value: unknown): string {
+  if (!isRecord(value)) return "";
+  const fields = ["displayTitle", "seasonLabel", "showTitle"]
+    .map((key) => value[key])
+    .filter((item): item is string => typeof item === "string" && item.trim() !== "");
+  return fields.join(" · ");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null;
 }
