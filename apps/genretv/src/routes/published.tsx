@@ -292,9 +292,10 @@ export function PublishedRoute() {
                   {list.description}
                 </Text>
               )}
-              <Text size="sm" c="dimmed" mt={4}>
-                {publisherLabel(list)}
-              </Text>
+              <PublisherAttribution
+                displayName={list.publisherDisplayName}
+                publicSlug={list.publisherSlug}
+              />
             </div>
             <Text size="sm" c="dimmed">
               {list.seasons.length} rows
@@ -399,7 +400,33 @@ function scheduleSection(value: string): "current" | "upcoming" | "past" {
   return value === "current" || value === "upcoming" || value === "past" ? value : "upcoming";
 }
 
-function publisherLabel(list: { publisherDisplayName: string | null; publisherSlug: string | null }): string {
-  if (list.publisherDisplayName == null) return "By a GenreTV publisher";
-  return list.publisherSlug == null ? `By ${list.publisherDisplayName}` : `By ${list.publisherDisplayName} @${list.publisherSlug}`;
+function PublisherAttribution({
+  displayName,
+  publicSlug,
+}: {
+  displayName: string | null;
+  publicSlug: string | null;
+}) {
+  if (displayName == null) {
+    return (
+      <Text size="sm" c="dimmed" mt={4}>
+        By a GenreTV publisher
+      </Text>
+    );
+  }
+  if (publicSlug == null) {
+    return (
+      <Text size="sm" c="dimmed" mt={4}>
+        By {displayName}
+      </Text>
+    );
+  }
+  return (
+    <Text size="sm" c="dimmed" mt={4}>
+      By{" "}
+      <Link className="inline-link-button" to="/profile/$slug" params={{ slug: publicSlug }}>
+        {displayName}
+      </Link>
+    </Text>
+  );
 }

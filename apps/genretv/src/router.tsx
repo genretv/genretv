@@ -8,6 +8,7 @@ import { ManageHiddenRoute } from "./routes/manage-hidden";
 import { ManageSeasonRoute } from "./routes/manage-season";
 import { ManageShowRoute } from "./routes/manage-show";
 import { ProfileRoute } from "./routes/profile";
+import { PublicProfileRoute } from "./routes/public-profile";
 import { PublishedRoute } from "./routes/published";
 import { PublishingRoute } from "./routes/publishing";
 import { RootLayout } from "./routes/root";
@@ -86,6 +87,12 @@ const profileRoute = createRoute({
   component: ProfileRoute,
 });
 
+const publicProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/profile/$slug",
+  component: PublicProfileRoute,
+});
+
 const publishedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/published",
@@ -105,6 +112,7 @@ const routeTree = rootRoute.addChildren([
   manageEpisodeRoute,
   publishingRoute,
   profileRoute,
+  publicProfileRoute,
   publishedRoute,
 ]);
 
