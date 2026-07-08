@@ -21,6 +21,7 @@ const canonicalEpisode = genretvSyncRegistry.canonical_episode.table;
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
+const personalListExclusion = genretvSyncRegistry.personal_list_exclusion.view!;
 
 export interface LiveCanonicalSchedule {
   error: Error | null;
@@ -154,22 +155,34 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     [],
     { ready: personalReady },
   );
+  const personalExclusions = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          excludedKind: personalListExclusion.excludedKind,
+          canonicalShowId: personalListExclusion.canonicalShowId,
+          canonicalSeasonId: personalListExclusion.canonicalSeasonId,
+          canonicalEpisodeId: personalListExclusion.canonicalEpisodeId,
+        })
+        .from(personalListExclusion),
+    [],
+    { ready: personalReady },
+  );
 
   const usingFallback = shows.rows.length === 0 || seasons.rows.length === 0;
   const schedule = useMemo(() => {
     if (usingFallback) return fallbackSchedule;
-    const showRows = applyPersonalShows(
-      shows.rows.map(toCanonicalShowSeedRow),
-      personalReady ? personalShows.rows : [],
+    const canonicalRows = applyPersonalExclusions(
+      {
+        shows: shows.rows.map(toCanonicalShowSeedRow),
+        seasons: seasons.rows.map(toCanonicalSeasonSeedRow),
+        episodes: episodes.rows.map(toCanonicalEpisodeSeedRow),
+      },
+      personalReady ? personalExclusions.rows : [],
     );
-    const seasonRows = applyPersonalSeasons(
-      seasons.rows.map(toCanonicalSeasonSeedRow),
-      personalReady ? personalSeasons.rows : [],
-    );
-    const episodeRows = applyPersonalEpisodes(
-      episodes.rows.map(toCanonicalEpisodeSeedRow),
-      personalReady ? personalEpisodes.rows : [],
-    );
+    const showRows = applyPersonalShows(canonicalRows.shows, personalReady ? personalShows.rows : []);
+    const seasonRows = applyPersonalSeasons(canonicalRows.seasons, personalReady ? personalSeasons.rows : []);
+    const episodeRows = applyPersonalEpisodes(canonicalRows.episodes, personalReady ? personalEpisodes.rows : []);
     return buildScheduleFromRegistryRows(
       {
         shows: showRows,
@@ -185,6 +198,7 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     );
   }, [
     episodes.rows,
+    personalExclusions.rows,
     personalEpisodes.rows,
     personalReady,
     personalSeasons.rows,
@@ -201,13 +215,61 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
       shows.loading ||
       seasons.loading ||
       episodes.loading ||
-      (personalReady && (personalShows.loading || personalSeasons.loading || personalEpisodes.loading)),
+      (personalReady &&
+        (personalShows.loading || personalSeasons.loading || personalEpisodes.loading || personalExclusions.loading)),
     error:
       shows.error ??
       seasons.error ??
       episodes.error ??
-      (personalReady ? (personalShows.error ?? personalSeasons.error ?? personalEpisodes.error) : null),
+      (personalReady
+        ? (personalShows.error ?? personalSeasons.error ?? personalEpisodes.error ?? personalExclusions.error)
+        : null),
   };
+}
+
+export interface PersonalExclusionRow {
+  canonicalEpisodeId: string | null;
+  canonicalSeasonId: string | null;
+  canonicalShowId: string | null;
+  excludedKind: string;
+}
+
+export function applyPersonalExclusions(
+  canonicalRows: {
+    episodes: CanonicalEpisodeSeedRow[];
+    seasons: CanonicalSeasonSeedRow[];
+    shows: CanonicalShowSeedRow[];
+  },
+  exclusions: readonly PersonalExclusionRow[],
+): {
+  episodes: CanonicalEpisodeSeedRow[];
+  seasons: CanonicalSeasonSeedRow[];
+  shows: CanonicalShowSeedRow[];
+} {
+  const hiddenShowIds = new Set(
+    exclusions.flatMap((row) =>
+      row.excludedKind === "show" && row.canonicalShowId != null ? [row.canonicalShowId] : [],
+    ),
+  );
+  const hiddenSeasonIds = new Set(
+    exclusions.flatMap((row) =>
+      row.excludedKind === "season" && row.canonicalSeasonId != null ? [row.canonicalSeasonId] : [],
+    ),
+  );
+  const hiddenEpisodeIds = new Set(
+    exclusions.flatMap((row) =>
+      row.excludedKind === "episode" && row.canonicalEpisodeId != null ? [row.canonicalEpisodeId] : [],
+    ),
+  );
+  const shows = canonicalRows.shows.filter((show) => !hiddenShowIds.has(show.id));
+  const seasons = canonicalRows.seasons.filter(
+    (season) => !hiddenSeasonIds.has(season.id) && !hiddenShowIds.has(season.showId),
+  );
+  const visibleSeasonIds = new Set(seasons.map((season) => season.id));
+  const episodes = canonicalRows.episodes.filter(
+    (episode) => visibleSeasonIds.has(episode.seasonId) && !hiddenEpisodeIds.has(episode.id),
+  );
+  return { shows, seasons, episodes };
 }
 
 function applyPersonalShows(

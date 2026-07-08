@@ -1,9 +1,72 @@
 import { describe, expect, test } from "bun:test";
 
-import { applyPersonalEpisodes, applyPersonalSeasons } from "./live-canonical-schedule";
-import type { CanonicalEpisodeSeedRow, CanonicalSeasonSeedRow } from "./schedule";
+import { applyPersonalEpisodes, applyPersonalExclusions, applyPersonalSeasons } from "./live-canonical-schedule";
+import type { CanonicalEpisodeSeedRow, CanonicalSeasonSeedRow, CanonicalShowSeedRow } from "./schedule";
 
 describe("live canonical personal overlay rows", () => {
+  test("removes excluded canonical seasons and their episodes", () => {
+    const shows: CanonicalShowSeedRow[] = [showRow("show-1")];
+    const seasons: CanonicalSeasonSeedRow[] = [seasonRow("season-1", "show-1"), seasonRow("season-2", "show-1")];
+    const episodes: CanonicalEpisodeSeedRow[] = [
+      {
+        id: "episode-1",
+        seasonId: "season-1",
+        episodeLabel: "E1",
+        title: "Pilot",
+        releaseWindow: null,
+        sortKey: "001",
+        externalLinks: [],
+        notes: null,
+      },
+    ];
+
+    const filtered = applyPersonalExclusions({ shows, seasons, episodes }, [
+      {
+        excludedKind: "season",
+        canonicalShowId: null,
+        canonicalSeasonId: "season-1",
+        canonicalEpisodeId: null,
+      },
+    ]);
+
+    expect(filtered.shows.map((show) => show.id)).toEqual(["show-1"]);
+    expect(filtered.seasons.map((season) => season.id)).toEqual(["season-2"]);
+    expect(filtered.episodes).toEqual([]);
+  });
+
+  test("removes excluded canonical shows and their children", () => {
+    const filtered = applyPersonalExclusions(
+      {
+        shows: [showRow("show-1"), showRow("show-2")],
+        seasons: [seasonRow("season-1", "show-1"), seasonRow("season-2", "show-2")],
+        episodes: [
+          {
+            id: "episode-1",
+            seasonId: "season-1",
+            episodeLabel: "E1",
+            title: "Pilot",
+            releaseWindow: null,
+            sortKey: "001",
+            externalLinks: [],
+            notes: null,
+          },
+        ],
+      },
+      [
+        {
+          excludedKind: "show",
+          canonicalShowId: "show-1",
+          canonicalSeasonId: null,
+          canonicalEpisodeId: null,
+        },
+      ],
+    );
+
+    expect(filtered.shows.map((show) => show.id)).toEqual(["show-2"]);
+    expect(filtered.seasons.map((season) => season.id)).toEqual(["season-2"]);
+    expect(filtered.episodes).toEqual([]);
+  });
+
   test("adds personal seasons with source metadata", () => {
     const seasons = applyPersonalSeasons(
       [],
@@ -125,3 +188,38 @@ describe("live canonical personal overlay rows", () => {
     expect(episodes).toMatchObject([{ id: "personal-episode-2", seasonId: "canonical-season-1" }]);
   });
 });
+
+function showRow(id: string): CanonicalShowSeedRow {
+  return {
+    id,
+    displayTitle: id,
+    originalTitle: null,
+    languages: ["en"],
+    countries: [],
+    genreTags: [],
+    externalLinks: [],
+    notes: null,
+  };
+}
+
+function seasonRow(id: string, showId: string): CanonicalSeasonSeedRow {
+  return {
+    id,
+    showId,
+    section: "current",
+    seasonLabel: "S1",
+    timing: "",
+    endedReason: "Unknown",
+    releasePattern: null,
+    releasePrecision: "unknown",
+    dateConfidence: "unknown",
+    releaseWindow: null,
+    finaleWindow: null,
+    sortKey: null,
+    episodeCount: null,
+    sourceRow: 1,
+    organizations: [],
+    externalLinks: [],
+    notes: null,
+  };
+}

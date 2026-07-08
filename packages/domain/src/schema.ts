@@ -255,6 +255,42 @@ export const personalEpisodeSyncEntry = defineSyncTable({
   },
 });
 
+export const personalListExclusionSyncEntry = defineSyncTable({
+  tableName: "personal_list_exclusion",
+  makeColumns: () => ({
+    id: uuid("id").primaryKey(),
+    ownerId: uuid("owner_id").notNull(),
+    excludedKind: varchar("excluded_kind", { length: 32 }).notNull(),
+    canonicalShowId: uuid("canonical_show_id").references(() => canonicalShowSyncEntry.table.id),
+    canonicalSeasonId: uuid("canonical_season_id").references(() => canonicalSeasonSyncEntry.table.id),
+    canonicalEpisodeId: uuid("canonical_episode_id").references(() => canonicalEpisodeSyncEntry.table.id),
+    reason: varchar("reason", { length: 1000 }),
+    createdAtUs: bigint("created_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
+    updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
+  }),
+  extras: (self) => [
+    ...buildSupabaseOwnerOrAdminNativePolicies({ ownerColumn: self.ownerId, role: authenticatedRole }),
+    uniqueIndex("personal_exclusion_owner_show_unique").on(self.ownerId, self.canonicalShowId),
+    uniqueIndex("personal_exclusion_owner_season_unique").on(self.ownerId, self.canonicalSeasonId),
+    uniqueIndex("personal_exclusion_owner_episode_unique").on(self.ownerId, self.canonicalEpisodeId),
+  ],
+  mode: "readwrite",
+  conflictPolicy: "reject-if-stale",
+  writeMode: "pessimistic",
+  subscription: "lazy",
+  consistencyGroup: "personal-overlay",
+  shape: {
+    rowFilter: ownerReadFilter,
+  },
+  governance: {
+    managedFields: [
+      { column: "ownerId", applyOn: ["create"], strategy: "authClaim", claimPath: ["sub"] },
+      { column: "createdAtUs", applyOn: ["create"], strategy: "nowMicroseconds" },
+      { column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" },
+    ],
+  },
+});
+
 export const userProfileSyncEntry = defineSyncTable({
   tableName: "user_profile",
   makeColumns: () => ({
@@ -666,6 +702,7 @@ export const canonicalEpisodeTable = canonicalEpisodeSyncEntry.table;
 export const personalShowTable = personalShowSyncEntry.table;
 export const personalSeasonTable = personalSeasonSyncEntry.table;
 export const personalEpisodeTable = personalEpisodeSyncEntry.table;
+export const personalListExclusionTable = personalListExclusionSyncEntry.table;
 export const userProfileTable = userProfileSyncEntry.table;
 export const publishedListTable = publishedListSyncEntry.table;
 export const publishedShowTable = publishedShowSyncEntry.table;

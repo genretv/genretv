@@ -40,6 +40,7 @@ import { canSendCanonicalProposal } from "../features/management/proposals";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
+const personalListExclusion = genretvSyncRegistry.personal_list_exclusion.view!;
 const newSeasonId = "new";
 
 export function ManageSeasonRoute() {
@@ -95,6 +96,7 @@ function EditableSeason({
   const [savingOverlay, setSavingOverlay] = useState(false);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [overlaySaved, setOverlaySaved] = useState(false);
+  const [hidingSeason, setHidingSeason] = useState(false);
   const [proposalSaving, setProposalSaving] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
@@ -135,6 +137,19 @@ function EditableSeason({
     { ready: canEdit },
   );
   const personalShowRow = personalShows.rows[0] ?? null;
+  const seasonExclusions = useLiveDrizzleRows(
+    (sync) =>
+      sync.drizzle
+        .select({
+          id: personalListExclusion.id,
+          canonicalSeasonId: personalListExclusion.canonicalSeasonId,
+        })
+        .from(personalListExclusion)
+        .where(eq(personalListExclusion.canonicalSeasonId, season.id)),
+    [season.id],
+    { ready: canEdit && season.id !== newSeasonId },
+  );
+  const existingSeasonExclusion = seasonExclusions.rows[0] ?? null;
   const initialDraft = useMemo(
     () => (personalRow == null ? seasonDraftFromSeason(season) : seasonDraftFromPersonalRow(personalRow)),
     [personalRow, season],
@@ -151,6 +166,14 @@ function EditableSeason({
     canEdit && !personalSeasons.loading && !personalShows.loading && dirty && episodeCountValid && !savingOverlay;
   const canSubmitProposal =
     canEdit && canPropose && !personalSeasons.loading && !personalShows.loading && episodeCountValid && !proposalSaving;
+  const canHideCanonicalSeason =
+    canEdit &&
+    season.id !== newSeasonId &&
+    !personalSeasons.loading &&
+    !seasonExclusions.loading &&
+    existingSeasonExclusion == null &&
+    (personalRow == null || personalRow.canonicalSeasonId != null) &&
+    !hidingSeason;
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();
@@ -250,6 +273,29 @@ function EditableSeason({
     }
   };
 
+  const hideSeason = async () => {
+    setHidingSeason(true);
+    setOverlayError(null);
+    setOverlaySaved(false);
+    try {
+      await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.personal_list_exclusion.create({
+          id: crypto.randomUUID(),
+          excludedKind: "season",
+          canonicalShowId: show.id,
+          canonicalSeasonId: season.id,
+          canonicalEpisodeId: null,
+          reason: null,
+        });
+      });
+      void navigate({ to: "/manage/show/$showId", params: { showId: show.id } });
+    } catch (cause) {
+      setOverlayError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setHidingSeason(false);
+    }
+  };
+
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
       <Group justify="space-between" align="flex-start">
@@ -285,6 +331,11 @@ function EditableSeason({
       {personalShows.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this show: {personalShows.error.message}
+        </Alert>
+      )}
+      {seasonExclusions.error != null && (
+        <Alert color="red" variant="light">
+          Could not load your personal hidden rows: {seasonExclusions.error.message}
         </Alert>
       )}
       {overlayError != null && (
@@ -390,6 +441,15 @@ function EditableSeason({
             </Button>
             <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
               Save to overlay
+            </Button>
+            <Button
+              color="red"
+              variant="light"
+              disabled={!canHideCanonicalSeason}
+              loading={hidingSeason}
+              onClick={() => void hideSeason()}
+            >
+              Hide from my list
             </Button>
             {canPropose && (
               <Button

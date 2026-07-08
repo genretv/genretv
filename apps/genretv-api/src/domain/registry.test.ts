@@ -12,6 +12,7 @@ describe("genretv sync registry", () => {
       "list_import",
       "maintainer_notification",
       "personal_episode",
+      "personal_list_exclusion",
       "personal_season",
       "personal_show",
       "publish_application",
@@ -33,6 +34,9 @@ describe("genretv sync registry", () => {
     expect(genretvSyncRegistry.personal_episode.mode).toBe("readwrite");
     expect(genretvSyncRegistry.personal_episode.subscription).toBe("lazy");
     expect(genretvSyncRegistry.personal_episode.writeMode).toBe("pessimistic");
+    expect(genretvSyncRegistry.personal_list_exclusion.mode).toBe("readwrite");
+    expect(genretvSyncRegistry.personal_list_exclusion.subscription).toBe("lazy");
+    expect(genretvSyncRegistry.personal_list_exclusion.writeMode).toBe("pessimistic");
     expect(genretvSyncRegistry.published_list.mode).toBe("readwrite");
     expect(genretvSyncRegistry.published_show.mode).toBe("readwrite");
     expect(genretvSyncRegistry.published_season.mode).toBe("readwrite");
