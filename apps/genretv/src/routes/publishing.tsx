@@ -24,6 +24,10 @@ import {
   hasOpenPublishApplication,
   workflowStatusColor,
 } from "../features/management/proposals";
+import {
+  ownPublishedLists as selectOwnPublishedLists,
+  publishedSlugTakenByAnother,
+} from "../features/publishing/ownership";
 import { buildPublishedSnapshotPlan, normalizePublishedSlug } from "../features/publishing/snapshots";
 
 const publishApplication = genretvSyncRegistry.publish_application.view!;
@@ -123,6 +127,10 @@ export function PublishingRoute() {
     [normalizedSlug, publishedLists.rows],
   );
   const userId = session?.user.id ?? null;
+  const ownPublishedLists = useMemo(
+    () => selectOwnPublishedLists(publishedLists.rows, userId),
+    [publishedLists.rows, userId],
+  );
   const ownApplications = useMemo(
     () => applications.rows.filter((application) => userId != null && application.ownerId === userId),
     [applications.rows, userId],
@@ -135,8 +143,7 @@ export function PublishingRoute() {
     matchingPublishedList != null && userId != null && matchingPublishedList.ownerId === userId
       ? matchingPublishedList
       : null;
-  const slugTakenBySomeoneElse =
-    matchingPublishedList != null && (userId == null || matchingPublishedList.ownerId !== userId);
+  const slugTakenBySomeoneElse = publishedSlugTakenByAnother(publishedLists.rows, normalizedSlug, userId);
   const canPublishSnapshot =
     canPublish &&
     normalizedSlug !== "" &&
@@ -403,14 +410,14 @@ export function PublishingRoute() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {publishedLists.rows.length === 0 ? (
+                {ownPublishedLists.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={5}>
                       <Text c="dimmed">No published lists yet.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
-                  publishedLists.rows.map((list) => (
+                  ownPublishedLists.map((list) => (
                     <Table.Tr key={list.id}>
                       <Table.Td>{list.slug}</Table.Td>
                       <Table.Td>{list.title}</Table.Td>
