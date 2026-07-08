@@ -51,6 +51,15 @@ body {
   color: #102225;
 }
 
+.auth-back-button {
+  color: #075b64;
+}
+
+.auth-back-button:hover {
+  color: #064e55;
+  background: rgba(7, 91, 100, 0.1);
+}
+
 .schedule-controls label {
   color: #102225;
   font-weight: 650;

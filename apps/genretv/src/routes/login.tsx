@@ -164,7 +164,7 @@ function AuthRoute({ initialMode }: { initialMode: AuthMode }) {
             )}
           </Group>
           <Group justify="space-between">
-            <Button component="a" href="/" variant="subtle">
+            <Button className="auth-back-button" component="a" href="/" variant="subtle">
               Back to schedule
             </Button>
             <Button type="submit" loading={pending} disabled={mode === "update-password" && session == null}>
