@@ -2,7 +2,7 @@ name: genretv-local
 
 services:
   db:
-    image: docker.io/supabase/postgres:17.6.1.136
+    image: docker.io/supabase/postgres:17.6.1.143
     container_name: genretv-db
     volumes:
       - ./genretv/db-init/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:ro
@@ -63,7 +63,7 @@ services:
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
 
   studio:
-    image: docker.io/supabase/studio:2026.06.03-sha-0bca601
+    image: docker.io/supabase/studio:2026.07.07-sha-a6a04f2
     container_name: genretv-studio
     depends_on:
       - meta
@@ -80,7 +80,7 @@ services:
       - "54333:3000"
 
   functions:
-    image: docker.io/supabase/edge-runtime:v1.74.0
+    image: docker.io/supabase/edge-runtime:v1.74.2
     container_name: genretv-functions
     depends_on:
       db:
@@ -99,7 +99,7 @@ services:
       EDGE_WORKER_TIMEOUT_MS: "600000"
 
   electric:
-    image: docker.io/electricsql/electric:1.7.6
+    image: docker.io/electricsql/electric:1.7.7
     container_name: genretv-electric
     depends_on:
       db:
@@ -112,7 +112,7 @@ services:
       - "54330:3000"
 
   envoy:
-    image: docker.io/envoyproxy/envoy:v1.37.2
+    image: docker.io/envoyproxy/envoy:v1.38.3
     container_name: genretv-envoy
     depends_on:
       - auth
@@ -135,7 +135,7 @@ services:
       - "54343:54343/udp"
 
   user-seed:
-    image: docker.io/curlimages/curl:8.11.1
+    image: docker.io/curlimages/curl:8.21.0
     container_name: genretv-user-seed
     profiles: ["seed"]
     depends_on:
