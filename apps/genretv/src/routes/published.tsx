@@ -124,6 +124,23 @@ export function PublishedRoute() {
     setActionError(null);
     try {
       await client.transaction({ mode: "pessimistic" }, (tx) => {
+        if (importMode === "linked") {
+          tx.tables.list_import.create({
+            id: crypto.randomUUID(),
+            sourcePublishedListId: season.publishedListId,
+            sourcePublishedShowId: season.publishedShowId,
+            sourcePublishedSeasonId: season.id,
+            sourcePublishedEpisodeId: null,
+            targetPersonalShowId: null,
+            targetPersonalSeasonId: null,
+            targetPersonalEpisodeId: null,
+            importMode,
+            importedKind: "season",
+            notes: null,
+          });
+          return;
+        }
+
         tx.tables.personal_show.create({
           id: targetShowId,
           canonicalShowId: null,

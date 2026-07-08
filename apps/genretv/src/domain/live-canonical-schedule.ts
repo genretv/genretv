@@ -22,6 +22,10 @@ const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
 const personalListExclusion = genretvSyncRegistry.personal_list_exclusion.view!;
+const publishedShow = genretvSyncRegistry.published_show.view!;
+const publishedSeason = genretvSyncRegistry.published_season.view!;
+const publishedEpisode = genretvSyncRegistry.published_episode.view!;
+const listImport = genretvSyncRegistry.list_import.view!;
 
 export interface LiveCanonicalSchedule {
   error: Error | null;
@@ -168,6 +172,83 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     [],
     { ready: personalReady },
   );
+  const listImports = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          importMode: listImport.importMode,
+          importedKind: listImport.importedKind,
+          sourcePublishedShowId: listImport.sourcePublishedShowId,
+          sourcePublishedSeasonId: listImport.sourcePublishedSeasonId,
+          sourcePublishedEpisodeId: listImport.sourcePublishedEpisodeId,
+        })
+        .from(listImport),
+    [],
+    { ready: personalReady },
+  );
+  const publishedShows = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          id: publishedShow.id,
+          publicationStatus: publishedShow.publicationStatus,
+          displayTitle: publishedShow.displayTitle,
+          originalTitle: publishedShow.originalTitle,
+          languages: publishedShow.languages,
+          countries: publishedShow.countries,
+          genreTags: publishedShow.genreTags,
+          externalLinks: publishedShow.externalLinks,
+          notes: publishedShow.notes,
+        })
+        .from(publishedShow),
+    [],
+    { ready: personalReady },
+  );
+  const publishedSeasons = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          id: publishedSeason.id,
+          publicationStatus: publishedSeason.publicationStatus,
+          publishedShowId: publishedSeason.publishedShowId,
+          section: publishedSeason.section,
+          seasonLabel: publishedSeason.seasonLabel,
+          timing: publishedSeason.timing,
+          endedReason: publishedSeason.endedReason,
+          releasePattern: publishedSeason.releasePattern,
+          releasePrecision: publishedSeason.releasePrecision,
+          dateConfidence: publishedSeason.dateConfidence,
+          releaseWindow: publishedSeason.releaseWindow,
+          finaleWindow: publishedSeason.finaleWindow,
+          sortKey: publishedSeason.sortKey,
+          episodeCount: publishedSeason.episodeCount,
+          sourceRow: publishedSeason.sourceRow,
+          organizations: publishedSeason.organizations,
+          externalLinks: publishedSeason.externalLinks,
+          notes: publishedSeason.notes,
+        })
+        .from(publishedSeason),
+    [],
+    { ready: personalReady },
+  );
+  const publishedEpisodes = useLiveDrizzleRows(
+    (client) =>
+      client.drizzle
+        .select({
+          id: publishedEpisode.id,
+          publicationStatus: publishedEpisode.publicationStatus,
+          publishedSeasonId: publishedEpisode.publishedSeasonId,
+          episodeLabel: publishedEpisode.episodeLabel,
+          title: publishedEpisode.title,
+          releaseWindow: publishedEpisode.releaseWindow,
+          sortKey: publishedEpisode.sortKey,
+          externalLinks: publishedEpisode.externalLinks,
+          notes: publishedEpisode.notes,
+        })
+        .from(publishedEpisode),
+    [],
+    { ready: personalReady },
+  );
 
   const usingFallback = shows.rows.length === 0 || seasons.rows.length === 0;
   const schedule = useMemo(() => {
@@ -180,14 +261,27 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
       },
       personalReady ? personalExclusions.rows : [],
     );
-    const showRows = applyPersonalShows(canonicalRows.shows, personalReady ? personalShows.rows : []);
-    const seasonRows = applyPersonalSeasons(canonicalRows.seasons, personalReady ? personalSeasons.rows : []);
-    const episodeRows = applyPersonalEpisodes(canonicalRows.episodes, personalReady ? personalEpisodes.rows : []);
+    const personalRows = {
+      shows: applyPersonalShows(canonicalRows.shows, personalReady ? personalShows.rows : []),
+      seasons: applyPersonalSeasons(canonicalRows.seasons, personalReady ? personalSeasons.rows : []),
+      episodes: applyPersonalEpisodes(canonicalRows.episodes, personalReady ? personalEpisodes.rows : []),
+    };
+    const linkedRows = applyLinkedPublishedImports(
+      personalRows,
+      personalReady ? listImports.rows : [],
+      personalReady
+        ? {
+            shows: publishedShows.rows,
+            seasons: publishedSeasons.rows,
+            episodes: publishedEpisodes.rows,
+          }
+        : { shows: [], seasons: [], episodes: [] },
+    );
     return buildScheduleFromRegistryRows(
       {
-        shows: showRows,
-        seasons: seasonRows,
-        episodes: episodeRows,
+        shows: linkedRows.shows,
+        seasons: linkedRows.seasons,
+        episodes: linkedRows.episodes,
       },
       {
         title: fallbackSchedule.title,
@@ -203,6 +297,10 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     personalReady,
     personalSeasons.rows,
     personalShows.rows,
+    listImports.rows,
+    publishedEpisodes.rows,
+    publishedSeasons.rows,
+    publishedShows.rows,
     seasons.rows,
     shows.rows,
     usingFallback,
@@ -216,13 +314,27 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
       seasons.loading ||
       episodes.loading ||
       (personalReady &&
-        (personalShows.loading || personalSeasons.loading || personalEpisodes.loading || personalExclusions.loading)),
+        (personalShows.loading ||
+          personalSeasons.loading ||
+          personalEpisodes.loading ||
+          personalExclusions.loading ||
+          listImports.loading ||
+          publishedShows.loading ||
+          publishedSeasons.loading ||
+          publishedEpisodes.loading)),
     error:
       shows.error ??
       seasons.error ??
       episodes.error ??
       (personalReady
-        ? (personalShows.error ?? personalSeasons.error ?? personalEpisodes.error ?? personalExclusions.error)
+        ? (personalShows.error ??
+          personalSeasons.error ??
+          personalEpisodes.error ??
+          personalExclusions.error ??
+          listImports.error ??
+          publishedShows.error ??
+          publishedSeasons.error ??
+          publishedEpisodes.error)
         : null),
   };
 }
@@ -389,6 +501,124 @@ export function applyPersonalEpisodes(
     }),
     ...additions,
   ];
+}
+
+export interface LinkedPublishedImportRow {
+  importedKind: string;
+  importMode: string;
+  sourcePublishedEpisodeId: string | null;
+  sourcePublishedSeasonId: string | null;
+  sourcePublishedShowId: string | null;
+}
+
+export function applyLinkedPublishedImports(
+  currentRows: {
+    episodes: CanonicalEpisodeSeedRow[];
+    seasons: CanonicalSeasonSeedRow[];
+    shows: CanonicalShowSeedRow[];
+  },
+  imports: readonly LinkedPublishedImportRow[],
+  publishedRows: {
+    episodes: ReadonlyArray<{
+      episodeLabel: string | null;
+      externalLinks: unknown;
+      id: string;
+      notes: string | null;
+      publicationStatus: string;
+      publishedSeasonId: string;
+      releaseWindow: unknown;
+      sortKey: string | null;
+      title: string | null;
+    }>;
+    seasons: ReadonlyArray<{
+      dateConfidence: string;
+      endedReason: string;
+      episodeCount: number | null;
+      externalLinks: unknown;
+      finaleWindow: unknown;
+      id: string;
+      notes: string | null;
+      organizations: unknown;
+      publicationStatus: string;
+      publishedShowId: string;
+      releasePattern: string | null;
+      releasePrecision: string;
+      releaseWindow: unknown;
+      seasonLabel: string;
+      section: string;
+      sortKey: string | null;
+      sourceRow: number;
+      timing: string;
+    }>;
+    shows: ReadonlyArray<{
+      countries: unknown;
+      displayTitle: string;
+      externalLinks: unknown;
+      genreTags: unknown;
+      id: string;
+      languages: unknown;
+      notes: string | null;
+      originalTitle: string | null;
+      publicationStatus: string;
+    }>;
+  },
+): {
+  episodes: CanonicalEpisodeSeedRow[];
+  seasons: CanonicalSeasonSeedRow[];
+  shows: CanonicalShowSeedRow[];
+} {
+  const linkedSeasonIds = unique(
+    imports.flatMap((row) =>
+      row.importMode === "linked" && row.sourcePublishedSeasonId != null ? [row.sourcePublishedSeasonId] : [],
+    ),
+  );
+  if (linkedSeasonIds.length === 0) return currentRows;
+
+  const publishedShowsById = new Map(
+    publishedRows.shows.filter((show) => show.publicationStatus === "published").map((show) => [show.id, show]),
+  );
+  const publishedSeasonsById = new Map(
+    publishedRows.seasons
+      .filter((season) => season.publicationStatus === "published")
+      .map((season) => [season.id, season]),
+  );
+  const publishedEpisodesBySeason = groupBy(
+    publishedRows.episodes.filter((episode) => episode.publicationStatus === "published"),
+    (episode) => episode.publishedSeasonId,
+  );
+  const shows = [...currentRows.shows];
+  const seasons = [...currentRows.seasons];
+  const episodes = [...currentRows.episodes];
+  const localShowIds = new Set(shows.map((show) => show.id));
+  const localSeasonIds = new Set(seasons.map((season) => season.id));
+  const localEpisodeIds = new Set(episodes.map((episode) => episode.id));
+
+  for (const sourceSeasonId of linkedSeasonIds) {
+    const sourceSeason = publishedSeasonsById.get(sourceSeasonId);
+    if (sourceSeason == null) continue;
+    const sourceShow = publishedShowsById.get(sourceSeason.publishedShowId);
+    if (sourceShow == null) continue;
+
+    const localShowId = linkedShowId(sourceShow.id);
+    const localSeasonId = linkedSeasonId(sourceSeason.id);
+    if (!localShowIds.has(localShowId)) {
+      shows.push(publishedShowToSeedRow(sourceShow, localShowId));
+      localShowIds.add(localShowId);
+    }
+    if (!localSeasonIds.has(localSeasonId)) {
+      seasons.push(publishedSeasonToSeedRow(sourceSeason, localShowId, localSeasonId));
+      localSeasonIds.add(localSeasonId);
+    }
+    for (const sourceEpisode of publishedEpisodesBySeason.get(sourceSeason.id) ?? []) {
+      const localEpisodeId = linkedEpisodeId(sourceEpisode.id);
+      if (!localEpisodeIds.has(localEpisodeId)) {
+        episodes.push(publishedEpisodeToSeedRow(sourceEpisode, localSeasonId, localEpisodeId));
+        localEpisodeIds.add(localEpisodeId);
+      }
+    }
+  }
+
+  return { shows, seasons, episodes };
 }
 
 function toCanonicalShowSeedRow(row: {
@@ -566,6 +796,122 @@ function personalEpisodeToSeedRow(
     externalLinks: externalLinks(row.externalLinks),
     notes: row.notes,
   };
+}
+
+function publishedShowToSeedRow(
+  row: {
+    countries: unknown;
+    displayTitle: string;
+    externalLinks: unknown;
+    genreTags: unknown;
+    id: string;
+    languages: unknown;
+    notes: string | null;
+    originalTitle: string | null;
+  },
+  id: string,
+): CanonicalShowSeedRow {
+  return {
+    id,
+    displayTitle: row.displayTitle,
+    originalTitle: row.originalTitle,
+    languages: stringArray(row.languages),
+    countries: stringArray(row.countries),
+    genreTags: stringArray(row.genreTags),
+    externalLinks: externalLinks(row.externalLinks),
+    notes: row.notes,
+  };
+}
+
+function publishedSeasonToSeedRow(
+  row: {
+    dateConfidence: string;
+    endedReason: string;
+    episodeCount: number | null;
+    externalLinks: unknown;
+    finaleWindow: unknown;
+    notes: string | null;
+    organizations: unknown;
+    releasePattern: string | null;
+    releasePrecision: string;
+    releaseWindow: unknown;
+    seasonLabel: string;
+    section: string;
+    sortKey: string | null;
+    sourceRow: number;
+    timing: string;
+  },
+  showId: string,
+  id: string,
+): CanonicalSeasonSeedRow {
+  return {
+    id,
+    showId,
+    section: scheduleSection(row.section),
+    seasonLabel: row.seasonLabel,
+    timing: row.timing,
+    endedReason: row.endedReason,
+    releasePattern: row.releasePattern,
+    releasePrecision: row.releasePrecision,
+    dateConfidence: row.dateConfidence,
+    releaseWindow: releaseWindow(row.releaseWindow),
+    finaleWindow: releaseWindow(row.finaleWindow),
+    sortKey: row.sortKey,
+    episodeCount: row.episodeCount,
+    sourceRow: row.sourceRow,
+    organizations: organizations(row.organizations),
+    externalLinks: externalLinks(row.externalLinks),
+    notes: row.notes,
+  };
+}
+
+function publishedEpisodeToSeedRow(
+  row: {
+    episodeLabel: string | null;
+    externalLinks: unknown;
+    notes: string | null;
+    releaseWindow: unknown;
+    sortKey: string | null;
+    title: string | null;
+  },
+  seasonId: string,
+  id: string,
+): CanonicalEpisodeSeedRow {
+  return {
+    id,
+    seasonId,
+    episodeLabel: row.episodeLabel,
+    title: row.title,
+    releaseWindow: releaseWindow(row.releaseWindow),
+    sortKey: row.sortKey,
+    externalLinks: externalLinks(row.externalLinks),
+    notes: row.notes,
+  };
+}
+
+function linkedShowId(sourceId: string): string {
+  return `published-show:${sourceId}`;
+}
+
+function linkedSeasonId(sourceId: string): string {
+  return `published-season:${sourceId}`;
+}
+
+function linkedEpisodeId(sourceId: string): string {
+  return `published-episode:${sourceId}`;
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function groupBy<T>(rows: readonly T[], keyFor: (row: T) => string): Map<string, T[]> {
+  const result = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = keyFor(row);
+    result.set(key, [...(result.get(key) ?? []), row]);
+  }
+  return result;
 }
 
 function stringArray(value: unknown): string[] {

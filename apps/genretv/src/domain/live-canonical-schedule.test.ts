@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { applyPersonalEpisodes, applyPersonalExclusions, applyPersonalSeasons } from "./live-canonical-schedule";
+import {
+  applyLinkedPublishedImports,
+  applyPersonalEpisodes,
+  applyPersonalExclusions,
+  applyPersonalSeasons,
+} from "./live-canonical-schedule";
 import type { CanonicalEpisodeSeedRow, CanonicalSeasonSeedRow, CanonicalShowSeedRow } from "./schedule";
 
 describe("live canonical personal overlay rows", () => {
@@ -186,6 +191,89 @@ describe("live canonical personal overlay rows", () => {
     );
 
     expect(episodes).toMatchObject([{ id: "personal-episode-2", seasonId: "canonical-season-1" }]);
+  });
+
+  test("materializes linked published imports from synced published rows", () => {
+    const rows = applyLinkedPublishedImports(
+      { shows: [], seasons: [], episodes: [] },
+      [
+        {
+          importMode: "linked",
+          importedKind: "season",
+          sourcePublishedShowId: "published-show-1",
+          sourcePublishedSeasonId: "published-season-1",
+          sourcePublishedEpisodeId: null,
+        },
+      ],
+      {
+        shows: [
+          {
+            id: "published-show-1",
+            publicationStatus: "published",
+            displayTitle: "Shared Show",
+            originalTitle: null,
+            languages: ["da", "sv"],
+            countries: ["DK"],
+            genreTags: ["Fantasy"],
+            externalLinks: [],
+            notes: null,
+          },
+        ],
+        seasons: [
+          {
+            id: "published-season-1",
+            publicationStatus: "published",
+            publishedShowId: "published-show-1",
+            section: "upcoming",
+            seasonLabel: "S2",
+            timing: "Autumn",
+            endedReason: "Unknown",
+            releasePattern: "weekly",
+            releasePrecision: "season",
+            dateConfidence: "expected",
+            releaseWindow: null,
+            finaleWindow: null,
+            sortKey: "2026-09",
+            episodeCount: 2,
+            sourceRow: 42,
+            organizations: [{ name: "DR", role: "broadcaster", externalLinks: [] }],
+            externalLinks: [],
+            notes: "Linked",
+          },
+        ],
+        episodes: [
+          {
+            id: "published-episode-1",
+            publicationStatus: "published",
+            publishedSeasonId: "published-season-1",
+            episodeLabel: "E1",
+            title: "Return",
+            releaseWindow: null,
+            sortKey: "001",
+            externalLinks: [],
+            notes: null,
+          },
+        ],
+      },
+    );
+
+    expect(rows.shows).toMatchObject([
+      { id: "published-show:published-show-1", displayTitle: "Shared Show", languages: ["da", "sv"] },
+    ]);
+    expect(rows.seasons).toMatchObject([
+      {
+        id: "published-season:published-season-1",
+        showId: "published-show:published-show-1",
+        seasonLabel: "S2",
+      },
+    ]);
+    expect(rows.episodes).toMatchObject([
+      {
+        id: "published-episode:published-episode-1",
+        seasonId: "published-season:published-season-1",
+        episodeLabel: "E1",
+      },
+    ]);
   });
 });
 
