@@ -1,9 +1,10 @@
 import { Center, Loader, Stack, Text } from "@mantine/core";
 import type { Session } from "@supabase/supabase-js";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { createGenretvWorkerClient, type GenretvSyncClient } from "@genretv/offline-data/client";
 import { SyncClientProvider } from "@genretv/offline-data/hooks";
+import { bindCurrentGenretvStoreToUser } from "@genretv/offline-data/store-registry";
 import type { AuthTokenSnapshot } from "@pgxsinkit/client";
 import { syncDebug } from "@pgxsinkit/client";
 import type { SyncRuntimeStatus } from "@pgxsinkit/contracts";
@@ -18,11 +19,11 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
   const [error, setError] = useState<Error | null>(null);
   const [initialSyncReady, setInitialSyncReady] = useState(false);
   const userId = session?.user.id ?? null;
+  const initialUserId = useRef(userId);
 
   useEffect(() => {
     let active = true;
     let created: GenretvSyncClient | undefined;
-    setClient(null);
     setStatus(null);
     setError(null);
 
@@ -31,9 +32,9 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
         if (typeof SharedWorker === "undefined") {
           throw new Error("This browser does not support SharedWorker, which GenreTV requires for local sync.");
         }
-        syncDebug("boot genretv worker client create start", { signedIn: userId != null });
+        syncDebug("boot genretv worker client create start", { signedIn: initialUserId.current != null });
         const next = await createGenretvWorkerClient({
-          userId,
+          userId: initialUserId.current,
           getPort: getGenretvWorkerPort,
           getToken: currentTokenSnapshot,
           onStatusChange: (value) => {
@@ -58,7 +59,12 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
       active = false;
       if (created) void created.stop();
     };
-  }, [userId]);
+  }, []);
+
+  useEffect(() => {
+    if (userId != null) bindCurrentGenretvStoreToUser(userId);
+    client?.notifyAuthChanged();
+  }, [client, userId, session?.access_token, session?.expires_at]);
 
   if (error != null) {
     return (

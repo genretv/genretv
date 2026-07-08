@@ -1,10 +1,10 @@
-import { attachSyncClient, type AuthTokenSnapshot, type BridgePort, type SyncClient } from "@pgxsinkit/client";
+import { attachSyncClient, type AttachedSyncClient, type AuthTokenSnapshot, type BridgePort } from "@pgxsinkit/client";
 import type { SyncRuntimeStatus } from "@pgxsinkit/contracts";
 
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { claimGenretvStore } from "./store-registry";
 
-export type GenretvSyncClient = SyncClient<typeof genretvSyncRegistry>;
+export type GenretvSyncClient = AttachedSyncClient<typeof genretvSyncRegistry>;
 
 export interface CreateGenretvWorkerClientOptions {
   getPort: (dataDir: string) => BridgePort;

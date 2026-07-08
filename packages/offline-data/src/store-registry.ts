@@ -40,6 +40,23 @@ export function claimGenretvStore(userId: string | null): GenretvStoreClaim {
   return { storeId: claimed, dataDir: dataDirForStore(claimed), fresh: true };
 }
 
+export function bindCurrentGenretvStoreToUser(userId: string): string {
+  const state = readState();
+  const existing = state.userStores[userId];
+  if (existing != null) {
+    writeState(state);
+    return existing;
+  }
+
+  const claimed = state.spareStoreId;
+  writeState({
+    version: 1,
+    spareStoreId: randomStoreId(),
+    userStores: { ...state.userStores, [userId]: claimed },
+  });
+  return claimed;
+}
+
 function readState(): StoreRegistryState {
   const parsed = readStoredState();
   if (parsed != null) return parsed;
