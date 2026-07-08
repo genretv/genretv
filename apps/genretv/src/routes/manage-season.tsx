@@ -175,6 +175,9 @@ function EditableSeason({
             personalShowId: isPersonalOnlyShow ? show.id : null,
             canonicalShowId: isPersonalOnlyShow ? null : show.id,
             canonicalSeasonId: season.id === newSeasonId ? null : season.id,
+            sourceRow: season.sourceRow,
+            organizations: season.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
+            externalLinks: [],
             ...patch,
           });
         } else {
@@ -502,6 +505,7 @@ function emptyManagementSeason(): ManagementSeason {
     endedReason: "",
     releasePattern: null,
     organizationText: "",
+    organizations: [],
     genreText: "",
     languages: [],
     countries: [],

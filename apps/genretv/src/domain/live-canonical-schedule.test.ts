@@ -1,9 +1,68 @@
 import { describe, expect, test } from "bun:test";
 
-import { applyPersonalEpisodes } from "./live-canonical-schedule";
-import type { CanonicalEpisodeSeedRow } from "./schedule";
+import { applyPersonalEpisodes, applyPersonalSeasons } from "./live-canonical-schedule";
+import type { CanonicalEpisodeSeedRow, CanonicalSeasonSeedRow } from "./schedule";
 
 describe("live canonical personal overlay rows", () => {
+  test("adds personal seasons with source metadata", () => {
+    const seasons = applyPersonalSeasons(
+      [],
+      [
+        {
+          id: "personal-season-1",
+          canonicalSeasonId: null,
+          canonicalShowId: null,
+          personalShowId: "personal-show-1",
+          section: "current",
+          seasonLabel: "S1",
+          timing: "Fridays",
+          endedReason: "Unknown",
+          releasePattern: "weekly",
+          releasePrecision: "day",
+          dateConfidence: "confirmed",
+          releaseWindow: { raw: "2026-07-08", precision: "day", confidence: "confirmed" },
+          finaleWindow: null,
+          sortKey: "002",
+          episodeCount: null,
+          sourceRow: 2,
+          organizations: [{ name: "Netflix", role: "streamer", externalLinks: [] }],
+          externalLinks: [{ label: "Wikipedia", url: "https://wikipedia.test/shared-show" }],
+          notes: "Imported",
+        },
+      ],
+    );
+
+    expect(seasons).toEqual([
+      {
+        id: "personal-season-1",
+        showId: "personal-show-1",
+        section: "current",
+        seasonLabel: "S1",
+        timing: "Fridays",
+        endedReason: "Unknown",
+        releasePattern: "weekly",
+        releasePrecision: "day",
+        dateConfidence: "confirmed",
+        releaseWindow: {
+          raw: "2026-07-08",
+          precision: "day",
+          confidence: "confirmed",
+          year: null,
+          month: null,
+          day: null,
+          releaseSeason: null,
+        },
+        finaleWindow: null,
+        sortKey: "002",
+        episodeCount: null,
+        sourceRow: 2,
+        organizations: [{ name: "Netflix", role: "streamer", externalLinks: [] }],
+        externalLinks: [{ label: "Wikipedia", url: "https://wikipedia.test/shared-show" }],
+        notes: "Imported",
+      } satisfies CanonicalSeasonSeedRow,
+    ]);
+  });
+
   test("adds personal episodes under personal-only seasons", () => {
     const canonicalRows: CanonicalEpisodeSeedRow[] = [];
 

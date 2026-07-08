@@ -176,6 +176,7 @@ export interface ManagementSeason {
   endedReason: string;
   releasePattern: string | null;
   organizationText: string;
+  organizations: string[];
   genreText: string;
   languages: string[];
   countries: string[];
@@ -376,6 +377,7 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       endedReason: entry.endedReason,
       releasePattern: entry.releasePattern,
       organizationText: entry.organizationText,
+      organizations: entry.organizations,
       genreText: entry.genreText,
       languages: entry.languages,
       countries: entry.countries,

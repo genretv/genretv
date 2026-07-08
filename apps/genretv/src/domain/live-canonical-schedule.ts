@@ -120,7 +120,15 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           timing: personalSeason.timing,
           endedReason: personalSeason.endedReason,
           releasePattern: personalSeason.releasePattern,
+          releasePrecision: personalSeason.releasePrecision,
+          dateConfidence: personalSeason.dateConfidence,
+          releaseWindow: personalSeason.releaseWindow,
+          finaleWindow: personalSeason.finaleWindow,
+          sortKey: personalSeason.sortKey,
           episodeCount: personalSeason.episodeCount,
+          sourceRow: personalSeason.sourceRow,
+          organizations: personalSeason.organizations,
+          externalLinks: personalSeason.externalLinks,
           notes: personalSeason.notes,
         })
         .from(personalSeason),
@@ -229,7 +237,7 @@ function applyPersonalShows(
   ];
 }
 
-function applyPersonalSeasons(
+export function applyPersonalSeasons(
   canonicalRows: CanonicalSeasonSeedRow[],
   personalRows: ReadonlyArray<{
     canonicalSeasonId: string | null;
@@ -238,10 +246,18 @@ function applyPersonalSeasons(
     episodeCount: number | null;
     id: string;
     notes: string | null;
+    organizations: unknown;
     personalShowId: string | null;
+    externalLinks: unknown;
+    dateConfidence: string;
     releasePattern: string | null;
+    releasePrecision: string;
+    releaseWindow: unknown;
     seasonLabel: string;
     section: string;
+    finaleWindow: unknown;
+    sortKey: string | null;
+    sourceRow: number;
     timing: string;
   }>,
 ): CanonicalSeasonSeedRow[] {
@@ -265,7 +281,15 @@ function applyPersonalSeasons(
             timing: overlay.timing,
             endedReason: overlay.endedReason,
             releasePattern: overlay.releasePattern,
+            releasePrecision: overlay.releasePrecision,
+            dateConfidence: overlay.dateConfidence,
+            releaseWindow: releaseWindow(overlay.releaseWindow),
+            finaleWindow: releaseWindow(overlay.finaleWindow),
+            sortKey: overlay.sortKey,
             episodeCount: overlay.episodeCount,
+            sourceRow: overlay.sourceRow,
+            organizations: organizations(overlay.organizations),
+            externalLinks: externalLinks(overlay.externalLinks),
             notes: overlay.notes,
           };
     }),
@@ -356,11 +380,19 @@ function personalSeasonToSeedRow(
   row: {
     endedReason: string;
     episodeCount: number | null;
+    externalLinks: unknown;
+    dateConfidence: string;
+    finaleWindow: unknown;
     id: string;
     notes: string | null;
+    organizations: unknown;
     releasePattern: string | null;
+    releasePrecision: string;
+    releaseWindow: unknown;
     seasonLabel: string;
     section: string;
+    sortKey: string | null;
+    sourceRow: number;
     timing: string;
   },
   showId: string,
@@ -374,15 +406,15 @@ function personalSeasonToSeedRow(
     timing: row.timing,
     endedReason: row.endedReason,
     releasePattern: row.releasePattern,
-    releasePrecision: "unknown",
-    dateConfidence: "unknown",
-    releaseWindow: null,
-    finaleWindow: null,
-    sortKey: null,
+    releasePrecision: row.releasePrecision,
+    dateConfidence: row.dateConfidence,
+    releaseWindow: releaseWindow(row.releaseWindow),
+    finaleWindow: releaseWindow(row.finaleWindow),
+    sortKey: row.sortKey,
     episodeCount: row.episodeCount,
-    sourceRow: 1_000_000 + index,
-    organizations: [],
-    externalLinks: [],
+    sourceRow: row.sourceRow || 1_000_000 + index,
+    organizations: organizations(row.organizations),
+    externalLinks: externalLinks(row.externalLinks),
     notes: row.notes,
   };
 }

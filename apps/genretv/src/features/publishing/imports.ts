@@ -1,4 +1,4 @@
-import type { ExternalLinkSeed } from "../../domain/schedule";
+import type { CanonicalSeasonSeedRow, ExternalLinkSeed, ReleaseWindowSeed } from "../../domain/schedule";
 
 export interface PublishedListRow {
   description: string | null;
@@ -31,10 +31,16 @@ export interface PublishedSeasonRow {
   organizations: unknown;
   publishedListId: string;
   publishedShowId: string;
+  dateConfidence: string;
+  externalLinks: unknown;
+  finaleWindow: unknown;
   releasePattern: string | null;
+  releasePrecision: string;
+  releaseWindow: unknown;
   seasonLabel: string;
   section: string;
   snapshotVersion: number;
+  sortKey: string | null;
   sourceRow: number;
   timing: string;
 }
@@ -66,14 +72,21 @@ export interface PublishedSeasonSummary {
   languages: string[];
   notes: string | null;
   organizationText: string;
+  organizationSeeds: CanonicalSeasonSeedRow["organizations"];
   organizations: string[];
   originalTitle: string | null;
   publishedListId: string;
   publishedShowId: string;
+  dateConfidence: string;
+  finaleWindow: ReleaseWindowSeed | null;
   releasePattern: string | null;
+  releasePrecision: string;
+  releaseWindow: ReleaseWindowSeed | null;
   seasonLabel: string;
+  seasonExternalLinks: ExternalLinkSeed[];
   section: string;
   showNotes: string | null;
+  sortKey: string | null;
   sourceRow: number;
   timing: string;
 }
@@ -114,6 +127,7 @@ export function buildPublishedListSummaries(
           .flatMap((season): PublishedSeasonSummary[] => {
             const show = currentShows.get(season.publishedShowId);
             if (show == null) return [];
+            const organizationSeeds = organizations(season.organizations);
             return [
               {
                 id: season.id,
@@ -132,10 +146,17 @@ export function buildPublishedListSummaries(
                 timing: season.timing,
                 endedReason: season.endedReason,
                 releasePattern: season.releasePattern,
+                releasePrecision: season.releasePrecision,
+                dateConfidence: season.dateConfidence,
+                releaseWindow: releaseWindow(season.releaseWindow),
+                finaleWindow: releaseWindow(season.finaleWindow),
                 episodeCount: season.episodeCount,
+                sortKey: season.sortKey,
                 sourceRow: season.sourceRow,
-                organizations: organizationNames(season.organizations),
-                organizationText: organizationNames(season.organizations).join(", "),
+                organizations: organizationSeeds.map((organization) => organization.name),
+                organizationSeeds,
+                organizationText: organizationSeeds.map((organization) => organization.name).join(", "),
+                seasonExternalLinks: externalLinks(season.externalLinks),
                 importMode: importsBySeason.get(season.id) ?? null,
               },
             ];
@@ -159,12 +180,18 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
-function organizationNames(value: unknown): string[] {
+function organizations(value: unknown): CanonicalSeasonSeedRow["organizations"] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((item): string[] => {
-    if (typeof item === "string") return [item];
-    if (isRecord(item) && typeof item["name"] === "string") return [item["name"]];
-    return [];
+  return value.flatMap((item): CanonicalSeasonSeedRow["organizations"] => {
+    if (typeof item === "string") return [{ name: item, role: "unknown", externalLinks: [] }];
+    if (!isRecord(item) || typeof item["name"] !== "string") return [];
+    return [
+      {
+        name: item["name"],
+        role: typeof item["role"] === "string" ? item["role"] : "unknown",
+        externalLinks: externalLinks(item["externalLinks"]),
+      },
+    ];
   });
 }
 
@@ -184,4 +211,17 @@ function externalLinks(value: unknown): ExternalLinkSeed[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null;
+}
+
+function releaseWindow(value: unknown): ReleaseWindowSeed | null {
+  if (!isRecord(value) || typeof value["raw"] !== "string") return null;
+  return {
+    raw: value["raw"],
+    precision: typeof value["precision"] === "string" ? value["precision"] : "unknown",
+    confidence: typeof value["confidence"] === "string" ? value["confidence"] : "unknown",
+    year: typeof value["year"] === "number" ? value["year"] : null,
+    month: typeof value["month"] === "number" ? value["month"] : null,
+    day: typeof value["day"] === "number" ? value["day"] : null,
+    releaseSeason: typeof value["releaseSeason"] === "string" ? value["releaseSeason"] : null,
+  };
 }
