@@ -611,6 +611,7 @@ export function PublishingRoute() {
               ) : (
                 proposals.rows.map((proposal) => {
                   const reviewNote = proposalReviewNotes[proposal.id] ?? proposal.reviewerNote ?? "";
+                  const payloadDetails = proposalPayloadDetails(proposal.proposedPayload);
                   return (
                     <Table.Tr key={proposal.id}>
                       <Table.Td>
@@ -630,6 +631,15 @@ export function PublishingRoute() {
                       <Table.Td>
                         <Stack gap={4}>
                           <Text size="sm">{proposal.message ?? proposalPayloadSummary(proposal.proposedPayload)}</Text>
+                          {payloadDetails.length > 0 && (
+                            <Stack gap={2}>
+                              {payloadDetails.map((detail) => (
+                                <Text key={detail} size="xs" c="dimmed">
+                                  {detail}
+                                </Text>
+                              ))}
+                            </Stack>
+                          )}
                           {proposal.reviewerNote != null && (
                             <Text size="xs" c="dimmed">
                               Reviewer note: {proposal.reviewerNote}
@@ -769,6 +779,102 @@ function proposalPayloadSummary(value: unknown): string {
     .map((key) => value[key])
     .filter((item): item is string => typeof item === "string" && item.trim() !== "");
   return fields.join(" · ");
+}
+
+function proposalPayloadDetails(value: unknown): string[] {
+  if (!isRecord(value)) return [];
+  const kind = textValue(value["kind"]);
+  if (kind === "show") return showProposalDetails(value);
+  if (kind === "season") return seasonProposalDetails(value);
+  if (kind === "episode") return episodeProposalDetails(value);
+  return genericProposalDetails(value);
+}
+
+function showProposalDetails(value: Record<string, unknown>): string[] {
+  return compactStrings([
+    labelled("Title", textValue(value["displayTitle"])),
+    labelled("Original", textValue(value["originalTitle"])),
+    labelled("Languages", stringList(value["languages"])),
+    labelled("Countries", stringList(value["countries"])),
+    labelled("Genres", stringList(value["genreTags"])),
+    labelledCount("Links", value["externalLinks"]),
+  ]);
+}
+
+function seasonProposalDetails(value: Record<string, unknown>): string[] {
+  return compactStrings([
+    labelled("Show", textValue(value["showTitle"])),
+    labelled("Season", textValue(value["seasonLabel"])),
+    labelled("Section", textValue(value["section"])),
+    labelled("Timing", textValue(value["timing"])),
+    labelled("Release", releaseWindowSummary(value["releaseWindow"])),
+    labelled("Finale", releaseWindowSummary(value["finaleWindow"])),
+    labelled("Precision", textValue(value["releasePrecision"])),
+    labelled("Confidence", textValue(value["dateConfidence"])),
+    labelled("Episodes", numberValue(value["episodeCount"])),
+    labelled("Sort", textValue(value["sortKey"])),
+    labelledCount("Organizations", value["organizations"]),
+    labelledCount("Links", value["externalLinks"]),
+  ]);
+}
+
+function episodeProposalDetails(value: Record<string, unknown>): string[] {
+  return compactStrings([
+    labelled("Show", textValue(value["showTitle"])),
+    labelled("Season", textValue(value["seasonLabel"])),
+    labelled("Episode", textValue(value["episodeLabel"])),
+    labelled("Title", textValue(value["title"])),
+    labelled("Release", releaseWindowSummary(value["releaseWindow"])),
+    labelled("Sort", textValue(value["sortKey"])),
+    labelled("Parent release", releaseWindowSummary(value["seasonReleaseWindow"])),
+    labelled("Parent finale", releaseWindowSummary(value["finaleWindow"])),
+    labelledCount("Links", value["externalLinks"]),
+  ]);
+}
+
+function genericProposalDetails(value: Record<string, unknown>): string[] {
+  return Object.entries(value)
+    .flatMap(([key, item]) => {
+      if (key === "kind") return [];
+      if (typeof item === "string" && item.trim() !== "") return [`${key}: ${item.trim()}`];
+      if (typeof item === "number") return [`${key}: ${item}`];
+      if (Array.isArray(item)) return [`${key}: ${item.length}`];
+      return [];
+    })
+    .slice(0, 8);
+}
+
+function releaseWindowSummary(value: unknown): string | null {
+  if (!isRecord(value) || typeof value["raw"] !== "string" || value["raw"].trim() === "") return null;
+  const raw = value["raw"].trim();
+  const precision = textValue(value["precision"]);
+  const confidence = textValue(value["confidence"]);
+  return [raw, precision, confidence].filter((item) => item != null && item !== "unknown").join(" · ");
+}
+
+function labelled(label: string, value: string | null): string | null {
+  return value == null ? null : `${label}: ${value}`;
+}
+
+function labelledCount(label: string, value: unknown): string | null {
+  return Array.isArray(value) && value.length > 0 ? `${label}: ${value.length}` : null;
+}
+
+function textValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function numberValue(value: unknown): string | null {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : null;
+}
+
+function stringList(value: unknown): string | null {
+  const values = Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return values.length > 0 ? values.join(", ") : null;
+}
+
+function compactStrings(values: Array<string | null>): string[] {
+  return values.filter((value): value is string => value != null);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
