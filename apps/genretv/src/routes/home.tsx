@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Anchor,
   Badge,
   Box,
@@ -14,7 +15,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
@@ -39,6 +40,19 @@ const storageKey = "genretv.schedule.view.v1";
 
 function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section: ScheduleSection }) {
   const showStopReason = section === "past";
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const columnCount = showStopReason ? 8 : 7;
+  const toggleExpanded = (entryId: string) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(entryId)) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+      return next;
+    });
+  };
   return (
     <ScrollArea>
       <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={showStopReason ? 1100 : 980}>
@@ -55,67 +69,83 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {entries.map((entry) => (
-            <Table.Tr key={entry.id}>
-              <Table.Td>
-                <details>
-                  <summary aria-label={`Show details for ${entry.title}`}></summary>
-                  <Box mt="xs" w={360}>
-                    <Stack gap={6}>
-                      <Group gap={6}>
-                        {entry.links.map((link) => (
-                          <Anchor
-                            key={`${entry.id}-${link.kind}-${link.url}`}
-                            href={link.url}
-                            target="_blank"
-                            size="sm"
-                          >
-                            {link.kind ?? link.label}
-                          </Anchor>
-                        ))}
-                      </Group>
-                      {entry.languages.length > 0 && (
-                        <Group gap={4}>
-                          {entry.languages.map((language) => (
-                            <Badge key={`${entry.id}-${language}`} size="xs" variant="light">
-                              {language}
-                            </Badge>
-                          ))}
-                        </Group>
-                      )}
-                      {entry.legacyCells.length > 0 && (
-                        <Text size="xs" c="dimmed">
-                          Legacy cells: {entry.legacyCells.join(" | ")}
-                        </Text>
-                      )}
-                      <Text size="xs" c="dimmed">
-                        Episodes: {formatEpisodeCount(entry.episodeCount, entry.episodes)}
-                      </Text>
-                      {entry.episodes.map((episode) => (
-                        <Text key={episode.id} size="xs" c="dimmed">
-                          {[episode.episodeLabel, episode.title, episode.releaseDate].filter(Boolean).join(" · ")}
-                        </Text>
-                      ))}
-                    </Stack>
-                  </Box>
-                </details>
-              </Table.Td>
-              <Table.Td>
-                <Text fw={600}>{entry.title}</Text>
-              </Table.Td>
-              <Table.Td>{entry.seasonLabel}</Table.Td>
-              <Table.Td>{entry.timing}</Table.Td>
-              {showStopReason && <Table.Td>{entry.endedReason}</Table.Td>}
-              <Table.Td>
-                <LanguageBadges languages={entry.languages} ownerId={entry.id} />
-              </Table.Td>
-              <Table.Td>{entry.organizationText}</Table.Td>
-              <Table.Td>{entry.genreText}</Table.Td>
-            </Table.Tr>
-          ))}
+          {entries.map((entry) => {
+            const expanded = expandedIds.has(entry.id);
+            return (
+              <Fragment key={entry.id}>
+                <Table.Tr>
+                  <Table.Td>
+                    <ActionIcon
+                      aria-label={`${expanded ? "Hide" : "Show"} details for ${entry.title}`}
+                      size="sm"
+                      variant="subtle"
+                      onClick={() => toggleExpanded(entry.id)}
+                    >
+                      {expanded ? "-" : "+"}
+                    </ActionIcon>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fw={600}>{entry.title}</Text>
+                  </Table.Td>
+                  <Table.Td>{entry.seasonLabel}</Table.Td>
+                  <Table.Td>{entry.timing}</Table.Td>
+                  {showStopReason && <Table.Td>{entry.endedReason}</Table.Td>}
+                  <Table.Td>
+                    <LanguageBadges languages={entry.languages} ownerId={entry.id} />
+                  </Table.Td>
+                  <Table.Td>{entry.organizationText}</Table.Td>
+                  <Table.Td>{entry.genreText}</Table.Td>
+                </Table.Tr>
+                {expanded && (
+                  <Table.Tr>
+                    <Table.Td></Table.Td>
+                    <Table.Td colSpan={columnCount - 1}>
+                      <ScheduleEntryDetails entry={entry} />
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+              </Fragment>
+            );
+          })}
         </Table.Tbody>
       </Table>
     </ScrollArea>
+  );
+}
+
+function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
+  return (
+    <Box py="xs">
+      <Stack gap={8}>
+        {entry.links.length > 0 && (
+          <Group gap={8}>
+            {entry.links.map((link) => (
+              <Anchor key={`${entry.id}-${link.kind}-${link.url}`} href={link.url} target="_blank" size="sm">
+                {link.kind ?? link.label}
+              </Anchor>
+            ))}
+          </Group>
+        )}
+        {entry.seasonNotes != null && (
+          <Text size="sm" c="dimmed">
+            {entry.seasonNotes}
+          </Text>
+        )}
+        {entry.legacyCells.length > 0 && (
+          <Text size="xs" c="dimmed">
+            Legacy cells: {entry.legacyCells.join(" | ")}
+          </Text>
+        )}
+        <Text size="xs" c="dimmed">
+          Episodes: {formatEpisodeCount(entry.episodeCount, entry.episodes)}
+        </Text>
+        {entry.episodes.map((episode) => (
+          <Text key={episode.id} size="xs" c="dimmed">
+            {[episode.episodeLabel, episode.title, episode.releaseDate].filter(Boolean).join(" · ")}
+          </Text>
+        ))}
+      </Stack>
+    </Box>
   );
 }
 
