@@ -49,6 +49,8 @@ apply here. What does apply:
 - **Scripts are check-default.** `bun run format` / `bun run lint` **check** (non-mutating); use
   `format:write` / `lint:fix` to change files. `bun run validate` is the pre-commit gate
   (auto-installed via `prepare` → `hooks:install`).
+- **Compiler:** standard `typescript` v7+. Prefer the package script `bun run typecheck` over manually
+  running `tsc ...`; the root script checks every TypeScript project in this repo.
 - **Consuming `@pgxsinkit/*`:** installed from **public npm release pins** by
   default (what CI, the k3s build, and prod use). To preview unreleased library work locally, use
   the dev-channel scripts — `bun run dev:link` (switch to the GitHub Packages `@dev` channel and move
@@ -100,7 +102,7 @@ The backend stack is `Deno`, with shared schema and data contracts centered arou
 
 ## Project Technologies
 
-- typescript-native/tsgo
+- typescript >=7
 - react + tanstack router + tanstack hotkeys + tanstack pacer
 - mantine v9 (component library — see .claude/rules/)
 - mise
@@ -123,7 +125,7 @@ The backend stack is `Deno`, with shared schema and data contracts centered arou
 - Keep route files in `src/routes/`, reusable UI in `packages/ui`, and shared domain logic in `packages/domain`.
 - Keep PGlite sync concerns in `packages/offline-data`, not scattered across apps.
 - If a bug is in `@pgxsinkit/*` do not add app-layer workarounds in `genretv`; fix it upstream first, then update or publish and upgrade dependencies/references in `genretv`.
-- Prefer package scripts over direct tool invocation: `bun run typecheck` not `tsgo`, `bun run lint` not `oxlint`, `bun run format` not `oxfmt`. Use `bun test` for tests and `bun run validate:full` for full validation. Direct tool invocation is only a fallback when no package script exists.
+- Prefer package scripts over direct tool invocation: `bun run typecheck` not manual `tsc ...`, `bun run lint` not `oxlint`, `bun run format` not `oxfmt`. Use `bun test` for tests and `bun run validate:full` for full validation. Direct tool invocation is only a fallback when no package script exists.
 - Verify claims with real commands before saying work is complete.
 - Keep accessibility and learner clarity high: semantic HTML, keyboard support, readable copy, and explicit empty/error states.
 
