@@ -27,7 +27,7 @@ test("signed-in user can save a public profile", async ({ page }) => {
   await expect(page.getByRole("heading", { name: displayName })).toBeVisible();
 });
 
-test("non-publisher can apply to publish", async ({ page }) => {
+test("non-publisher can apply to publish", async ({ browser, page }) => {
   await signIn(page, localUser);
 
   await page.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
@@ -40,4 +40,17 @@ test("non-publisher can apply to publish", async ({ page }) => {
   await expect(page.getByText("Application sent.")).toBeVisible();
   await expect(page.getByText(message)).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: message }).getByText("open", { exact: true })).toBeVisible();
+
+  const maintainerContext = await browser.newContext();
+  const maintainerPage = await maintainerContext.newPage();
+  try {
+    await signIn(maintainerPage);
+    await maintainerPage.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
+
+    const notifications = maintainerPage.getByRole("region", { name: "Notifications" });
+    await expect(notifications.getByText("Publisher application")).toBeVisible();
+    await expect(notifications.getByText(message)).toBeVisible();
+  } finally {
+    await maintainerContext.close();
+  }
 });

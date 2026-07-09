@@ -57,4 +57,25 @@ describe("database artifact contract", () => {
     expect(migration).toContain("WHERE assigned_role.role_name_value = 'canonical_maintainer'");
     expect(migration).toContain(") WITH CHECK (");
   });
+
+  test("creates workflow notification fanout in a custom Drizzle migration", async () => {
+    const folders = (await readdir(drizzleDir, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    const fanoutFolder = folders.find((folder) => folder.endsWith("_workflow_notification_fanout"));
+
+    expect(fanoutFolder).toBeString();
+
+    const migration = await readFile(join(drizzleDir, fanoutFolder!, "migration.sql"), "utf8");
+
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION "public"."genretv_notify_publish_application_insert"()');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION "public"."genretv_notify_canonical_proposal_insert"()');
+    expect(migration).toContain('CREATE TRIGGER "publish_application_notify_maintainers_after_insert"');
+    expect(migration).toContain('CREATE TRIGGER "canonical_proposal_notify_maintainers_after_insert"');
+    expect(migration).toContain('"maintainer_notification"');
+    expect(migration).toContain("public.pgxsinkit_clock_us()");
+    expect(migration).toContain('REVOKE ALL ON FUNCTION "public"."genretv_notify_publish_application_insert"() FROM PUBLIC');
+    expect(migration).toContain('REVOKE ALL ON FUNCTION "public"."genretv_notify_canonical_proposal_insert"() FROM PUBLIC');
+    expect(migration).toContain("Drizzle cannot express PostgreSQL trigger functions or trigger bindings");
+  });
 });

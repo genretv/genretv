@@ -220,22 +220,6 @@ export function PublishingRoute() {
       assertTransactionAcked(applicationResult, "Submitting publisher application");
       setSaved(true);
       setMessage("");
-      void client
-        .transaction({ mode: "pessimistic" }, (tx) => {
-          tx.tables.maintainer_notification.create({
-            id: crypto.randomUUID(),
-            notificationKind: "publish_application",
-            status: "unread",
-            title: "Publisher application",
-            body: nullableText(message),
-            relatedPublishApplicationId: applicationId,
-            relatedCanonicalProposalId: null,
-          });
-        })
-        .then((notificationResult) => {
-          assertTransactionAcked(notificationResult, "Creating publisher application notification");
-        })
-        .catch(() => undefined);
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -861,8 +845,10 @@ export function PublishingRoute() {
       </Stack>
 
       {isMaintainer && (
-        <Stack gap="sm">
-          <Title order={2}>Notifications</Title>
+        <Stack gap="sm" component="section" aria-labelledby="publishing-notifications-heading">
+          <Title id="publishing-notifications-heading" order={2}>
+            Notifications
+          </Title>
           {notifications.rows.length === 0 ? (
             <Text c="dimmed">No maintainer notifications yet.</Text>
           ) : (
