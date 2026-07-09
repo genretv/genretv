@@ -494,8 +494,10 @@ export function PublishingRoute() {
       )}
 
       {canPublish ? (
-        <Stack gap="sm">
-          <Title order={2}>Publish snapshot</Title>
+        <Stack gap="sm" component="section" aria-labelledby="publish-snapshot-heading">
+          <Title id="publish-snapshot-heading" order={2}>
+            Publish snapshot
+          </Title>
           {hasApprovedApplication && !hasPublisherRole && (
             <Alert color="teal" variant="light">
               Your publish application has been approved.
@@ -531,8 +533,10 @@ export function PublishingRoute() {
           </Group>
         </Stack>
       ) : (
-        <Stack gap="sm">
-          <Title order={2}>Apply to publish</Title>
+        <Stack gap="sm" component="section" aria-labelledby="apply-to-publish-heading">
+          <Title id="apply-to-publish-heading" order={2}>
+            Apply to publish
+          </Title>
           {hasOpenApplication && (
             <Alert color="yellow" variant="light">
               Your publish application is waiting for maintainer review.
@@ -555,8 +559,10 @@ export function PublishingRoute() {
       )}
 
       {canPublish && (
-        <Stack gap="sm">
-          <Title order={2}>Published lists</Title>
+        <Stack gap="sm" component="section" aria-labelledby="publishing-own-lists-heading">
+          <Title id="publishing-own-lists-heading" order={2}>
+            Published lists
+          </Title>
           <ScrollArea>
             <Table className="schedule-table" striped verticalSpacing="sm" miw={760}>
               <Table.Thead>
@@ -596,10 +602,12 @@ export function PublishingRoute() {
         </Stack>
       )}
 
-      <Stack gap="sm">
+      <Stack gap="sm" component="section" aria-labelledby="publishing-applications-heading">
         <Group justify="space-between" align="flex-end">
           <div>
-            <Title order={2}>{isMaintainer ? "Applications" : "Your applications"}</Title>
+            <Title id="publishing-applications-heading" order={2}>
+              {isMaintainer ? "Applications" : "Your applications"}
+            </Title>
             <Text size="sm" c="dimmed">
               {visibleApplications.length} of {applications.rows.length}
             </Text>
@@ -698,10 +706,12 @@ export function PublishingRoute() {
         </ScrollArea>
       </Stack>
 
-      <Stack gap="sm">
+      <Stack gap="sm" component="section" aria-labelledby="publishing-proposals-heading">
         <Group justify="space-between" align="flex-end">
           <div>
-            <Title order={2}>{isMaintainer ? "Canonical proposals" : "Your canonical proposals"}</Title>
+            <Title id="publishing-proposals-heading" order={2}>
+              {isMaintainer ? "Canonical proposals" : "Your canonical proposals"}
+            </Title>
             <Text size="sm" c="dimmed">
               {visibleProposals.length} of {proposals.rows.length}
             </Text>

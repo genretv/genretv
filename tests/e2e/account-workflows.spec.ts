@@ -27,7 +27,9 @@ test("signed-in user can save a public profile", async ({ page }) => {
   await expect(page.getByRole("heading", { name: displayName })).toBeVisible();
 });
 
-test("non-publisher can apply to publish", async ({ browser, page }) => {
+test("non-publisher can apply and be approved to publish", async ({ browser, page }, testInfo) => {
+  testInfo.setTimeout(180_000);
+
   await signIn(page, localUser);
 
   await page.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
@@ -40,17 +42,23 @@ test("non-publisher can apply to publish", async ({ browser, page }) => {
   await expect(page.getByText("Application sent.")).toBeVisible();
   await expect(page.getByText(message)).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: message }).getByText("open", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Apply to publish" })).toBeVisible();
 
   const maintainerContext = await browser.newContext();
   const maintainerPage = await maintainerContext.newPage();
-  try {
-    await signIn(maintainerPage);
-    await maintainerPage.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
+  await signIn(maintainerPage);
+  await maintainerPage.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
 
-    const notifications = maintainerPage.getByRole("region", { name: "Notifications" });
-    await expect(notifications.getByText("Publisher application")).toBeVisible();
-    await expect(notifications.getByText(message)).toBeVisible();
-  } finally {
-    await maintainerContext.close();
-  }
+  const notifications = maintainerPage.getByRole("region", { name: "Notifications" });
+  await expect(notifications.getByText("Publisher application")).toBeVisible();
+  await expect(notifications.getByText(message)).toBeVisible();
+
+  const applicationRow = maintainerPage.getByRole("region", { name: "Applications" }).getByRole("row").filter({
+    hasText: message,
+  });
+  await applicationRow.getByRole("button", { name: "Approve" }).click();
+  await expect(applicationRow.getByText("approved", { exact: true })).toBeVisible();
+
+  await expect(page.getByRole("region", { name: "Publish snapshot" })).toBeVisible();
+  await expect(page.getByText("Your publish application has been approved.")).toBeVisible();
 });
