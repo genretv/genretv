@@ -24,6 +24,14 @@ _Avoid_: Row, season count
 A structured label describing how a Season should be displayed, such as numbered, special, miniseries, pilot, movie, or unknown.
 _Avoid_: Season number zero, null season number
 
+**Official Season Count**:
+The number of ordinary numbered seasons known for a Show. Extra releases such as specials, movies, pilots, or one-off follow-ups do not increase the Official Season Count, but can be displayed alongside it.
+_Avoid_: Listed row count, scrape row count
+
+**Extra Release**:
+A non-numbered Show release tracked beside ordinary Seasons, such as a special, movie, pilot, or one-off follow-up. When the source does not reliably distinguish movie from special, the neutral label Special is preferred.
+_Avoid_: Fake season, automatically inferred movie
+
 **Release Window**:
 A date, calendar season, year, or similarly imprecise period describing when a Season or Episode is expected to air or release. Imprecise Release Windows can be ordered by an approximate midpoint while preserving the original precision.
 _Avoid_: Manual placement, sort date

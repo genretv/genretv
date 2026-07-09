@@ -112,6 +112,26 @@ describe("canonical registry seed rows", () => {
     });
   });
 
+  test("keeps extra releases separate from official season count labels", () => {
+    const rows = buildCanonicalRegistrySeedRows({
+      entries: [
+        {
+          ...seed.entries[0]!,
+          id: "past-good-omens-special",
+          season: { ...seed.entries[0]!.season, extraMovie: true, rawSeason: "2x", tentative: false },
+        },
+        {
+          ...seed.entries[1]!,
+          id: "past-punisher-special",
+          show: { ...seed.entries[1]!.show, displayTitle: "The Punisher: One Last Kill", externalLinks: [] },
+          season: { ...seed.entries[1]!.season, extraMovie: true, rawSeason: "x", tentative: false },
+        },
+      ],
+    });
+
+    expect(rows.seasons.map((season) => season.seasonLabel)).toEqual(["S2 + special", "Special"]);
+  });
+
   test("splits same-title shows when external identities conflict", () => {
     const rows = buildCanonicalRegistrySeedRows({
       entries: [

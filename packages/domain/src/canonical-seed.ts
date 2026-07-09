@@ -379,7 +379,12 @@ function joinNotes(notes: readonly (string | null)[]): string | null {
 }
 
 function seasonLabel(entry: BlogspotSeedEntry): string {
-  const prefix = entry.season.extraMovie ? "Movie" : `S${entry.season.rawSeason || "?"}`;
+  const extraOrdinal = entry.season.extraMovie ? seasonOrdinalFromRaw(entry.season.rawSeason) : null;
+  const prefix = entry.season.extraMovie
+    ? extraOrdinal == null
+      ? "Special"
+      : `S${extraOrdinal} + special`
+    : `S${entry.season.rawSeason || "?"}`;
   return entry.season.tentative ? `${prefix}?` : prefix;
 }
 
@@ -387,8 +392,15 @@ function normalizeSeasonLabel(label: string): string {
   return label.trim().toLocaleLowerCase().replace(/\s+/g, "");
 }
 
+function seasonOrdinalFromRaw(value: string): number | null {
+  const match = /^(\d+)/.exec(value.trim());
+  if (match?.[1] == null) return null;
+  const ordinal = Number(match[1]);
+  return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
+}
+
 function seasonOrdinal(label: string): number | null {
-  const match = /^(?:s|season|series)\s*(\d+)\??$/i.exec(label.trim());
+  const match = /^(?:s|season|series)\s*(\d+)(?:\s*\+\s*(?:special|movie))?\??$/i.exec(label.trim());
   if (match?.[1] == null) return null;
   const ordinal = Number(match[1]);
   return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;

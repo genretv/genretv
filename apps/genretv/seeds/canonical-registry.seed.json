@@ -437,6 +437,13 @@
       },
       {
         "code": "inferred-season-gap",
+        "message": "The Mandalorian has 1 listed season rows but at least 4 known seasons",
+        "refs": [
+          "6347b56d-ce7f-54d5-b0f9-9aa4474cb5b6:row-124"
+        ]
+      },
+      {
+        "code": "inferred-season-gap",
         "message": "The Terror has 1 listed season rows but at least 3 known seasons",
         "refs": [
           "917a86ab-8cac-591e-b491-94fbfb74d113:row-126"
@@ -454,6 +461,13 @@
         "message": "Outlander has 1 listed season rows but at least 8 known seasons",
         "refs": [
           "c4a846fc-aa76-5a83-909e-fe9abf72bd4a:row-129"
+        ]
+      },
+      {
+        "code": "inferred-season-gap",
+        "message": "Good Omens has 1 listed season rows but at least 2 known seasons",
+        "refs": [
+          "a6e70cde-28dd-574b-8f56-3d4057147522:row-130"
         ]
       },
       {
@@ -636,6 +650,13 @@
         "message": "Snowpiercer has 1 listed season rows but at least 4 known seasons",
         "refs": [
           "29b0c930-a92e-50a4-b016-ce9c82412dc9:row-193"
+        ]
+      },
+      {
+        "code": "inferred-season-gap",
+        "message": "Wynonna Earp has 1 listed season rows but at least 4 known seasons",
+        "refs": [
+          "8b11cc23-dfa8-5616-873a-5634b560b280:row-194"
         ]
       },
       {
@@ -906,6 +927,13 @@
       },
       {
         "code": "inferred-season-gap",
+        "message": "The Last Kingdom has 1 listed season rows but at least 5 known seasons",
+        "refs": [
+          "99fbbecc-05f0-5e0d-ab47-fbca0bcd1689:row-280"
+        ]
+      },
+      {
+        "code": "inferred-season-gap",
         "message": "Astrid & Lilly Save the World has 1 listed season rows but at least 2 known seasons",
         "refs": [
           "c6a12e32-9bd4-5c47-a651-27ba17c7bde9:row-282"
@@ -944,6 +972,13 @@
         "message": "Missing: The Other Side has 1 listed season rows but at least 2 known seasons",
         "refs": [
           "04328834-e875-5a3f-a9f4-d40f49026446:row-292"
+        ]
+      },
+      {
+        "code": "inferred-season-gap",
+        "message": "Teen Wolf has 1 listed season rows but at least 6 known seasons",
+        "refs": [
+          "cf4d60e9-d0c7-571b-b921-a03c555ae69c:row-294"
         ]
       },
       {
@@ -2489,7 +2524,7 @@
     ],
     "stats": {
       "duplicateDisplayTitleCount": 2,
-      "inferredSeasonGapCount": 347,
+      "inferredSeasonGapCount": 352,
       "missingCountryCount": 764,
       "shows": 764,
       "seasons": 764,
@@ -21702,7 +21737,7 @@
         "id": "6347b56d-ce7f-54d5-b0f9-9aa4474cb5b6",
         "showId": "c0fc85da-839f-57b1-b654-e8a48f11e010",
         "section": "upcoming",
-        "seasonLabel": "Movie",
+        "seasonLabel": "S4 + special",
         "timing": "2028?",
         "endedReason": "Unknown",
         "releasePattern": "unknown",
@@ -21887,7 +21922,7 @@
         "id": "a6e70cde-28dd-574b-8f56-3d4057147522",
         "showId": "8603dc89-3ba3-5ecb-b3e2-84599b5e6dda",
         "section": "past",
-        "seasonLabel": "Movie",
+        "seasonLabel": "S2 + special",
         "timing": "May 13, 2026",
         "endedReason": "Finished",
         "releasePattern": "unknown",
@@ -21958,7 +21993,7 @@
         "id": "7e65cfeb-2d85-5ac7-8a7d-c332712119f6",
         "showId": "bc952d07-289b-5876-83e1-fb8ddfc60dd7",
         "section": "past",
-        "seasonLabel": "Movie",
+        "seasonLabel": "Special",
         "timing": "May 12, 2026",
         "endedReason": "Finished",
         "releasePattern": "unknown",
@@ -24199,7 +24234,7 @@
         "id": "8b11cc23-dfa8-5616-873a-5634b560b280",
         "showId": "cede69aa-2d6a-5a44-92b3-c92dca88a71d",
         "section": "past",
-        "seasonLabel": "Movie",
+        "seasonLabel": "S4 + special",
         "timing": "Sep.13, 2024",
         "endedReason": "Finished",
         "releasePattern": "unknown",
@@ -27327,7 +27362,7 @@
         "id": "99fbbecc-05f0-5e0d-ab47-fbca0bcd1689",
         "showId": "2e001768-6607-5b25-85d6-39c99eafedb6",
         "section": "past",
-        "seasonLabel": "Movie",
+        "seasonLabel": "S5 + special",
         "timing": "Apr.14, 2023",
         "endedReason": "Finished",
         "releasePattern": "unknown",
@@ -27849,7 +27884,7 @@
         "id": "cf4d60e9-d0c7-571b-b921-a03c555ae69c",
         "showId": "8e5c957c-74f3-5483-abd2-a4886586c528",
         "section": "past",
-        "seasonLabel": "Movie",
+        "seasonLabel": "S6 + special",
         "timing": "Jan.26, 2023",
         "endedReason": "Finished",
         "releasePattern": "unknown",
@@ -30427,7 +30462,7 @@
         "id": "5b8b25a0-c9c6-583f-8df5-27742c9c5908",
         "showId": "ddcf9a93-8142-5981-a164-87fc8b7a5a50",
         "section": "past",
-        "seasonLabel": "Movie",
+        "seasonLabel": "S1 + special",
         "timing": "Feb.17, 2022",
         "endedReason": "Canceled",
         "releasePattern": "unknown",

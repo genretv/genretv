@@ -383,6 +383,16 @@ export function formatKnownSeasonCount(show: Pick<ManagementShow, "knownSeasonCo
   return show.knownSeasonCount > show.listedSeasonCount ? `${show.knownSeasonCount}+` : String(show.knownSeasonCount);
 }
 
+export function formatScheduleSeasonCount(entry: Pick<ScheduleEntry, "seasonLabel">): string {
+  const officialCount = seasonOrdinal(entry.seasonLabel);
+  const extraCount = seasonExtraCount(entry.seasonLabel);
+  if (officialCount == null && extraCount === 0) return entry.seasonLabel;
+  const labels = [];
+  if (officialCount != null) labels.push(String(officialCount));
+  if (extraCount > 0) labels.push(`${extraCount} ${extraCount === 1 ? "special" : "specials"}`);
+  return labels.join(" + ");
+}
+
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
@@ -629,15 +639,21 @@ function compareManagementShows(left: ManagementShow, right: ManagementShow, sor
 }
 
 function inferKnownSeasonCount(seasons: readonly Pick<ManagementSeason, "seasonLabel">[]): number {
-  return seasons.reduce((count, season) => Math.max(count, seasonOrdinal(season.seasonLabel) ?? 0), seasons.length);
+  return seasons.reduce((count, season) => Math.max(count, seasonOrdinal(season.seasonLabel) ?? 0), 0);
 }
 
 function seasonOrdinal(label: string): number | null {
   const normalized = label.trim();
-  const match = /^(?:s|season|series)\s*(\d+)\??$/i.exec(normalized);
+  const match = /^(?:s|season|series)\s*(\d+)(?:\s*\+\s*(?:special|movie))?\??$/i.exec(normalized);
   if (match?.[1] == null) return null;
   const ordinal = Number(match[1]);
   return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
+}
+
+function seasonExtraCount(label: string): number {
+  const normalized = label.trim();
+  if (/^(?:special|movie)\??$/i.test(normalized)) return 1;
+  return /^(?:s|season|series)\s*\d+\s*\+\s*(?:special|movie)\??$/i.test(normalized) ? 1 : 0;
 }
 
 function compareSeedEpisodes(left: CanonicalEpisodeSeedRow, right: CanonicalEpisodeSeedRow): number {
@@ -729,6 +745,18 @@ function endingKindFor(reason: string): Exclude<EndingFilter, "all"> {
 }
 
 function seasonLabel(entry: BlogspotEntrySeed): string {
-  const prefix = entry.season.extraMovie ? "Movie" : `S${entry.season.rawSeason || "?"}`;
+  const extraOrdinal = entry.season.extraMovie ? seasonOrdinalFromRaw(entry.season.rawSeason) : null;
+  const prefix = entry.season.extraMovie
+    ? extraOrdinal == null
+      ? "Special"
+      : `S${extraOrdinal} + special`
+    : `S${entry.season.rawSeason || "?"}`;
   return entry.season.tentative ? `${prefix}?` : prefix;
+}
+
+function seasonOrdinalFromRaw(value: string): number | null {
+  const match = /^(\d+)/.exec(value.trim());
+  if (match?.[1] == null) return null;
+  const ordinal = Number(match[1]);
+  return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
 }

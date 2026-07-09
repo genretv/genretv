@@ -12,6 +12,7 @@ import {
   filterScheduleEntries,
   formatEpisodeCount,
   formatKnownSeasonCount,
+  formatScheduleSeasonCount,
   pageCountFor,
   paginateItems,
   scheduleFilterOptions,
@@ -276,5 +277,28 @@ describe("schedule read model", () => {
     expect(formatEpisodeCount(null, [])).toBe("Unknown");
     expect(formatEpisodeCount(null, schedule.entries[1]?.episodes ?? [])).toBe("2");
     expect(formatEpisodeCount(10, schedule.entries[1]?.episodes ?? [])).toBe("10");
+  });
+
+  test("formats official season counts separately from special releases", () => {
+    expect(formatScheduleSeasonCount({ seasonLabel: "S6" })).toBe("6");
+    expect(formatScheduleSeasonCount({ seasonLabel: "S2 + special" })).toBe("2 + 1 special");
+    expect(formatScheduleSeasonCount({ seasonLabel: "Special" })).toBe("1 special");
+    expect(formatScheduleSeasonCount({ seasonLabel: "S3?" })).toBe("3");
+  });
+
+  test("does not count standalone specials as official seasons", () => {
+    const shows = buildManagementShows([
+      {
+        ...buildScheduleFromRegistrySeed(seed).entries[0]!,
+        id: "special-row",
+        showId: "special-show",
+        seasonLabel: "Special",
+        title: "Standalone Special",
+      },
+    ]);
+    expect(shows[0]).toMatchObject({
+      knownSeasonCount: 0,
+      listedSeasonCount: 1,
+    });
   });
 });

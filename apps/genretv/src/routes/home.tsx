@@ -23,6 +23,7 @@ import {
   defaultScheduleViewPreferences,
   filterScheduleEntries,
   formatEpisodeCount,
+  formatScheduleSeasonCount,
   pageCountFor,
   paginateItems,
   pageSizeOptions,
@@ -60,7 +61,7 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
           <Table.Tr>
             <Table.Th w={44}></Table.Th>
             <Table.Th>Show</Table.Th>
-            <Table.Th w={120}>Season</Table.Th>
+            <Table.Th w={120}>Seasons</Table.Th>
             <Table.Th>When</Table.Th>
             {showStopReason && <Table.Th w={130}>Ended</Table.Th>}
             <Table.Th w={140}>Lang</Table.Th>
@@ -87,7 +88,7 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
                   <Table.Td>
                     <Text fw={600}>{entry.title}</Text>
                   </Table.Td>
-                  <Table.Td>{entry.seasonLabel}</Table.Td>
+                  <Table.Td>{formatScheduleSeasonCount(entry)}</Table.Td>
                   <Table.Td>{entry.timing}</Table.Td>
                   {showStopReason && <Table.Td>{entry.endedReason}</Table.Td>}
                   <Table.Td>
