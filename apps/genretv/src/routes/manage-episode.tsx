@@ -464,13 +464,19 @@ function EditableEpisode({
             label="Episode"
             value={draft.episodeLabel}
             disabled={!canEdit}
-            onChange={(event) => setDraft((current) => ({ ...current, episodeLabel: event.currentTarget.value }))}
+            onChange={(event) => {
+              const episodeLabel = event.currentTarget.value;
+              setDraft((current) => ({ ...current, episodeLabel }));
+            }}
           />
           <TextInput
             label="Release date"
             value={draft.releaseDate}
             disabled={!canEdit}
-            onChange={(event) => setDraft((current) => ({ ...current, releaseDate: event.currentTarget.value }))}
+            onChange={(event) => {
+              const releaseDate = event.currentTarget.value;
+              setDraft((current) => ({ ...current, releaseDate }));
+            }}
           />
         </SimpleGrid>
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -478,13 +484,19 @@ function EditableEpisode({
             label="Title"
             value={draft.title}
             disabled={!canEdit}
-            onChange={(event) => setDraft((current) => ({ ...current, title: event.currentTarget.value }))}
+            onChange={(event) => {
+              const title = event.currentTarget.value;
+              setDraft((current) => ({ ...current, title }));
+            }}
           />
           <TextInput
             label="Sort key"
             value={draft.sortKey}
             disabled={!canEdit}
-            onChange={(event) => setDraft((current) => ({ ...current, sortKey: event.currentTarget.value }))}
+            onChange={(event) => {
+              const sortKey = event.currentTarget.value;
+              setDraft((current) => ({ ...current, sortKey }));
+            }}
           />
         </SimpleGrid>
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -521,7 +533,10 @@ function EditableEpisode({
           minRows={3}
           value={draft.linksText}
           disabled={!canEdit}
-          onChange={(event) => setDraft((current) => ({ ...current, linksText: event.currentTarget.value }))}
+          onChange={(event) => {
+            const linksText = event.currentTarget.value;
+            setDraft((current) => ({ ...current, linksText }));
+          }}
         />
         <Textarea
           label="Notes"
@@ -529,7 +544,10 @@ function EditableEpisode({
           minRows={4}
           value={draft.notes}
           disabled={!canEdit}
-          onChange={(event) => setDraft((current) => ({ ...current, notes: event.currentTarget.value }))}
+          onChange={(event) => {
+            const notes = event.currentTarget.value;
+            setDraft((current) => ({ ...current, notes }));
+          }}
         />
         <Group justify="flex-end">
           <Button variant="default" disabled={!canEdit || !dirty} onClick={discardLocalDraft}>

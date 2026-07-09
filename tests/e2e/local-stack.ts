@@ -6,6 +6,11 @@ export const localMaintainer = {
   password: process.env["GENRETV_LOCAL_USER_PASSWORD"] ?? "genretv-local-password",
 };
 
+export const localPublisher = {
+  email: "publisher@genretv.local",
+  password: process.env["GENRETV_LOCAL_USER_PASSWORD"] ?? "genretv-local-password",
+};
+
 export const localUser = {
   email: "user@genretv.local",
   password: process.env["GENRETV_LOCAL_USER_PASSWORD"] ?? "genretv-local-password",

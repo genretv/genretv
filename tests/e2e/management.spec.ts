@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { expectE2eStackAvailable, signIn } from "./local-stack";
+import { expectE2eStackAvailable, localPublisher, signIn } from "./local-stack";
 
 const showsNavLink = (page: Page) => page.getByRole("banner").getByRole("link", { name: "Shows" });
 
@@ -51,4 +51,43 @@ test("seeded maintainer can create a personal show in their overlay", async ({ p
   await page.getByLabel("Search").fill(overlayTitle);
 
   await expect(page.locator("tbody").getByRole("button", { name: overlayTitle })).toBeVisible();
+});
+
+test("publisher can send a show proposal for maintainer merge", async ({ browser, page }, testInfo) => {
+  testInfo.setTimeout(240_000);
+
+  await signIn(page, localPublisher);
+
+  await showsNavLink(page).click();
+  await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Add show" }).click();
+  await expect(page).toHaveURL(/\/manage\/show\/new/);
+
+  const proposalTitle = `E2E Canonical Show ${Date.now().toString(36)}`;
+  const proposalNote = `Please merge ${proposalTitle}`;
+  await page.getByLabel("Display title").fill(proposalTitle);
+  await page.getByLabel("Languages").fill("en");
+  await page.getByLabel("Countries").fill("US");
+  await page.getByLabel("Genres").fill("science fiction");
+  await page.getByLabel("Notes").fill(proposalNote);
+  await page.getByRole("button", { name: "Send to canonical" }).click();
+
+  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+
+  const maintainerContext = await browser.newContext();
+  const maintainerPage = await maintainerContext.newPage();
+  await signIn(maintainerPage);
+  await maintainerPage.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
+
+  const notifications = maintainerPage.getByRole("region", { name: "Notifications" });
+  await expect(notifications.getByText(`Canonical proposal: ${proposalTitle}`)).toBeVisible();
+  await expect(notifications.getByText(proposalNote)).toBeVisible();
+
+  const proposalRow = maintainerPage
+    .getByRole("region", { name: "Canonical proposals" })
+    .getByRole("row")
+    .filter({ hasText: proposalTitle });
+  await proposalRow.getByRole("button", { name: "Approve + merge" }).click();
+  await expect(proposalRow.getByText("approved", { exact: true })).toBeVisible();
 });

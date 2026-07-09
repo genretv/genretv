@@ -440,13 +440,19 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             label="Display title"
             value={draft.title}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, title: event.currentTarget.value }))}
+            onChange={(event) => {
+              const title = event.currentTarget.value;
+              setDraft((current) => ({ ...current, title }));
+            }}
           />
           <TextInput
             label="Original title"
             value={draft.originalTitle}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, originalTitle: event.currentTarget.value }))}
+            onChange={(event) => {
+              const originalTitle = event.currentTarget.value;
+              setDraft((current) => ({ ...current, originalTitle }));
+            }}
           />
         </SimpleGrid>
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
@@ -456,7 +462,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             minRows={3}
             value={draft.languagesText}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, languagesText: event.currentTarget.value }))}
+            onChange={(event) => {
+              const languagesText = event.currentTarget.value;
+              setDraft((current) => ({ ...current, languagesText }));
+            }}
           />
           <Textarea
             label="Countries"
@@ -464,7 +473,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             minRows={3}
             value={draft.countriesText}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, countriesText: event.currentTarget.value }))}
+            onChange={(event) => {
+              const countriesText = event.currentTarget.value;
+              setDraft((current) => ({ ...current, countriesText }));
+            }}
           />
           <Textarea
             label="Genres"
@@ -472,7 +484,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             minRows={3}
             value={draft.genresText}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, genresText: event.currentTarget.value }))}
+            onChange={(event) => {
+              const genresText = event.currentTarget.value;
+              setDraft((current) => ({ ...current, genresText }));
+            }}
           />
         </SimpleGrid>
         <Textarea
@@ -481,7 +496,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           minRows={3}
           value={draft.linksText}
           disabled={!canEditDraft}
-          onChange={(event) => setDraft((current) => ({ ...current, linksText: event.currentTarget.value }))}
+          onChange={(event) => {
+            const linksText = event.currentTarget.value;
+            setDraft((current) => ({ ...current, linksText }));
+          }}
         />
         <Textarea
           label="Notes"
@@ -489,7 +507,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           minRows={4}
           value={draft.notes}
           disabled={!canEditDraft}
-          onChange={(event) => setDraft((current) => ({ ...current, notes: event.currentTarget.value }))}
+          onChange={(event) => {
+            const notes = event.currentTarget.value;
+            setDraft((current) => ({ ...current, notes }));
+          }}
         />
         <Group justify="space-between" align="center">
           <Group gap={6}>

@@ -547,7 +547,10 @@ function EditableSeason({
             label="Season"
             value={draft.seasonLabel}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, seasonLabel: event.currentTarget.value }))}
+            onChange={(event) => {
+              const seasonLabel = event.currentTarget.value;
+              setDraft((current) => ({ ...current, seasonLabel }));
+            }}
           />
           <Select
             label="Section"
@@ -570,7 +573,10 @@ function EditableSeason({
             value={draft.episodeCount}
             disabled={!canEditDraft}
             error={!episodeCountValid ? "Use a whole number or leave blank" : null}
-            onChange={(event) => setDraft((current) => ({ ...current, episodeCount: event.currentTarget.value }))}
+            onChange={(event) => {
+              const episodeCount = event.currentTarget.value;
+              setDraft((current) => ({ ...current, episodeCount }));
+            }}
           />
         </SimpleGrid>
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
@@ -578,19 +584,28 @@ function EditableSeason({
             label="When"
             value={draft.timing}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, timing: event.currentTarget.value }))}
+            onChange={(event) => {
+              const timing = event.currentTarget.value;
+              setDraft((current) => ({ ...current, timing }));
+            }}
           />
           <TextInput
             label="Release pattern"
             value={draft.releasePattern}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, releasePattern: event.currentTarget.value }))}
+            onChange={(event) => {
+              const releasePattern = event.currentTarget.value;
+              setDraft((current) => ({ ...current, releasePattern }));
+            }}
           />
           <TextInput
             label="Finished reason"
             value={draft.endedReason}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, endedReason: event.currentTarget.value }))}
+            onChange={(event) => {
+              const endedReason = event.currentTarget.value;
+              setDraft((current) => ({ ...current, endedReason }));
+            }}
           />
         </SimpleGrid>
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
@@ -598,19 +613,28 @@ function EditableSeason({
             label="Release window"
             value={draft.releaseWindowText}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, releaseWindowText: event.currentTarget.value }))}
+            onChange={(event) => {
+              const releaseWindowText = event.currentTarget.value;
+              setDraft((current) => ({ ...current, releaseWindowText }));
+            }}
           />
           <TextInput
             label="Finale window"
             value={draft.finaleWindowText}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, finaleWindowText: event.currentTarget.value }))}
+            onChange={(event) => {
+              const finaleWindowText = event.currentTarget.value;
+              setDraft((current) => ({ ...current, finaleWindowText }));
+            }}
           />
           <TextInput
             label="Sort key"
             value={draft.sortKey}
             disabled={!canEditDraft}
-            onChange={(event) => setDraft((current) => ({ ...current, sortKey: event.currentTarget.value }))}
+            onChange={(event) => {
+              const sortKey = event.currentTarget.value;
+              setDraft((current) => ({ ...current, sortKey }));
+            }}
           />
         </SimpleGrid>
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -646,7 +670,10 @@ function EditableSeason({
           minRows={3}
           value={draft.organizationsText}
           disabled={!canEditDraft}
-          onChange={(event) => setDraft((current) => ({ ...current, organizationsText: event.currentTarget.value }))}
+          onChange={(event) => {
+            const organizationsText = event.currentTarget.value;
+            setDraft((current) => ({ ...current, organizationsText }));
+          }}
         />
         <Textarea
           label="Links"
@@ -654,7 +681,10 @@ function EditableSeason({
           minRows={3}
           value={draft.linksText}
           disabled={!canEditDraft}
-          onChange={(event) => setDraft((current) => ({ ...current, linksText: event.currentTarget.value }))}
+          onChange={(event) => {
+            const linksText = event.currentTarget.value;
+            setDraft((current) => ({ ...current, linksText }));
+          }}
         />
         <Textarea
           label="Notes"
@@ -662,7 +692,10 @@ function EditableSeason({
           minRows={4}
           value={draft.notes}
           disabled={!canEditDraft}
-          onChange={(event) => setDraft((current) => ({ ...current, notes: event.currentTarget.value }))}
+          onChange={(event) => {
+            const notes = event.currentTarget.value;
+            setDraft((current) => ({ ...current, notes }));
+          }}
         />
         <Group justify="space-between">
           <Group gap={4}>
