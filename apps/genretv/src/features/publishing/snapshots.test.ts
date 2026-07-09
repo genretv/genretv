@@ -157,9 +157,32 @@ describe("published snapshot planning", () => {
     expect(plan.episodes[0]).toMatchObject({
       id: "episode-published-1",
       publishedSeasonId: "season-published-1",
+      publicationStatus: "published",
       title: "Pilot",
       releaseWindow: { raw: "2026-07-08" },
       sortKey: "001",
     });
+  });
+
+  test("can stage a snapshot as draft before the final publish flip", () => {
+    const ids = ["show-published", "season-published-1", "episode-published-1", "season-published-2"];
+    const plan = buildPublishedSnapshotPlan(
+      schedule,
+      {
+        listId: "list-1",
+        slug: "anton-list",
+        title: "Anton list",
+        description: null,
+        snapshotVersion: 3,
+        nowUs: 1_725_000_000_000_000n,
+      },
+      () => ids.shift() ?? "extra-id",
+      { publicationStatus: "draft" },
+    );
+
+    expect(plan.list.publicationStatus).toBe("draft");
+    expect(plan.shows.every((show) => show.publicationStatus === "draft")).toBe(true);
+    expect(plan.seasons.every((season) => season.publicationStatus === "draft")).toBe(true);
+    expect(plan.episodes.every((episode) => episode.publicationStatus === "draft")).toBe(true);
   });
 });

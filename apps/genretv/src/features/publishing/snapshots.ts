@@ -9,6 +9,12 @@ export interface PublishedSnapshotPlanInput {
   title: string;
 }
 
+export type PublishedSnapshotStatus = "draft" | "published";
+
+export interface PublishedSnapshotPlanOptions {
+  publicationStatus?: PublishedSnapshotStatus;
+}
+
 export interface PublishedSnapshotPlan {
   episodes: PublishedEpisodeDraft[];
   list: PublishedListDraft;
@@ -19,7 +25,7 @@ export interface PublishedSnapshotPlan {
 export interface PublishedListDraft {
   description: string | null;
   id: string;
-  publicationStatus: "published";
+  publicationStatus: PublishedSnapshotStatus;
   publishedAtUs: bigint;
   slug: string;
   snapshotVersion: number;
@@ -36,7 +42,7 @@ export interface PublishedShowDraft {
   countries: string[];
   notes: string | null;
   originalTitle: string | null;
-  publicationStatus: "published";
+  publicationStatus: PublishedSnapshotStatus;
   publishedListId: string;
   snapshotVersion: number;
   sourcePersonalShowId: null;
@@ -52,7 +58,7 @@ export interface PublishedSeasonDraft {
   id: string;
   notes: string | null;
   organizations: Array<{ externalLinks: ExternalLinkSeed[]; name: string; role: string }>;
-  publicationStatus: "published";
+  publicationStatus: PublishedSnapshotStatus;
   publishedListId: string;
   publishedShowId: string;
   releasePattern: string | null;
@@ -73,7 +79,7 @@ export interface PublishedEpisodeDraft {
   externalLinks: ExternalLinkSeed[];
   id: string;
   notes: string | null;
-  publicationStatus: "published";
+  publicationStatus: PublishedSnapshotStatus;
   publishedListId: string;
   publishedSeasonId: string;
   releaseWindow: ReleaseWindowSeed | null;
@@ -87,28 +93,30 @@ export function buildPublishedSnapshotPlan(
   schedule: CanonicalSchedule,
   input: PublishedSnapshotPlanInput,
   newId: () => string,
+  options: PublishedSnapshotPlanOptions = {},
 ): PublishedSnapshotPlan {
   const shows = new Map<string, PublishedShowDraft>();
   const showIds = new Map<string, string>();
   const seasons: PublishedSeasonDraft[] = [];
   const episodes: PublishedEpisodeDraft[] = [];
+  const publicationStatus = options.publicationStatus ?? "published";
 
   for (const entry of schedule.entries) {
     const publishedShowId = showIds.get(entry.showId) ?? newId();
     if (!showIds.has(entry.showId)) {
       showIds.set(entry.showId, publishedShowId);
-      shows.set(entry.showId, showDraft(entry, input, publishedShowId));
+      shows.set(entry.showId, showDraft(entry, input, publishedShowId, publicationStatus));
     }
 
     const publishedSeasonId = newId();
-    seasons.push(seasonDraft(entry, input, publishedShowId, publishedSeasonId));
+    seasons.push(seasonDraft(entry, input, publishedShowId, publishedSeasonId, publicationStatus));
     for (const episode of entry.episodes) {
       episodes.push({
         id: newId(),
         publishedListId: input.listId,
         publishedSeasonId,
         snapshotVersion: input.snapshotVersion,
-        publicationStatus: "published",
+        publicationStatus,
         sourcePersonalEpisodeId: null,
         canonicalEpisodeId: null,
         episodeLabel: episode.episodeLabel || null,
@@ -127,7 +135,7 @@ export function buildPublishedSnapshotPlan(
       slug: input.slug,
       title: input.title,
       description: input.description,
-      publicationStatus: "published",
+      publicationStatus,
       snapshotVersion: input.snapshotVersion,
       publishedAtUs: input.nowUs,
     },
@@ -147,12 +155,17 @@ export function normalizePublishedSlug(value: string): string {
     .slice(0, 120);
 }
 
-function showDraft(entry: ScheduleEntry, input: PublishedSnapshotPlanInput, id: string): PublishedShowDraft {
+function showDraft(
+  entry: ScheduleEntry,
+  input: PublishedSnapshotPlanInput,
+  id: string,
+  publicationStatus: PublishedSnapshotStatus,
+): PublishedShowDraft {
   return {
     id,
     publishedListId: input.listId,
     snapshotVersion: input.snapshotVersion,
-    publicationStatus: "published",
+    publicationStatus,
     sourcePersonalShowId: null,
     canonicalShowId: null,
     displayTitle: entry.title,
@@ -170,13 +183,14 @@ function seasonDraft(
   input: PublishedSnapshotPlanInput,
   publishedShowId: string,
   id: string,
+  publicationStatus: PublishedSnapshotStatus,
 ): PublishedSeasonDraft {
   return {
     id,
     publishedListId: input.listId,
     publishedShowId,
     snapshotVersion: input.snapshotVersion,
-    publicationStatus: "published",
+    publicationStatus,
     sourcePersonalSeasonId: null,
     canonicalSeasonId: null,
     section: entry.section,

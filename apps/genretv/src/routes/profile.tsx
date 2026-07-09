@@ -156,8 +156,9 @@ export function ProfileRoute() {
             label="Display name"
             value={draft.displayName}
             onChange={(event) => {
+              const displayName = event.currentTarget.value;
               setSaved(false);
-              setDraft((current) => ({ ...current, displayName: event.currentTarget.value }));
+              setDraft((current) => ({ ...current, displayName }));
             }}
           />
           <TextInput
@@ -165,8 +166,9 @@ export function ProfileRoute() {
             description={normalizedSlug === "" ? "Leave blank until you want a public profile slug." : normalizedSlug}
             value={draft.publicSlug}
             onChange={(event) => {
+              const publicSlug = event.currentTarget.value;
               setSaved(false);
-              setDraft((current) => ({ ...current, publicSlug: event.currentTarget.value }));
+              setDraft((current) => ({ ...current, publicSlug }));
             }}
           />
         </SimpleGrid>
@@ -176,16 +178,18 @@ export function ProfileRoute() {
           minRows={4}
           value={draft.bio}
           onChange={(event) => {
+            const bio = event.currentTarget.value;
             setSaved(false);
-            setDraft((current) => ({ ...current, bio: event.currentTarget.value }));
+            setDraft((current) => ({ ...current, bio }));
           }}
         />
         <Checkbox
           label="Make this profile public"
           checked={draft.isPublic}
           onChange={(event) => {
+            const checked = event.currentTarget.checked;
             setSaved(false);
-            setDraft((current) => ({ ...current, isPublic: event.currentTarget.checked }));
+            setDraft((current) => ({ ...current, isPublic: checked }));
           }}
         />
         <Group justify="space-between" align="center">

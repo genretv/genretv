@@ -205,7 +205,12 @@ function EditableEpisode({
     draft.dateConfidence,
   );
   const canSaveOverlay =
-    canEdit && personalOverlay.ready && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
+    canEdit &&
+    personalOverlay.ready &&
+    !personalEpisodes.loading &&
+    !personalSeasons.loading &&
+    dirty &&
+    !savingOverlay;
   const canSubmitProposal =
     canEdit && canPropose && !personalEpisodes.loading && !personalSeasons.loading && !proposalSaving;
   const canDeletePersonalEpisode =
@@ -274,7 +279,7 @@ function EditableEpisode({
     setProposalError(null);
     setProposalSent(false);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const proposalResult = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.canonical_proposal.create({
           id: proposalId,
           proposalKind: "episode",
@@ -313,18 +318,25 @@ function EditableEpisode({
             notes: nullableText(draft.notes),
           },
         });
-        tx.tables.maintainer_notification.create({
-          id: crypto.randomUUID(),
-          notificationKind: "canonical_proposal",
-          status: "unread",
-          title: `Canonical proposal: ${title}`,
-          body: nullableText(draft.notes),
-          relatedPublishApplicationId: null,
-          relatedCanonicalProposalId: proposalId,
-        });
       });
-      assertTransactionAcked(result, "Sending canonical proposal");
+      assertTransactionAcked(proposalResult, "Sending canonical proposal");
       setProposalSent(true);
+      void client
+        .transaction({ mode: "pessimistic" }, (tx) => {
+          tx.tables.maintainer_notification.create({
+            id: crypto.randomUUID(),
+            notificationKind: "canonical_proposal",
+            status: "unread",
+            title: `Canonical proposal: ${title}`,
+            body: nullableText(draft.notes),
+            relatedPublishApplicationId: null,
+            relatedCanonicalProposalId: proposalId,
+          });
+        })
+        .then((notificationResult) => {
+          assertTransactionAcked(notificationResult, "Creating canonical proposal notification");
+        })
+        .catch(() => undefined);
     } catch (cause) {
       setProposalError(cause instanceof Error ? cause.message : String(cause));
     } finally {

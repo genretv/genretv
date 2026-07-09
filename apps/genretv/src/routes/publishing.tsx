@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Group,
+  Progress,
   ScrollArea,
   Select,
   SimpleGrid,
@@ -16,6 +17,8 @@ import {
   Title,
 } from "@mantine/core";
 import { useMemo, useState } from "react";
+
+import type { SyncTransaction } from "@pgxsinkit/client";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
@@ -36,7 +39,11 @@ import {
   ownPublishedLists as selectOwnPublishedLists,
   publishedSlugTakenByAnother,
 } from "../features/publishing/ownership";
-import { buildPublishedSnapshotPlan, normalizePublishedSlug } from "../features/publishing/snapshots";
+import {
+  buildPublishedSnapshotPlan,
+  normalizePublishedSlug,
+  type PublishedSnapshotPlan,
+} from "../features/publishing/snapshots";
 
 const publishApplication = genretvSyncRegistry.publish_application.view!;
 const canonicalProposal = genretvSyncRegistry.canonical_proposal.view!;
@@ -49,6 +56,15 @@ const workflowStatusOptions = [
   { value: "rejected", label: "Rejected" },
   { value: "closed", label: "Closed" },
 ];
+const publishSnapshotBatchSize = 40;
+
+interface PublishProgress {
+  completed: number;
+  label: string;
+  total: number;
+}
+
+type SyncWriteTransaction = SyncTransaction<typeof genretvSyncRegistry>;
 
 export function PublishingRoute() {
   const { roles, session } = useAuth();
@@ -61,6 +77,7 @@ export function PublishingRoute() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [publishedSaved, setPublishedSaved] = useState(false);
+  const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null);
   const [applicationReviewNotes, setApplicationReviewNotes] = useState<Record<string, string>>({});
   const [proposalReviewNotes, setProposalReviewNotes] = useState<Record<string, string>>({});
   const [applicationStatusFilter, setApplicationStatusFilter] = useState("all");
@@ -194,24 +211,31 @@ export function PublishingRoute() {
     setActionError(null);
     setSaved(false);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const applicationResult = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.publish_application.create({
           id: applicationId,
           message: nullableText(message),
         });
-        tx.tables.maintainer_notification.create({
-          id: crypto.randomUUID(),
-          notificationKind: "publish_application",
-          status: "unread",
-          title: "Publisher application",
-          body: nullableText(message),
-          relatedPublishApplicationId: applicationId,
-          relatedCanonicalProposalId: null,
-        });
       });
-      assertTransactionAcked(result, "Submitting publisher application");
+      assertTransactionAcked(applicationResult, "Submitting publisher application");
       setSaved(true);
       setMessage("");
+      void client
+        .transaction({ mode: "pessimistic" }, (tx) => {
+          tx.tables.maintainer_notification.create({
+            id: crypto.randomUUID(),
+            notificationKind: "publish_application",
+            status: "unread",
+            title: "Publisher application",
+            body: nullableText(message),
+            relatedPublishApplicationId: applicationId,
+            relatedCanonicalProposalId: null,
+          });
+        })
+        .then((notificationResult) => {
+          assertTransactionAcked(notificationResult, "Creating publisher application notification");
+        })
+        .catch(() => undefined);
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -233,37 +257,81 @@ export function PublishingRoute() {
         nowUs: BigInt(Date.now()) * 1000n,
       },
       () => crypto.randomUUID(),
+      { publicationStatus: "draft" },
     );
+    const totalMutations = publishedSnapshotMutationCount(plan, ownMatchingPublishedList == null);
+    let completedMutations = 0;
+    const runBatch = async (label: string, mutationCount: number, enqueue: (tx: SyncWriteTransaction) => void) => {
+      setPublishProgress({ label, completed: completedMutations, total: totalMutations });
+      const result = await client.transaction({ mode: "pessimistic" }, enqueue);
+      assertTransactionAcked(result, label);
+      completedMutations += mutationCount;
+      setPublishProgress({ label, completed: completedMutations, total: totalMutations });
+    };
     setSaving(true);
     setActionError(null);
     setSaved(false);
     setPublishedSaved(false);
+    setPublishProgress({ label: "Preparing snapshot", completed: 0, total: totalMutations });
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
-        if (ownMatchingPublishedList == null) {
+      if (ownMatchingPublishedList == null) {
+        await runBatch("Creating draft published list", 1, (tx) => {
           tx.tables.published_list.create(plan.list);
-        } else {
-          tx.tables.published_list.update(
-            { id: ownMatchingPublishedList.id },
-            {
-              title: plan.list.title,
-              description: plan.list.description,
-              publicationStatus: plan.list.publicationStatus,
-              snapshotVersion: plan.list.snapshotVersion,
-              publishedAtUs: plan.list.publishedAtUs,
-            },
-          );
-        }
-        for (const show of plan.shows) tx.tables.published_show.create(show);
-        for (const season of plan.seasons) tx.tables.published_season.create(season);
-        for (const episode of plan.episodes) tx.tables.published_episode.create(episode);
+        });
+      }
+      for (const shows of chunks(plan.shows, publishSnapshotBatchSize)) {
+        await runBatch(`Creating ${shows.length} draft published shows`, shows.length, (tx) => {
+          for (const show of shows) tx.tables.published_show.create(show);
+        });
+      }
+      for (const seasons of chunks(plan.seasons, publishSnapshotBatchSize)) {
+        await runBatch(`Creating ${seasons.length} draft published seasons`, seasons.length, (tx) => {
+          for (const season of seasons) tx.tables.published_season.create(season);
+        });
+      }
+      for (const episodes of chunks(plan.episodes, publishSnapshotBatchSize)) {
+        await runBatch(`Creating ${episodes.length} draft published episodes`, episodes.length, (tx) => {
+          for (const episode of episodes) tx.tables.published_episode.create(episode);
+        });
+      }
+      for (const shows of chunks(plan.shows, publishSnapshotBatchSize)) {
+        await runBatch(`Publishing ${shows.length} shows`, shows.length, (tx) => {
+          for (const show of shows)
+            tx.tables.published_show.update({ id: show.id }, { publicationStatus: "published" });
+        });
+      }
+      for (const seasons of chunks(plan.seasons, publishSnapshotBatchSize)) {
+        await runBatch(`Publishing ${seasons.length} seasons`, seasons.length, (tx) => {
+          for (const season of seasons) {
+            tx.tables.published_season.update({ id: season.id }, { publicationStatus: "published" });
+          }
+        });
+      }
+      for (const episodes of chunks(plan.episodes, publishSnapshotBatchSize)) {
+        await runBatch(`Publishing ${episodes.length} episodes`, episodes.length, (tx) => {
+          for (const episode of episodes) {
+            tx.tables.published_episode.update({ id: episode.id }, { publicationStatus: "published" });
+          }
+        });
+      }
+      await runBatch("Publishing list snapshot", 1, (tx) => {
+        tx.tables.published_list.update(
+          { id: listId },
+          {
+            title: plan.list.title,
+            description: plan.list.description,
+            publicationStatus: "published",
+            snapshotVersion: plan.list.snapshotVersion,
+            publishedAtUs: plan.list.publishedAtUs,
+          },
+        );
       });
-      assertTransactionAcked(result, "Publishing list snapshot");
       setPublishedSaved(true);
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
+      setPublishProgress(null);
     }
   };
 
@@ -426,6 +494,18 @@ export function PublishingRoute() {
       {publishedSaved && (
         <Alert color="teal" variant="light">
           Published snapshot saved.
+        </Alert>
+      )}
+      {publishProgress != null && (
+        <Alert color="blue" variant="light">
+          <Stack gap={6}>
+            <Text size="sm">
+              {publishProgress.label}: {publishProgress.completed} of {publishProgress.total} writes acknowledged.
+            </Text>
+            <Progress
+              value={publishProgress.total === 0 ? 100 : (publishProgress.completed / publishProgress.total) * 100}
+            />
+          </Stack>
         </Alert>
       )}
 
@@ -826,6 +906,27 @@ function nullableText(value: string): string | null {
 function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T> {
   const { [key]: _discarded, ...rest } = record;
   return rest;
+}
+
+function publishedSnapshotMutationCount(plan: PublishedSnapshotPlan, createsList: boolean): number {
+  return (
+    (createsList ? 1 : 0) +
+    plan.shows.length +
+    plan.seasons.length +
+    plan.episodes.length +
+    plan.shows.length +
+    plan.seasons.length +
+    plan.episodes.length +
+    1
+  );
+}
+
+function chunks<T>(rows: readonly T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < rows.length; index += size) {
+    result.push(rows.slice(index, index + size));
+  }
+  return result;
 }
 
 const formatMicroseconds = formatMicrosecondTimestamp;

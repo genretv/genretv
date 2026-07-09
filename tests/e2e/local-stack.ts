@@ -6,13 +6,16 @@ export const localMaintainer = {
   password: process.env["GENRETV_LOCAL_USER_PASSWORD"] ?? "genretv-local-password",
 };
 
+export const localUser = {
+  email: "user@genretv.local",
+  password: process.env["GENRETV_LOCAL_USER_PASSWORD"] ?? "genretv-local-password",
+};
+
 export async function expectE2eStackAvailable(): Promise<void> {
   const gatewayUrl = process.env["GENRETV_E2E_GATEWAY_URL"] ?? "http://localhost:55431";
   const response = await fetch(`${gatewayUrl}/auth/v1/health`).catch((error: unknown) => {
     throw new Error(
-      `GenreTV E2E stack is not reachable at ${gatewayUrl}. Playwright should start it automatically. ${String(
-        error,
-      )}`,
+      `GenreTV E2E stack is not reachable at ${gatewayUrl}. Playwright should start it automatically. ${String(error)}`,
     );
   });
 
