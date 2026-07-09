@@ -51,13 +51,22 @@ test("non-publisher can apply and be approved to publish", async ({ browser, pag
 
   const notifications = maintainerPage.getByRole("region", { name: "Notifications" });
   await expect(notifications.getByText("Publisher application")).toBeVisible();
-  await expect(notifications.getByText(message)).toBeVisible();
+  await expect(notifications.getByText(message, { exact: true })).toBeVisible();
+  await expect(notifications.getByText(`Target: ${message} (open)`)).toBeVisible();
+  await notifications.getByRole("button", { name: "Review application" }).click();
 
   const applicationRow = maintainerPage.getByRole("region", { name: "Applications" }).getByRole("row").filter({
     hasText: message,
   });
   await applicationRow.getByRole("button", { name: "Approve" }).click();
-  await expect(applicationRow.getByText("approved", { exact: true })).toBeVisible();
+  await maintainerPage.getByRole("button", { name: "Show history" }).click();
+  await expect(
+    maintainerPage
+      .getByRole("region", { name: "Applications" })
+      .getByRole("row")
+      .filter({ hasText: message })
+      .getByText("approved", { exact: true }),
+  ).toBeVisible();
 
   await expect(page.getByRole("region", { name: "Publish snapshot" })).toBeVisible();
   await expect(page.getByText("Your publish application has been approved.")).toBeVisible();

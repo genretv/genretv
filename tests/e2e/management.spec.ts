@@ -83,11 +83,20 @@ test("publisher can send a show proposal for maintainer merge", async ({ browser
   const notifications = maintainerPage.getByRole("region", { name: "Notifications" });
   await expect(notifications.getByText(`Canonical proposal: ${proposalTitle}`)).toBeVisible();
   await expect(notifications.getByText(proposalNote)).toBeVisible();
+  await expect(notifications.getByText(`Target: ${proposalTitle} (open)`)).toBeVisible();
+  await notifications.getByRole("button", { name: "Review proposal" }).click();
 
   const proposalRow = maintainerPage
     .getByRole("region", { name: "Canonical proposals" })
     .getByRole("row")
     .filter({ hasText: proposalTitle });
   await proposalRow.getByRole("button", { name: "Approve + merge" }).click();
-  await expect(proposalRow.getByText("approved", { exact: true })).toBeVisible();
+  await maintainerPage.getByRole("button", { name: "Show history" }).click();
+  await expect(
+    maintainerPage
+      .getByRole("region", { name: "Canonical proposals" })
+      .getByRole("row")
+      .filter({ hasText: proposalTitle })
+      .getByText("approved", { exact: true }),
+  ).toBeVisible();
 });

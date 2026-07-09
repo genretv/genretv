@@ -36,6 +36,7 @@ import {
   hasOpenPublishApplication,
   workflowStatusColor,
 } from "../features/management/proposals";
+import { nextWorkflowReviewLabel, sortWorkflowReviewRows, workflowQueueSummary } from "../features/management/workflow";
 import {
   ownPublishedLists as selectOwnPublishedLists,
   publishedSlugTakenByAnother,
@@ -179,8 +180,14 @@ export function PublishingRoute() {
     () => proposals.rows.filter((proposal) => userId != null && proposal.ownerId === userId),
     [proposals.rows, userId],
   );
-  const applicationRows = isMaintainer ? applications.rows : ownApplications;
-  const proposalRows = isMaintainer ? proposals.rows : ownProposals;
+  const applicationRows = useMemo(
+    () => sortWorkflowReviewRows(isMaintainer ? applications.rows : ownApplications),
+    [applications.rows, isMaintainer, ownApplications],
+  );
+  const proposalRows = useMemo(
+    () => sortWorkflowReviewRows(isMaintainer ? proposals.rows : ownProposals),
+    [isMaintainer, ownProposals, proposals.rows],
+  );
   const visibleApplications = useMemo(
     () => applicationRows.filter((application) => matchesStatusFilter(application.status, applicationStatusFilter)),
     [applicationRows, applicationStatusFilter],
@@ -199,13 +206,19 @@ export function PublishingRoute() {
     [notifications.rows],
   );
   const openApplicationCount = useMemo(
-    () => applications.rows.filter((application) => canReviewWorkflowStatus(application.status)).length,
-    [applications.rows],
+    () => applicationRows.filter((application) => canReviewWorkflowStatus(application.status)).length,
+    [applicationRows],
   );
   const openProposalCount = useMemo(
-    () => proposals.rows.filter((proposal) => canReviewWorkflowStatus(proposal.status)).length,
-    [proposals.rows],
+    () => proposalRows.filter((proposal) => canReviewWorkflowStatus(proposal.status)).length,
+    [proposalRows],
   );
+  const workflowCounts = useMemo(
+    () => ({ openApplications: openApplicationCount, openProposals: openProposalCount }),
+    [openApplicationCount, openProposalCount],
+  );
+  const reviewQueueSummary = workflowQueueSummary(workflowCounts);
+  const nextReviewLabel = nextWorkflowReviewLabel(workflowCounts);
   const unreadNotificationCount = useMemo(
     () => notifications.rows.filter((notification) => notification.status === "unread").length,
     [notifications.rows],
@@ -475,6 +488,17 @@ export function PublishingRoute() {
     }
   };
 
+  const showApplications = (status: string) => {
+    setApplicationStatusFilter(status);
+    scrollToHeading("publishing-applications-heading");
+  };
+
+  const showProposals = (status: string) => {
+    setProposalStatusFilter(status);
+    setProposalKindFilter("all");
+    scrollToHeading("publishing-proposals-heading");
+  };
+
   if (session == null) {
     return (
       <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -551,6 +575,19 @@ export function PublishingRoute() {
 
       {isMaintainer && (
         <Stack gap="sm" component="section" aria-label="Maintainer review queue">
+          <Group justify="space-between" align="flex-start">
+            <div>
+              <Title order={2}>Review queue</Title>
+              <Text size="sm" c="dimmed">
+                {reviewQueueSummary}
+              </Text>
+              {nextReviewLabel != null && (
+                <Text size="sm" c="dimmed">
+                  {nextReviewLabel}
+                </Text>
+              )}
+            </div>
+          </Group>
           <Group justify="space-between" align="center">
             <Group gap="xs">
               <Badge color={openApplicationCount > 0 ? "yellow" : "gray"} variant="light">
@@ -567,12 +604,29 @@ export function PublishingRoute() {
               <Button
                 size="xs"
                 variant="default"
+                disabled={openApplicationCount === 0}
+                onClick={() => showApplications("open")}
+              >
+                Review applications
+              </Button>
+              <Button
+                size="xs"
+                variant="default"
+                disabled={openProposalCount === 0}
+                onClick={() => showProposals("open")}
+              >
+                Review proposals
+              </Button>
+              <Button
+                size="xs"
+                variant="default"
                 onClick={() => {
-                  setApplicationStatusFilter("open");
-                  setProposalStatusFilter("open");
+                  setApplicationStatusFilter("all");
+                  setProposalStatusFilter("all");
+                  setProposalKindFilter("all");
                 }}
               >
-                Show open work
+                Show history
               </Button>
               <Button
                 size="xs"
@@ -976,33 +1030,37 @@ export function PublishingRoute() {
             notificationRows.map((notification) => (
               <Alert key={notification.id} color={notification.status === "unread" ? "yellow" : "gray"} variant="light">
                 <Group justify="space-between" align="flex-start">
-                  <div>
+                  <Stack gap={4}>
                     <Text fw={700}>{notification.title}</Text>
                     <Text size="sm">{notification.body ?? ""}</Text>
                     <Text size="xs" c="dimmed">
                       {formatMicroseconds(notification.createdAtUs)}
                     </Text>
-                    {notification.relatedPublishApplicationId != null && (
-                      <Text size="xs" c="dimmed">
-                        Application {notification.relatedPublishApplicationId}
-                      </Text>
+                    <NotificationTargetText
+                      applications={applicationRows}
+                      notification={notification}
+                      proposals={proposalRows}
+                    />
+                  </Stack>
+                  <Group gap="xs">
+                    <NotificationTargetButton
+                      applications={applicationRows}
+                      notification={notification}
+                      proposals={proposalRows}
+                      showApplications={showApplications}
+                      showProposals={showProposals}
+                    />
+                    {notification.status === "unread" && (
+                      <Button
+                        size="xs"
+                        variant="default"
+                        disabled={saving}
+                        onClick={() => void markNotificationRead(notification.id)}
+                      >
+                        Mark read
+                      </Button>
                     )}
-                    {notification.relatedCanonicalProposalId != null && (
-                      <Text size="xs" c="dimmed">
-                        Proposal {notification.relatedCanonicalProposalId}
-                      </Text>
-                    )}
-                  </div>
-                  {notification.status === "unread" && (
-                    <Button
-                      size="xs"
-                      variant="default"
-                      disabled={saving}
-                      onClick={() => void markNotificationRead(notification.id)}
-                    >
-                      Mark read
-                    </Button>
-                  )}
+                  </Group>
                 </Group>
               </Alert>
             ))
@@ -1011,6 +1069,111 @@ export function PublishingRoute() {
       )}
     </Stack>
   );
+}
+
+interface NotificationTargetApplication {
+  id: string;
+  message: string | null;
+  status: string;
+}
+
+interface NotificationTargetProposal {
+  id: string;
+  status: string;
+  title: string;
+}
+
+interface NotificationTargetNotification {
+  relatedCanonicalProposalId: string | null;
+  relatedPublishApplicationId: string | null;
+}
+
+interface NotificationTarget {
+  buttonLabel: string;
+  kind: "application" | "proposal";
+  label: string;
+  status: string;
+}
+
+function NotificationTargetText({
+  applications,
+  notification,
+  proposals,
+}: {
+  applications: readonly NotificationTargetApplication[];
+  notification: NotificationTargetNotification;
+  proposals: readonly NotificationTargetProposal[];
+}) {
+  const target = notificationTarget(notification, applications, proposals);
+  if (target == null) return null;
+  return (
+    <Text size="xs" c="dimmed">
+      Target: {target.label} ({target.status})
+    </Text>
+  );
+}
+
+function NotificationTargetButton({
+  applications,
+  notification,
+  proposals,
+  showApplications,
+  showProposals,
+}: {
+  applications: readonly NotificationTargetApplication[];
+  notification: NotificationTargetNotification;
+  proposals: readonly NotificationTargetProposal[];
+  showApplications: (status: string) => void;
+  showProposals: (status: string) => void;
+}) {
+  const target = notificationTarget(notification, applications, proposals);
+  if (target == null) return null;
+  return (
+    <Button
+      size="xs"
+      variant="light"
+      onClick={() => {
+        if (target.kind === "application") showApplications(target.status);
+        else showProposals(target.status);
+      }}
+    >
+      {target.buttonLabel}
+    </Button>
+  );
+}
+
+function notificationTarget(
+  notification: NotificationTargetNotification,
+  applications: readonly NotificationTargetApplication[],
+  proposals: readonly NotificationTargetProposal[],
+): NotificationTarget | null {
+  if (notification.relatedPublishApplicationId != null) {
+    const application = applications.find((row) => row.id === notification.relatedPublishApplicationId);
+    if (application == null) return null;
+    return {
+      buttonLabel: application.status === "open" ? "Review application" : "Show application",
+      kind: "application",
+      label: application.message?.trim() || "Publisher application",
+      status: application.status,
+    };
+  }
+  if (notification.relatedCanonicalProposalId != null) {
+    const proposal = proposals.find((row) => row.id === notification.relatedCanonicalProposalId);
+    if (proposal == null) return null;
+    return {
+      buttonLabel: proposal.status === "open" ? "Review proposal" : "Show proposal",
+      kind: "proposal",
+      label: proposal.title,
+      status: proposal.status,
+    };
+  }
+  return null;
+}
+
+function scrollToHeading(id: string) {
+  window.requestAnimationFrame(() => {
+    document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "smooth" });
+  });
 }
 
 function nullableText(value: string): string | null {
