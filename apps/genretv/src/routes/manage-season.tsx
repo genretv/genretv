@@ -259,6 +259,7 @@ function EditableSeason({
     !personalShows.loading &&
     episodeCountValid &&
     !proposalSaving;
+  const canAddEpisode = canEditDraft && season.id !== newSeasonId;
   const canHideCanonicalSeason =
     canEditDraft &&
     season.id !== newSeasonId &&
@@ -492,6 +493,11 @@ function EditableSeason({
             ? "Save a browser-local draft while editing, or save this season-level metadata to your personal overlay."
             : "Sign in to create a browser-local management draft."}
       </Alert>
+      {season.id === newSeasonId && canEdit && (
+        <Alert color="blue" variant="light">
+          Save the season to your overlay before adding episodes.
+        </Alert>
+      )}
       {personalSeasons.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this season: {personalSeasons.error.message}
@@ -772,7 +778,7 @@ function EditableSeason({
           <Button
             size="xs"
             variant="light"
-            disabled={!canEditDraft}
+            disabled={!canAddEpisode}
             onClick={() =>
               void navigate({
                 to: "/manage/show/$showId/season/$seasonId/episode/$episodeId",

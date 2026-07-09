@@ -212,6 +212,8 @@ export interface ManagementShow {
   links: ExternalLinkSeed[];
   countries: string[];
   notes: string | null;
+  listedSeasonCount: number;
+  knownSeasonCount: number;
   seasons: ManagementSeason[];
 }
 
@@ -377,6 +379,10 @@ export function formatEpisodeCount(episodeCount: number | null, episodes: readon
   return knownCount == null ? "Unknown" : String(knownCount);
 }
 
+export function formatKnownSeasonCount(show: Pick<ManagementShow, "knownSeasonCount" | "listedSeasonCount">): string {
+  return show.knownSeasonCount > show.listedSeasonCount ? `${show.knownSeasonCount}+` : String(show.knownSeasonCount);
+}
+
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
@@ -394,6 +400,8 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
         links: [],
         countries: [],
         notes: entry.notes,
+        listedSeasonCount: 0,
+        knownSeasonCount: 0,
         seasons: [],
       } satisfies ManagementShow);
 
@@ -431,10 +439,15 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
   }
 
   return [...shows.values()]
-    .map((show) => ({
-      ...show,
-      seasons: [...show.seasons].sort((left, right) => left.sourceRow - right.sourceRow),
-    }))
+    .map((show) => {
+      const seasons = [...show.seasons].sort((left, right) => left.sourceRow - right.sourceRow);
+      return {
+        ...show,
+        listedSeasonCount: seasons.length,
+        knownSeasonCount: inferKnownSeasonCount(seasons),
+        seasons,
+      };
+    })
     .sort((left, right) => left.title.localeCompare(right.title));
 }
 
@@ -605,7 +618,7 @@ function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: Schedul
 
 function compareManagementShows(left: ManagementShow, right: ManagementShow, sort: ManagementSort): number {
   if (sort === "seasonCount")
-    return right.seasons.length - left.seasons.length || left.title.localeCompare(right.title);
+    return right.knownSeasonCount - left.knownSeasonCount || left.title.localeCompare(right.title);
   if (sort === "organization") {
     return (
       left.organizations.join(", ").localeCompare(right.organizations.join(", ")) ||
@@ -613,6 +626,18 @@ function compareManagementShows(left: ManagementShow, right: ManagementShow, sor
     );
   }
   return left.title.localeCompare(right.title);
+}
+
+function inferKnownSeasonCount(seasons: readonly Pick<ManagementSeason, "seasonLabel">[]): number {
+  return seasons.reduce((count, season) => Math.max(count, seasonOrdinal(season.seasonLabel) ?? 0), seasons.length);
+}
+
+function seasonOrdinal(label: string): number | null {
+  const normalized = label.trim();
+  const match = /^(?:s|season|series)\s*(\d+)\??$/i.exec(normalized);
+  if (match?.[1] == null) return null;
+  const ordinal = Number(match[1]);
+  return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
 }
 
 function compareSeedEpisodes(left: CanonicalEpisodeSeedRow, right: CanonicalEpisodeSeedRow): number {

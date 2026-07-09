@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   canPublishList,
+  canReviewWorkflowStatus,
   canSendCanonicalProposal,
   hasApprovedPublishApplication,
   hasOpenPublishApplication,
@@ -34,5 +35,12 @@ describe("management canonical proposal permissions", () => {
     expect(hasApprovedPublishApplication([{ status: "rejected" }, { status: "approved" }])).toBe(true);
     expect(hasOpenPublishApplication([{ status: "approved" }])).toBe(false);
     expect(hasOpenPublishApplication([{ status: "open" }, { status: "rejected" }])).toBe(true);
+  });
+
+  test("only open workflow rows are reviewable", () => {
+    expect(canReviewWorkflowStatus("open")).toBe(true);
+    expect(canReviewWorkflowStatus("approved")).toBe(false);
+    expect(canReviewWorkflowStatus("rejected")).toBe(false);
+    expect(canReviewWorkflowStatus("closed")).toBe(false);
   });
 });

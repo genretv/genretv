@@ -11,6 +11,7 @@ import {
   findManagementSeason,
   filterScheduleEntries,
   formatEpisodeCount,
+  formatKnownSeasonCount,
   pageCountFor,
   paginateItems,
   scheduleFilterOptions,
@@ -114,7 +115,7 @@ const seed: CanonicalRegistrySeed = {
         id: "past-c",
         showId: "show-c",
         section: "past",
-        seasonLabel: "S1",
+        seasonLabel: "S6",
         timing: "2024",
         endedReason: "Canceled",
         releasePattern: "weekly",
@@ -225,9 +226,14 @@ describe("schedule read model", () => {
         endedReason: "Canceled",
         languages: ["en", "da"],
         notes: null,
-        seasonLabel: "S1",
+        seasonLabel: "S6",
       },
     ]);
+    expect(findManagementShow(shows, "show-c")).toMatchObject({
+      listedSeasonCount: 1,
+      knownSeasonCount: 6,
+    });
+    expect(formatKnownSeasonCount(findManagementShow(shows, "show-c")!)).toBe("6+");
     expect(
       filterManagementShows(shows, {
         ...defaultManagementViewPreferences,
@@ -241,7 +247,7 @@ describe("schedule read model", () => {
         ...defaultManagementViewPreferences,
         sort: "seasonCount",
       }).map((show) => show.id),
-    ).toEqual(["show-a", "show-b", "show-c"]);
+    ).toEqual(["show-c", "show-a", "show-b"]);
   });
 
   test("finds a management season by show and season id", () => {

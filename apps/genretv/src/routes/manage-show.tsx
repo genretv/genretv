@@ -22,7 +22,13 @@ import { useMemo, useState } from "react";
 import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
 import { assertTransactionAcked } from "../domain/mutation-acks";
-import { findManagementShow, formatEpisodeCount, sectionLabels, type ManagementShow } from "../domain/schedule";
+import {
+  findManagementShow,
+  formatEpisodeCount,
+  formatKnownSeasonCount,
+  sectionLabels,
+  type ManagementShow,
+} from "../domain/schedule";
 import {
   externalLinkTextToRows,
   externalLinksToText,
@@ -195,6 +201,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const draftLinks = externalLinkTextToRows(draft.linksText);
   const canSaveOverlay = canEditDraft && personalOverlay.ready && !personalShows.loading && dirty && !savingOverlay;
   const canSubmitProposal = canEditDraft && canPropose && !personalShows.loading && !proposalSaving;
+  const canAddSeason = canEditDraft && show.id !== newShowId;
   const canDeletePersonalShow =
     canEditDraft &&
     personalRow != null &&
@@ -360,6 +367,10 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         <div>
           <Title order={1}>{show.id === newShowId ? "New show" : show.title}</Title>
           <Group gap={6} mt={6}>
+            <Badge variant="light">{formatKnownSeasonCount(show)} known seasons</Badge>
+            <Badge variant="outline">
+              {show.listedSeasonCount} listed {show.listedSeasonCount === 1 ? "row" : "rows"}
+            </Badge>
             {show.links.map((link) => (
               <Anchor key={`${show.id}-${link.url}`} href={link.url} target="_blank" size="sm">
                 {link.kind ?? link.label}
@@ -370,7 +381,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         <Group>
           <Button
             variant="light"
-            disabled={!canEditDraft || show.id === newShowId}
+            disabled={!canAddSeason}
             onClick={() =>
               void navigate({
                 to: "/manage/show/$showId/season/$seasonId",
@@ -393,6 +404,11 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             ? "Save a browser-local draft while editing, or save this show-level metadata to your personal overlay."
             : "Sign in to create a browser-local management draft."}
       </Alert>
+      {show.id === newShowId && canEdit && (
+        <Alert color="blue" variant="light">
+          Save the show to your overlay before adding seasons.
+        </Alert>
+      )}
       {personalShows.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this show: {personalShows.error.message}
@@ -595,65 +611,73 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {show.seasons.map((season) => (
-                <Table.Tr key={season.id}>
-                  <Table.Td>
-                    <Anchor
-                      className="inline-link-button"
-                      component="button"
-                      type="button"
-                      onClick={() =>
-                        void navigate({
-                          to: "/manage/show/$showId/season/$seasonId",
-                          params: { showId: show.id, seasonId: season.id },
-                        })
-                      }
-                    >
-                      {season.seasonLabel}
-                    </Anchor>
+              {show.seasons.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={9}>
+                    <Text c="dimmed">No listed season rows yet.</Text>
                   </Table.Td>
-                  <Table.Td>{season.section === "past" ? season.endedReason : sectionLabels[season.section]}</Table.Td>
-                  <Table.Td>{season.timing}</Table.Td>
-                  <Table.Td>
-                    <Stack gap={2}>
-                      <Text size="sm">{releaseWindowSummary(season.releaseWindow) || "Unknown"}</Text>
-                      {season.finaleWindow != null && (
-                        <Text size="xs" c="dimmed">
-                          Finale: {releaseWindowSummary(season.finaleWindow)}
-                        </Text>
-                      )}
-                      {season.sortKey != null && (
-                        <Text size="xs" c="dimmed">
-                          Sort: {season.sortKey}
-                        </Text>
-                      )}
-                    </Stack>
-                  </Table.Td>
-                  <Table.Td>
-                    <Group gap={4}>
-                      {season.languages.length === 0 && <Text>Unknown</Text>}
-                      {season.languages.map((language) => (
-                        <Badge key={`${season.id}-${language}`} size="xs" variant="light">
-                          {language}
-                        </Badge>
-                      ))}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>
-                    <Group gap={4}>
-                      {season.countries.length === 0 && <Text>Unknown</Text>}
-                      {season.countries.map((country) => (
-                        <Badge key={`${season.id}-${country}`} size="xs" variant="outline">
-                          {country}
-                        </Badge>
-                      ))}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>{season.organizationText}</Table.Td>
-                  <Table.Td>{season.genreText}</Table.Td>
-                  <Table.Td>{formatEpisodeCount(season.episodeCount, season.episodes)}</Table.Td>
                 </Table.Tr>
-              ))}
+              ) : (
+                show.seasons.map((season) => (
+                  <Table.Tr key={season.id}>
+                    <Table.Td>
+                      <Anchor
+                        className="inline-link-button"
+                        component="button"
+                        type="button"
+                        onClick={() =>
+                          void navigate({
+                            to: "/manage/show/$showId/season/$seasonId",
+                            params: { showId: show.id, seasonId: season.id },
+                          })
+                        }
+                      >
+                        {season.seasonLabel}
+                      </Anchor>
+                    </Table.Td>
+                    <Table.Td>{season.section === "past" ? season.endedReason : sectionLabels[season.section]}</Table.Td>
+                    <Table.Td>{season.timing}</Table.Td>
+                    <Table.Td>
+                      <Stack gap={2}>
+                        <Text size="sm">{releaseWindowSummary(season.releaseWindow) || "Unknown"}</Text>
+                        {season.finaleWindow != null && (
+                          <Text size="xs" c="dimmed">
+                            Finale: {releaseWindowSummary(season.finaleWindow)}
+                          </Text>
+                        )}
+                        {season.sortKey != null && (
+                          <Text size="xs" c="dimmed">
+                            Sort: {season.sortKey}
+                          </Text>
+                        )}
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td>
+                      <Group gap={4}>
+                        {season.languages.length === 0 && <Text>Unknown</Text>}
+                        {season.languages.map((language) => (
+                          <Badge key={`${season.id}-${language}`} size="xs" variant="light">
+                            {language}
+                          </Badge>
+                        ))}
+                      </Group>
+                    </Table.Td>
+                    <Table.Td>
+                      <Group gap={4}>
+                        {season.countries.length === 0 && <Text>Unknown</Text>}
+                        {season.countries.map((country) => (
+                          <Badge key={`${season.id}-${country}`} size="xs" variant="outline">
+                            {country}
+                          </Badge>
+                        ))}
+                      </Group>
+                    </Table.Td>
+                    <Table.Td>{season.organizationText}</Table.Td>
+                    <Table.Td>{season.genreText}</Table.Td>
+                    <Table.Td>{formatEpisodeCount(season.episodeCount, season.episodes)}</Table.Td>
+                  </Table.Tr>
+                ))
+              )}
             </Table.Tbody>
           </Table>
         </ScrollArea>
@@ -693,6 +717,8 @@ function emptyManagementShow(): ManagementShow {
     links: [],
     countries: [],
     notes: null,
+    listedSeasonCount: 0,
+    knownSeasonCount: 0,
     seasons: [],
   };
 }

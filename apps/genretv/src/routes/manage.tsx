@@ -21,6 +21,7 @@ import {
   defaultPageSize,
   defaultManagementViewPreferences,
   filterManagementShows,
+  formatKnownSeasonCount,
   pageCountFor,
   paginateItems,
   pageSizeOptions,
@@ -39,6 +40,14 @@ export function ManageRoute() {
   const [preferences, setPreferences] = useStoredManagementViewPreferences();
   const [page, setPage] = useState(1);
   const visibleShows = useMemo(() => filterManagementShows(shows, preferences), [preferences, shows]);
+  const knownSeasonTotal = useMemo(
+    () => shows.reduce((total, show) => total + show.knownSeasonCount, 0),
+    [shows],
+  );
+  const listedSeasonTotal = useMemo(
+    () => shows.reduce((total, show) => total + show.listedSeasonCount, 0),
+    [shows],
+  );
   const totalPages = pageCountFor(visibleShows.length, preferences.pageSize);
   const pageShows = useMemo(
     () => paginateItems(visibleShows, page, preferences.pageSize),
@@ -62,6 +71,11 @@ export function ManageRoute() {
           <Text size="sm" c="dimmed">
             {visibleShows.length} of {shows.length}
           </Text>
+          <Group gap={6} mt={6}>
+            <Badge variant="light">{shows.length} shows</Badge>
+            <Badge variant="light">{knownSeasonTotal} known seasons</Badge>
+            <Badge variant="outline">{listedSeasonTotal} listed rows</Badge>
+          </Group>
         </div>
         <Group>
           <Button component={Link} to="/manage/hidden" variant="default">
@@ -107,7 +121,7 @@ export function ManageRoute() {
           value={preferences.sort}
           data={[
             { value: "title", label: "Title" },
-            { value: "seasonCount", label: "Seasons" },
+            { value: "seasonCount", label: "Known seasons" },
             { value: "organization", label: "Source" },
           ]}
           onChange={(value) => updatePreferences({ sort: parseManagementSort(value) })}
@@ -119,7 +133,7 @@ export function ManageRoute() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Show</Table.Th>
-              <Table.Th w={120}>Seasons</Table.Th>
+              <Table.Th w={150}>Known seasons</Table.Th>
               <Table.Th>Sources</Table.Th>
               <Table.Th>Genre</Table.Th>
               <Table.Th>Lang</Table.Th>
@@ -139,7 +153,14 @@ export function ManageRoute() {
                     {show.title}
                   </Anchor>
                 </Table.Td>
-                <Table.Td>{show.seasons.length}</Table.Td>
+                <Table.Td>
+                  <Text fw={700}>{formatKnownSeasonCount(show)}</Text>
+                  {show.knownSeasonCount > show.listedSeasonCount && (
+                    <Text size="xs" c="dimmed">
+                      {show.listedSeasonCount} listed {show.listedSeasonCount === 1 ? "row" : "rows"}
+                    </Text>
+                  )}
+                </Table.Td>
                 <Table.Td>{show.organizations.join(", ")}</Table.Td>
                 <Table.Td>{show.genres.join(", ")}</Table.Td>
                 <Table.Td>

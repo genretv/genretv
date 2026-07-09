@@ -14,6 +14,10 @@ export function hasOpenPublishApplication(applications: readonly { status: strin
   return applications.some((application) => application.status === "open");
 }
 
+export function canReviewWorkflowStatus(status: string): boolean {
+  return status === "open";
+}
+
 export function workflowStatusColor(status: string): string {
   if (status === "approved") return "teal";
   if (status === "rejected") return "red";

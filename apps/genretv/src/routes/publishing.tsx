@@ -30,6 +30,7 @@ import {
   unreadNotificationIdsForPublishApplication,
 } from "../features/management/notifications";
 import {
+  canReviewWorkflowStatus,
   canPublishList,
   hasApprovedPublishApplication,
   hasOpenPublishApplication,
@@ -174,18 +175,40 @@ export function PublishingRoute() {
     () => applications.rows.filter((application) => userId != null && application.ownerId === userId),
     [applications.rows, userId],
   );
+  const ownProposals = useMemo(
+    () => proposals.rows.filter((proposal) => userId != null && proposal.ownerId === userId),
+    [proposals.rows, userId],
+  );
+  const applicationRows = isMaintainer ? applications.rows : ownApplications;
+  const proposalRows = isMaintainer ? proposals.rows : ownProposals;
   const visibleApplications = useMemo(
-    () => applications.rows.filter((application) => matchesStatusFilter(application.status, applicationStatusFilter)),
-    [applicationStatusFilter, applications.rows],
+    () => applicationRows.filter((application) => matchesStatusFilter(application.status, applicationStatusFilter)),
+    [applicationRows, applicationStatusFilter],
   );
   const visibleProposals = useMemo(
     () =>
-      proposals.rows.filter(
+      proposalRows.filter(
         (proposal) =>
           matchesStatusFilter(proposal.status, proposalStatusFilter) &&
           (proposalKindFilter === "all" || proposal.proposalKind === proposalKindFilter),
       ),
-    [proposalKindFilter, proposalStatusFilter, proposals.rows],
+    [proposalKindFilter, proposalRows, proposalStatusFilter],
+  );
+  const notificationRows = useMemo(
+    () => [...notifications.rows].sort(compareNotifications),
+    [notifications.rows],
+  );
+  const openApplicationCount = useMemo(
+    () => applications.rows.filter((application) => canReviewWorkflowStatus(application.status)).length,
+    [applications.rows],
+  );
+  const openProposalCount = useMemo(
+    () => proposals.rows.filter((proposal) => canReviewWorkflowStatus(proposal.status)).length,
+    [proposals.rows],
+  );
+  const unreadNotificationCount = useMemo(
+    () => notifications.rows.filter((notification) => notification.status === "unread").length,
+    [notifications.rows],
   );
   const hasApprovedApplication = hasApprovedPublishApplication(ownApplications);
   const hasOpenApplication = hasOpenPublishApplication(ownApplications);
@@ -419,6 +442,27 @@ export function PublishingRoute() {
     }
   };
 
+  const markAllNotificationsRead = async () => {
+    const notificationIds = notifications.rows
+      .filter((notification) => notification.status === "unread")
+      .map((notification) => notification.id);
+    if (notificationIds.length === 0) return;
+    setSaving(true);
+    setActionError(null);
+    try {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+        for (const id of notificationIds) {
+          tx.tables.maintainer_notification.update({ id }, { status: "read" });
+        }
+      });
+      assertTransactionAcked(result, "Marking notifications read");
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (session == null) {
     return (
       <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -491,6 +535,44 @@ export function PublishingRoute() {
             />
           </Stack>
         </Alert>
+      )}
+
+      {isMaintainer && (
+        <Stack gap="sm" component="section" aria-label="Maintainer review queue">
+          <Group justify="space-between" align="center">
+            <Group gap="xs">
+              <Badge color={openApplicationCount > 0 ? "yellow" : "gray"} variant="light">
+                {openApplicationCount} open applications
+              </Badge>
+              <Badge color={openProposalCount > 0 ? "yellow" : "gray"} variant="light">
+                {openProposalCount} open proposals
+              </Badge>
+              <Badge color={unreadNotificationCount > 0 ? "yellow" : "gray"} variant="light">
+                {unreadNotificationCount} unread notifications
+              </Badge>
+            </Group>
+            <Group gap="xs">
+              <Button
+                size="xs"
+                variant="default"
+                onClick={() => {
+                  setApplicationStatusFilter("open");
+                  setProposalStatusFilter("open");
+                }}
+              >
+                Show open work
+              </Button>
+              <Button
+                size="xs"
+                variant="default"
+                disabled={saving || unreadNotificationCount === 0}
+                onClick={() => void markAllNotificationsRead()}
+              >
+                Mark all read
+              </Button>
+            </Group>
+          </Group>
+        </Stack>
       )}
 
       {canPublish ? (
@@ -609,7 +691,7 @@ export function PublishingRoute() {
               {isMaintainer ? "Applications" : "Your applications"}
             </Title>
             <Text size="sm" c="dimmed">
-              {visibleApplications.length} of {applications.rows.length}
+              {visibleApplications.length} of {applicationRows.length}
             </Text>
           </div>
           <Select
@@ -634,13 +716,14 @@ export function PublishingRoute() {
                 <Table.Tr>
                   <Table.Td colSpan={isMaintainer ? 4 : 3}>
                     <Text c="dimmed">
-                      {applications.rows.length === 0 ? "No applications yet." : "No applications match these filters."}
+                      {applicationRows.length === 0 ? "No applications yet." : "No applications match these filters."}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
                 visibleApplications.map((application) => {
                   const reviewNote = applicationReviewNotes[application.id] ?? application.reviewerNote ?? "";
+                  const canReviewApplication = canReviewWorkflowStatus(application.status);
                   return (
                     <Table.Tr key={application.id}>
                       <Table.Td>
@@ -667,6 +750,7 @@ export function PublishingRoute() {
                               autosize
                               minRows={2}
                               placeholder="Optional note"
+                              disabled={!canReviewApplication}
                               value={reviewNote}
                               onChange={(event) =>
                                 setApplicationReviewNotes((notes) => ({
@@ -679,7 +763,7 @@ export function PublishingRoute() {
                               <Button
                                 size="xs"
                                 variant="light"
-                                disabled={saving}
+                                disabled={saving || !canReviewApplication}
                                 onClick={() => void updateApplicationStatus(application.id, "approved", reviewNote)}
                               >
                                 Approve
@@ -688,10 +772,18 @@ export function PublishingRoute() {
                                 size="xs"
                                 color="red"
                                 variant="light"
-                                disabled={saving}
+                                disabled={saving || !canReviewApplication}
                                 onClick={() => void updateApplicationStatus(application.id, "rejected", reviewNote)}
                               >
                                 Reject
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="default"
+                                disabled={saving || !canReviewApplication}
+                                onClick={() => void updateApplicationStatus(application.id, "closed", reviewNote)}
+                              >
+                                Close
                               </Button>
                             </Group>
                           </Stack>
@@ -713,7 +805,7 @@ export function PublishingRoute() {
               {isMaintainer ? "Canonical proposals" : "Your canonical proposals"}
             </Title>
             <Text size="sm" c="dimmed">
-              {visibleProposals.length} of {proposals.rows.length}
+              {visibleProposals.length} of {proposalRows.length}
             </Text>
           </div>
           <Group align="flex-end">
@@ -753,7 +845,7 @@ export function PublishingRoute() {
                 <Table.Tr>
                   <Table.Td colSpan={isMaintainer ? 6 : 5}>
                     <Text c="dimmed">
-                      {proposals.rows.length === 0
+                      {proposalRows.length === 0
                         ? "No canonical proposals yet."
                         : "No proposals match these filters."}
                     </Text>
@@ -763,6 +855,7 @@ export function PublishingRoute() {
                 visibleProposals.map((proposal) => {
                   const reviewNote = proposalReviewNotes[proposal.id] ?? proposal.reviewerNote ?? "";
                   const payloadDetails = proposalPayloadDetails(proposal.proposedPayload);
+                  const canReviewProposal = canReviewWorkflowStatus(proposal.status);
                   return (
                     <Table.Tr key={proposal.id}>
                       <Table.Td>
@@ -807,6 +900,7 @@ export function PublishingRoute() {
                               autosize
                               minRows={2}
                               placeholder="Optional note"
+                              disabled={!canReviewProposal}
                               value={reviewNote}
                               onChange={(event) =>
                                 setProposalReviewNotes((notes) => ({
@@ -819,7 +913,7 @@ export function PublishingRoute() {
                               <Button
                                 size="xs"
                                 variant="light"
-                                disabled={saving}
+                                disabled={saving || !canReviewProposal}
                                 onClick={() => void approveCanonicalProposal(proposal, reviewNote)}
                               >
                                 Approve + merge
@@ -828,7 +922,7 @@ export function PublishingRoute() {
                                 size="xs"
                                 color="red"
                                 variant="light"
-                                disabled={saving}
+                                disabled={saving || !canReviewProposal}
                                 onClick={() => void updateProposalStatus(proposal.id, "rejected", reviewNote)}
                               >
                                 Reject
@@ -836,7 +930,7 @@ export function PublishingRoute() {
                               <Button
                                 size="xs"
                                 variant="default"
-                                disabled={saving}
+                                disabled={saving || !canReviewProposal}
                                 onClick={() => void updateProposalStatus(proposal.id, "closed", reviewNote)}
                               >
                                 Close
@@ -859,15 +953,23 @@ export function PublishingRoute() {
           <Title id="publishing-notifications-heading" order={2}>
             Notifications
           </Title>
-          {notifications.rows.length === 0 ? (
+          {notificationRows.length === 0 ? (
             <Text c="dimmed">No maintainer notifications yet.</Text>
           ) : (
-            notifications.rows.map((notification) => (
+            notificationRows.map((notification) => (
               <Alert key={notification.id} color={notification.status === "unread" ? "yellow" : "gray"} variant="light">
                 <Group justify="space-between" align="flex-start">
                   <div>
                     <Text fw={700}>{notification.title}</Text>
                     <Text size="sm">{notification.body ?? ""}</Text>
+                    <Text size="xs" c="dimmed">
+                      {formatMicroseconds(notification.createdAtUs)}
+                    </Text>
+                    {notification.relatedPublishApplicationId != null && (
+                      <Text size="xs" c="dimmed">
+                        Application {notification.relatedPublishApplicationId}
+                      </Text>
+                    )}
                     {notification.relatedCanonicalProposalId != null && (
                       <Text size="xs" c="dimmed">
                         Proposal {notification.relatedCanonicalProposalId}
@@ -1050,6 +1152,15 @@ function compactStrings(values: Array<string | null>): string[] {
 
 function matchesStatusFilter(status: string, filter: string): boolean {
   return filter === "all" || status === filter;
+}
+
+function compareNotifications(
+  left: { createdAtUs: bigint; status: string },
+  right: { createdAtUs: bigint; status: string },
+): number {
+  if (left.status === "unread" && right.status !== "unread") return -1;
+  if (left.status !== "unread" && right.status === "unread") return 1;
+  return Number(right.createdAtUs - left.createdAtUs);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

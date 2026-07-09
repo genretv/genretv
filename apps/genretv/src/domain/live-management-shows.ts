@@ -100,6 +100,8 @@ function applyPersonalShowsForManagement(
         links: externalLinks(row.externalLinks),
         countries: stringArray(row.countries),
         notes: row.notes,
+        listedSeasonCount: 0,
+        knownSeasonCount: 0,
         seasons: [],
       },
     ];
