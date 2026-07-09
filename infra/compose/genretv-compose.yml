@@ -1,9 +1,9 @@
-name: genretv-local
+name: ${GENRETV_COMPOSE_PROJECT:-genretv-local}
 
 services:
   db:
     image: docker.io/supabase/postgres:17.6.1.143
-    container_name: genretv-db
+    container_name: ${GENRETV_DB_CONTAINER:-genretv-db}
     volumes:
       - ./genretv/db-init/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:ro
       - ./genretv/db-init/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
@@ -14,7 +14,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
     ports:
-      - "54322:5432"
+      - "${GENRETV_POSTGRES_PORT:-54322}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
       interval: 5s
@@ -23,7 +23,7 @@ services:
 
   auth:
     image: docker.io/supabase/gotrue:v2.192.0
-    container_name: genretv-auth
+    container_name: ${GENRETV_AUTH_CONTAINER:-genretv-auth}
     depends_on:
       db:
         condition: service_healthy
@@ -46,11 +46,11 @@ services:
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: "true"
     ports:
-      - "54334:9999"
+      - "${GENRETV_AUTH_PORT:-54334}:9999"
 
   meta:
     image: docker.io/supabase/postgres-meta:v0.96.6
-    container_name: genretv-meta
+    container_name: ${GENRETV_META_CONTAINER:-genretv-meta}
     depends_on:
       db:
         condition: service_healthy
@@ -64,7 +64,7 @@ services:
 
   studio:
     image: docker.io/supabase/studio:2026.07.07-sha-a6a04f2
-    container_name: genretv-studio
+    container_name: ${GENRETV_STUDIO_CONTAINER:-genretv-studio}
     depends_on:
       - meta
     environment:
@@ -77,17 +77,17 @@ services:
       SUPABASE_ANON_KEY: ${GENRETV_PUBLISHABLE_KEY}
       SUPABASE_SERVICE_KEY: ${GENRETV_SECRET_KEY}
     ports:
-      - "54333:3000"
+      - "${GENRETV_STUDIO_PORT:-54333}:3000"
 
   functions:
     image: docker.io/supabase/edge-runtime:v1.74.2
-    container_name: genretv-functions
+    container_name: ${GENRETV_FUNCTIONS_CONTAINER:-genretv-functions}
     depends_on:
       db:
         condition: service_healthy
     command: ["start", "--main-service", "/home/deno/functions/main"]
     volumes:
-      - ../../supabase/functions-dist:/home/deno/functions:ro
+      - ${GENRETV_FUNCTIONS_MOUNT:-../../supabase/functions-dist}:/home/deno/functions:ro
     environment:
       VERIFY_JWT: "false"
       SUPABASE_URL: http://envoy:8000
@@ -100,7 +100,7 @@ services:
 
   electric:
     image: docker.io/electricsql/electric:1.7.7
-    container_name: genretv-electric
+    container_name: ${GENRETV_ELECTRIC_CONTAINER:-genretv-electric}
     depends_on:
       db:
         condition: service_healthy
@@ -109,34 +109,34 @@ services:
       ELECTRIC_INSECURE: "true"
       ELECTRIC_FEATURE_FLAGS: allow_subqueries,tagged_subqueries
     ports:
-      - "54330:3000"
+      - "${GENRETV_ELECTRIC_PORT:-54330}:3000"
 
   envoy:
     image: docker.io/envoyproxy/envoy:v1.38.3
-    container_name: genretv-envoy
+    container_name: ${GENRETV_ENVOY_CONTAINER:-genretv-envoy}
     depends_on:
       - auth
       - functions
     volumes:
       - ./genretv/envoy.yaml:/etc/envoy/envoy.yaml:ro
     ports:
-      - "54331:8000"
+      - "${GENRETV_ENVOY_PORT:-54331}:8000"
 
   caddy:
     image: docker.io/caddy:2.11.4-alpine
-    container_name: genretv-caddy
+    container_name: ${GENRETV_CADDY_CONTAINER:-genretv-caddy}
     depends_on:
       - envoy
     volumes:
       - ./genretv/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/certs:ro
     ports:
-      - "54343:54343/tcp"
-      - "54343:54343/udp"
+      - "${GENRETV_CADDY_PORT:-54343}:54343/tcp"
+      - "${GENRETV_CADDY_PORT:-54343}:54343/udp"
 
   user-seed:
     image: docker.io/curlimages/curl:8.21.0
-    container_name: genretv-user-seed
+    container_name: ${GENRETV_USER_SEED_CONTAINER:-genretv-user-seed}
     profiles: ["seed"]
     depends_on:
       - envoy

@@ -7,7 +7,7 @@ import type { BunPlugin } from "bun";
 const root = resolve(import.meta.dir, "../../..");
 const requireFromApi = createRequire(join(root, "apps/genretv-api/package.json"));
 const sourceRoot = "supabase/functions";
-const distRoot = "supabase/functions-dist";
+const distRoot = process.env["GENRETV_FUNCTIONS_DIST"] ?? "supabase/functions-dist";
 
 const functions = [
   {
@@ -93,4 +93,4 @@ const mainOutDir = resolve(root, distRoot, "main");
 mkdirSync(mainOutDir, { recursive: true });
 copyFileSync(resolve(root, sourceRoot, "main/index.ts"), join(mainOutDir, "index.ts"));
 
-console.log("Built genretv edge functions into supabase/functions-dist");
+console.log(`Built genretv edge functions into ${distRoot}`);
