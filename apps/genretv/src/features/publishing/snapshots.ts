@@ -1,4 +1,10 @@
-import type { CanonicalSchedule, ExternalLinkSeed, ReleaseWindowSeed, ScheduleEntry } from "../../domain/schedule";
+import type {
+  CanonicalSchedule,
+  ExternalLinkSeed,
+  ReleaseWindowSeed,
+  ScheduleEntry,
+  ScheduleSection,
+} from "../../domain/schedule";
 
 export interface PublishedSnapshotPlanInput {
   description: string | null;
@@ -155,6 +161,19 @@ export function normalizePublishedSlug(value: string): string {
     .slice(0, 120);
 }
 
+export function filteredPublishedSnapshotSchedule(schedule: CanonicalSchedule, query: string): CanonicalSchedule {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const entries =
+    normalizedQuery === ""
+      ? schedule.entries
+      : schedule.entries.filter((entry) => publishedSnapshotEntryMatches(entry, normalizedQuery));
+  return {
+    ...schedule,
+    entries,
+    counts: countBySection(entries),
+  };
+}
+
 function showDraft(
   entry: ScheduleEntry,
   input: PublishedSnapshotPlanInput,
@@ -208,5 +227,28 @@ function seasonDraft(
     organizations: entry.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
     externalLinks: entry.seasonLinks,
     notes: entry.seasonNotes,
+  };
+}
+
+function publishedSnapshotEntryMatches(entry: ScheduleEntry, normalizedQuery: string): boolean {
+  return [
+    entry.title,
+    entry.originalTitle ?? "",
+    entry.seasonLabel,
+    entry.organizationText,
+    entry.genreText,
+    entry.languages.join(" "),
+    entry.countries.join(" "),
+  ]
+    .join(" ")
+    .toLocaleLowerCase()
+    .includes(normalizedQuery);
+}
+
+function countBySection(entries: readonly ScheduleEntry[]): Record<ScheduleSection, number> {
+  return {
+    current: entries.filter((entry) => entry.section === "current").length,
+    upcoming: entries.filter((entry) => entry.section === "upcoming").length,
+    past: entries.filter((entry) => entry.section === "past").length,
   };
 }

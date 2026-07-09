@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { CanonicalSchedule } from "../../domain/schedule";
-import { buildPublishedSnapshotPlan, normalizePublishedSlug } from "./snapshots";
+import { buildPublishedSnapshotPlan, filteredPublishedSnapshotSchedule, normalizePublishedSlug } from "./snapshots";
 
 const schedule: CanonicalSchedule = {
   title: "GenreTV test",
@@ -184,5 +184,13 @@ describe("published snapshot planning", () => {
     expect(plan.shows.every((show) => show.publicationStatus === "draft")).toBe(true);
     expect(plan.seasons.every((season) => season.publicationStatus === "draft")).toBe(true);
     expect(plan.episodes.every((episode) => episode.publicationStatus === "draft")).toBe(true);
+  });
+
+  test("filters a schedule into a published sub-list", () => {
+    const filtered = filteredPublishedSnapshotSchedule(schedule, "S2");
+
+    expect(filtered.entries.map((entry) => entry.id)).toEqual(["season-2"]);
+    expect(filtered.counts).toEqual({ current: 0, upcoming: 1, past: 0 });
+    expect(schedule.entries).toHaveLength(2);
   });
 });

@@ -34,7 +34,7 @@ static_resources:
                           route: { cluster: auth, prefix_rewrite: "/", timeout: 30s }
                         - name: functions-v1
                           match: { prefix: "/functions/v1/" }
-                          route: { cluster: functions, prefix_rewrite: "/", timeout: 150s }
+                          route: { cluster: functions, prefix_rewrite: "/", timeout: 600s }
                 http_filters:
                   - name: envoy.filters.http.cors
                     typed_config:

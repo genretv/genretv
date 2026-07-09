@@ -42,6 +42,7 @@ import {
 } from "../features/publishing/ownership";
 import {
   buildPublishedSnapshotPlan,
+  filteredPublishedSnapshotSchedule,
   normalizePublishedSlug,
   type PublishedSnapshotPlan,
 } from "../features/publishing/snapshots";
@@ -57,8 +58,6 @@ const workflowStatusOptions = [
   { value: "rejected", label: "Rejected" },
   { value: "closed", label: "Closed" },
 ];
-const publishSnapshotBatchSize = 40;
-
 interface PublishProgress {
   completed: number;
   label: string;
@@ -74,6 +73,7 @@ export function PublishingRoute() {
   const [listTitle, setListTitle] = useState("My GenreTV list");
   const [listSlug, setListSlug] = useState("");
   const [listDescription, setListDescription] = useState("");
+  const [publishFilter, setPublishFilter] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -213,6 +213,10 @@ export function PublishingRoute() {
   const hasApprovedApplication = hasApprovedPublishApplication(ownApplications);
   const hasOpenApplication = hasOpenPublishApplication(ownApplications);
   const canPublish = hasPublisherRole || hasApprovedApplication;
+  const snapshotSchedule = useMemo(
+    () => filteredPublishedSnapshotSchedule(canonical.schedule, publishFilter),
+    [canonical.schedule, publishFilter],
+  );
   const canSubmitApplication = !saving && !applications.loading && !canPublish && !hasOpenApplication;
   const ownMatchingPublishedList =
     matchingPublishedList != null && userId != null && matchingPublishedList.ownerId === userId
@@ -225,7 +229,7 @@ export function PublishingRoute() {
     listTitle.trim() !== "" &&
     !slugTakenBySomeoneElse &&
     !canonical.loading &&
-    canonical.schedule.entries.length > 0 &&
+    snapshotSchedule.entries.length > 0 &&
     !saving;
 
   const submitApplication = async () => {
@@ -254,7 +258,7 @@ export function PublishingRoute() {
     const listId = ownMatchingPublishedList?.id ?? crypto.randomUUID();
     const snapshotVersion = (ownMatchingPublishedList?.snapshotVersion ?? 0) + 1;
     const plan = buildPublishedSnapshotPlan(
-      canonical.schedule,
+      snapshotSchedule,
       {
         listId,
         slug: normalizedSlug,
@@ -268,7 +272,7 @@ export function PublishingRoute() {
     );
     const totalMutations = publishedSnapshotMutationCount(plan, ownMatchingPublishedList == null);
     let completedMutations = 0;
-    const runBatch = async (label: string, mutationCount: number, enqueue: (tx: SyncWriteTransaction) => void) => {
+    const runStep = async (label: string, mutationCount: number, enqueue: (tx: SyncWriteTransaction) => void) => {
       setPublishProgress({ label, completed: completedMutations, total: totalMutations });
       const result = await client.transaction({ mode: "pessimistic" }, enqueue);
       assertTransactionAcked(result, label);
@@ -282,56 +286,64 @@ export function PublishingRoute() {
     setPublishProgress({ label: "Preparing snapshot", completed: 0, total: totalMutations });
     try {
       if (ownMatchingPublishedList == null) {
-        await runBatch("Creating draft published list", 1, (tx) => {
-          tx.tables.published_list.create(plan.list);
-        });
-      }
-      for (const shows of chunks(plan.shows, publishSnapshotBatchSize)) {
-        await runBatch(`Creating ${shows.length} draft published shows`, shows.length, (tx) => {
-          for (const show of shows) tx.tables.published_show.create(show);
-        });
-      }
-      for (const seasons of chunks(plan.seasons, publishSnapshotBatchSize)) {
-        await runBatch(`Creating ${seasons.length} draft published seasons`, seasons.length, (tx) => {
-          for (const season of seasons) tx.tables.published_season.create(season);
-        });
-      }
-      for (const episodes of chunks(plan.episodes, publishSnapshotBatchSize)) {
-        await runBatch(`Creating ${episodes.length} draft published episodes`, episodes.length, (tx) => {
-          for (const episode of episodes) tx.tables.published_episode.create(episode);
-        });
-      }
-      for (const shows of chunks(plan.shows, publishSnapshotBatchSize)) {
-        await runBatch(`Publishing ${shows.length} shows`, shows.length, (tx) => {
-          for (const show of shows)
-            tx.tables.published_show.update({ id: show.id }, { publicationStatus: "published" });
-        });
-      }
-      for (const seasons of chunks(plan.seasons, publishSnapshotBatchSize)) {
-        await runBatch(`Publishing ${seasons.length} seasons`, seasons.length, (tx) => {
-          for (const season of seasons) {
-            tx.tables.published_season.update({ id: season.id }, { publicationStatus: "published" });
-          }
-        });
-      }
-      for (const episodes of chunks(plan.episodes, publishSnapshotBatchSize)) {
-        await runBatch(`Publishing ${episodes.length} episodes`, episodes.length, (tx) => {
-          for (const episode of episodes) {
-            tx.tables.published_episode.update({ id: episode.id }, { publicationStatus: "published" });
-          }
-        });
-      }
-      await runBatch("Publishing list snapshot", 1, (tx) => {
-        tx.tables.published_list.update(
-          { id: listId },
-          {
+        await runStep("Creating draft published list", 1, (tx) => {
+          tx.tables.published_list.create({
+            id: plan.list.id,
+            slug: plan.list.slug,
             title: plan.list.title,
             description: plan.list.description,
-            publicationStatus: "published",
+            publicationStatus: plan.list.publicationStatus,
             snapshotVersion: plan.list.snapshotVersion,
-            publishedAtUs: plan.list.publishedAtUs,
-          },
-        );
+          });
+        });
+      }
+      await runStep(`Creating ${plan.shows.length} draft published shows`, plan.shows.length, (tx) => {
+        for (const show of plan.shows) tx.tables.published_show.create(show);
+      });
+      await runStep(`Creating ${plan.seasons.length} draft published seasons`, plan.seasons.length, (tx) => {
+        for (const season of plan.seasons) tx.tables.published_season.create(season);
+      });
+      if (plan.episodes.length > 0) {
+        await runStep(`Creating ${plan.episodes.length} draft published episodes`, plan.episodes.length, (tx) => {
+          for (const episode of plan.episodes) tx.tables.published_episode.create(episode);
+        });
+      }
+      await runStep(`Publishing ${plan.shows.length} shows`, plan.shows.length, (tx) => {
+        for (const show of plan.shows) {
+          tx.tables.published_show.updateBlind({ id: show.id }, { publicationStatus: "published" });
+        }
+      });
+      await runStep(`Publishing ${plan.seasons.length} seasons`, plan.seasons.length, (tx) => {
+        for (const season of plan.seasons) {
+          tx.tables.published_season.updateBlind({ id: season.id }, { publicationStatus: "published" });
+        }
+      });
+      if (plan.episodes.length > 0) {
+        await runStep(`Publishing ${plan.episodes.length} episodes`, plan.episodes.length, (tx) => {
+          for (const episode of plan.episodes) {
+            tx.tables.published_episode.updateBlind({ id: episode.id }, { publicationStatus: "published" });
+          }
+        });
+      }
+      await runStep("Publishing list snapshot", 1, (tx) => {
+        if (ownMatchingPublishedList == null) {
+          tx.tables.published_list.updateBlind(
+            { id: listId },
+            {
+              publicationStatus: "published",
+            },
+          );
+        } else {
+          tx.tables.published_list.updateBlind(
+            { id: listId },
+            {
+              title: plan.list.title,
+              description: plan.list.description,
+              publicationStatus: "published",
+              snapshotVersion: plan.list.snapshotVersion,
+            },
+          );
+        }
       });
       setPublishedSaved(true);
     } catch (cause) {
@@ -601,11 +613,16 @@ export function PublishingRoute() {
             value={listDescription}
             onChange={(event) => setListDescription(event.currentTarget.value)}
           />
+          <TextInput
+            label="Publish filter"
+            value={publishFilter}
+            onChange={(event) => setPublishFilter(event.currentTarget.value)}
+          />
           <Group justify="space-between" align="center">
             <Text size="sm" c="dimmed">
               {ownMatchingPublishedList == null
-                ? `${canonical.schedule.entries.length} seasons will be published as a new list.`
-                : `${canonical.schedule.entries.length} seasons will become snapshot v${
+                ? `${seasonRowsLabel(snapshotSchedule.entries.length)} will be published as a new list.`
+                : `${seasonRowsLabel(snapshotSchedule.entries.length)} will become snapshot v${
                     ownMatchingPublishedList.snapshotVersion + 1
                   } for ${ownMatchingPublishedList.slug}.`}
             </Text>
@@ -1019,14 +1036,6 @@ function publishedSnapshotMutationCount(plan: PublishedSnapshotPlan, createsList
   );
 }
 
-function chunks<T>(rows: readonly T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let index = 0; index < rows.length; index += size) {
-    result.push(rows.slice(index, index + size));
-  }
-  return result;
-}
-
 const formatMicroseconds = formatMicrosecondTimestamp;
 
 function proposalTargetText(proposal: {
@@ -1152,6 +1161,10 @@ function compactStrings(values: Array<string | null>): string[] {
 
 function matchesStatusFilter(status: string, filter: string): boolean {
   return filter === "all" || status === filter;
+}
+
+function seasonRowsLabel(count: number): string {
+  return `${count} ${count === 1 ? "season" : "seasons"}`;
 }
 
 function compareNotifications(
