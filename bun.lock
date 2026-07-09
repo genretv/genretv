@@ -6,6 +6,7 @@
       "name": "genretv",
       "devDependencies": {
         "@pgxsinkit/server": "dev",
+        "@playwright/test": "^1.61.1",
         "@tanstack/intent": "^0.3.5",
         "@types/node": "26.1.1",
         "@types/react": "19.2.17",
@@ -74,9 +75,9 @@
   "packages": {
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.12.0", "", {}, "sha512-mlUE+rZ8CatQekLhnaiN91Iemdd+e2gFKooGlnRB3oPTL3VghLfX24dx7HrzMNeC1JrIB/0kpsfyty3f5HNfxQ=="],
 
-    "@electric-sql/client": ["@electric-sql/client@1.5.23", "", { "dependencies": { "@microsoft/fetch-event-source": "^2.0.1" }, "optionalDependencies": { "@rollup/rollup-darwin-arm64": "^4.18.1" }, "bin": { "intent": "bin/intent.mjs" } }, "sha512-3b0ddP8/J7dIHNFwoXzuFcow40aXvKtGss1rpiF5H4AGvuYWHR7A/hCe7xE86wbvdJP3PNcpDAmtUNF1cc+vlQ=="],
+    "@electric-sql/client": ["@electric-sql/client@1.5.24", "", { "dependencies": { "@microsoft/fetch-event-source": "^2.0.1" }, "optionalDependencies": { "@rollup/rollup-darwin-arm64": "^4.18.1" }, "bin": { "intent": "bin/intent.mjs" } }, "sha512-ItOjBFTfiZvYosglF9Dn4TSqE59yL/psoemHJ7vX8gvEUmElHB2QdP5eQC6q9/lswyv7oqhkZT0Kk8kuq2P5vA=="],
 
-    "@electric-sql/experimental": ["@electric-sql/experimental@6.0.23", "", { "optionalDependencies": { "@rollup/rollup-darwin-arm64": "^4.18.1" }, "peerDependencies": { "@electric-sql/client": "1.5.23" } }, "sha512-dLjXPAVmHhw6HNuD2E873ydy5MiVujnbp5PssuY0bJ5xOMpWtTa50R7LCwbkNlMXTbf31g3XpTrOfmSu3+v6Aw=="],
+    "@electric-sql/experimental": ["@electric-sql/experimental@6.0.24", "", { "optionalDependencies": { "@rollup/rollup-darwin-arm64": "^4.18.1" }, "peerDependencies": { "@electric-sql/client": "1.5.24" } }, "sha512-GmYKNYqChe7voJxqb4Z4ygEtZhqAPVWDRRoIRi9brmW2laA7CPKP/WB71Rs6KbAQX/jGgQe1YA+3RHtcKld+4g=="],
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.5.4", "", {}, "sha512-yYZUyyXrHU7tPlCjwZQJ6hIG9DscdCCn7Uk0mYKwC1FeHX286AbcmFveMiRBEak8e9iPupjsoVImN3yJZVed2g=="],
 
@@ -256,13 +257,15 @@
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.73.0", "", { "os": "win32", "cpu": "x64" }, "sha512-WaNRvh4f6zY9CvUQk2YoA1O90ieWrIklI84+HXFr9Isjz9CSESrdqo/RtIYt4Dll/cAchqGDMehfaZd0vqEFZw=="],
 
-    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.37-dev.1783499831.3daee02", "https://npm.pkg.github.com/download/@pgxsinkit/client/0.1.37-dev.1783499831.3daee02/48add174d700d27ccf96f92556cba7795664967c", { "dependencies": { "@electric-sql/client": "^1.5.23", "@electric-sql/experimental": "^6.0.23", "@pgxsinkit/contracts": "0.1.37-dev.1783499831.3daee02" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-IVtj2X1HIQ8Wi3Q2Hj+WtLDXkq1Az5FS2rGwR7sM6SoaEVfCsuXp7kQp+An1c96CQRK5vc2z9p6k6vJJfgdUig=="],
+    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/client/0.1.37-dev.1783505135.f377d83/7888c1f675c970ab84a0d3ea27ff3f6376fddb7d", { "dependencies": { "@electric-sql/client": "^1.5.24", "@electric-sql/experimental": "^6.0.24", "@pgxsinkit/contracts": "0.1.37-dev.1783505135.f377d83" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-7+dPDzBI1K7JrU3r+S8woWhW0dKAxS5G3NSUVgtz4lFRCvunQpbI8v/kSkUduxHTSYmE8MqyaW6XyNOZhHgW+g=="],
 
-    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.37-dev.1783499831.3daee02", "https://npm.pkg.github.com/download/@pgxsinkit/contracts/0.1.37-dev.1783499831.3daee02/8df641fce0b0283599d0e02b12e1153e950d96fd", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-6AIU6O2SjbGdIiVbD4b4xxJWPyIWKCvMdoJXeLkE448uYQIMZhTHNQT5nJTgAvenjphV1ZejNk+mhB1wifWvbg=="],
+    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/contracts/0.1.37-dev.1783505135.f377d83/7137adc7b0c51279b272ae6e5382816e10f31d72", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-xzBYXTN1s36/BglWXuDEzPZINEtReENXTwIVuy5WvzhRSmkwEl8hHLZoQN4AscUjhTEIwgkcwH21CR0lGUKbqA=="],
 
-    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.37-dev.1783499831.3daee02", "https://npm.pkg.github.com/download/@pgxsinkit/react/0.1.37-dev.1783499831.3daee02/c80c767f876eb2ddc41fd962c226499f48df6c52", { "dependencies": { "@pgxsinkit/client": "0.1.37-dev.1783499831.3daee02", "@pgxsinkit/contracts": "0.1.37-dev.1783499831.3daee02" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-NAb4ZhKxYNwWoOtZyHbgshxpIU9C9+1TKb209nokVEC1/9feskSP+RJZOukDcLmKoqJgpBi5I/s1u3ewyxhzjw=="],
+    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/react/0.1.37-dev.1783505135.f377d83/7a2b817e2ec770f5759390179b94688239ffe4a9", { "dependencies": { "@pgxsinkit/client": "0.1.37-dev.1783505135.f377d83", "@pgxsinkit/contracts": "0.1.37-dev.1783505135.f377d83" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-YbJj7Vu5+oflMqvmxgrCTzjz8aoJufPlBa5Eec/9rlimrdtWU+qTgQ58+LMltsLUwS4ba8Qs6v1dL+wYY+rEJw=="],
 
-    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.37-dev.1783499831.3daee02", "https://npm.pkg.github.com/download/@pgxsinkit/server/0.1.37-dev.1783499831.3daee02/86f7163cf7fdf673930660d370d8e26927520bd2", { "dependencies": { "@pgxsinkit/contracts": "0.1.37-dev.1783499831.3daee02" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-/PGoB/TVhYNVAqIw/5ovSKdqpdfPtU9p6030lsD6u8oOvYWbHuD5ySLrZ0jiTW34cJrBSslNlG6zyRKMiygRJw=="],
+    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/server/0.1.37-dev.1783505135.f377d83/4a88e753168423534b0944ebee8b487579628522", { "dependencies": { "@pgxsinkit/contracts": "0.1.37-dev.1783505135.f377d83" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-NrKdwmuESqrK28c2lJ7xgqVN7gBlvIYZEI/EfHW3y6xYSdpUCcXLnzuZcUdsnmBpp7JlNLfZ46juRalhoefedw=="],
+
+    "@playwright/test": ["@playwright/test@1.61.1", "", { "dependencies": { "playwright": "1.61.1" }, "bin": { "playwright": "cli.js" } }, "sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig=="],
 
     "@rolldown/binding-android-arm64": ["@rolldown/binding-android-arm64@1.1.4", "", { "os": "android", "cpu": "arm64" }, "sha512-EZLpf/8y7GXkkra90ML47kzik/GMP3EMcE9bPyHmRfxLC6z9+aW5A8poCsoxjrT5GfEcNAAvWwUHjvP1pUQkfw=="],
 
@@ -426,6 +429,10 @@
 
     "picomatch": ["picomatch@4.0.5", "", {}, "sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A=="],
 
+    "playwright": ["playwright@1.61.1", "", { "dependencies": { "playwright-core": "1.61.1" }, "optionalDependencies": { "fsevents": "2.3.2" }, "bin": { "playwright": "cli.js" } }, "sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ=="],
+
+    "playwright-core": ["playwright-core@1.61.1", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg=="],
+
     "postcss": ["postcss@8.5.16", "", { "dependencies": { "nanoid": "^3.3.12", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg=="],
 
     "postgres": ["postgres@3.4.9", "", {}, "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="],
@@ -489,6 +496,8 @@
     "zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
     "bun-types/@types/node": ["@types/node@26.1.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-O0A1G3xPGy4w7AgQdAQYUlQ+BKk2Oovw8eRpofyp5KdBZULnbe+WqaOVNrm705SHphCiG4XHsACrSmPu1f+Kgw=="],
+
+    "playwright/fsevents": ["fsevents@2.3.2", "", { "os": "darwin" }, "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA=="],
 
     "tsx/esbuild": ["esbuild@0.28.1", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.28.1", "@esbuild/android-arm": "0.28.1", "@esbuild/android-arm64": "0.28.1", "@esbuild/android-x64": "0.28.1", "@esbuild/darwin-arm64": "0.28.1", "@esbuild/darwin-x64": "0.28.1", "@esbuild/freebsd-arm64": "0.28.1", "@esbuild/freebsd-x64": "0.28.1", "@esbuild/linux-arm": "0.28.1", "@esbuild/linux-arm64": "0.28.1", "@esbuild/linux-ia32": "0.28.1", "@esbuild/linux-loong64": "0.28.1", "@esbuild/linux-mips64el": "0.28.1", "@esbuild/linux-ppc64": "0.28.1", "@esbuild/linux-riscv64": "0.28.1", "@esbuild/linux-s390x": "0.28.1", "@esbuild/linux-x64": "0.28.1", "@esbuild/netbsd-arm64": "0.28.1", "@esbuild/netbsd-x64": "0.28.1", "@esbuild/openbsd-arm64": "0.28.1", "@esbuild/openbsd-x64": "0.28.1", "@esbuild/openharmony-arm64": "0.28.1", "@esbuild/sunos-x64": "0.28.1", "@esbuild/win32-arm64": "0.28.1", "@esbuild/win32-ia32": "0.28.1", "@esbuild/win32-x64": "0.28.1" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-HrJrvZv5ayxBzPfwphOoNzkzOIIlifzk0KJrGK2c8R4+LKpMtpYLQeUdjnwjWv/LZlkH2laZk+4w78pi99D4Vw=="],
 
