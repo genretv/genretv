@@ -61,6 +61,7 @@ export interface PublishedEpisodeRow {
 }
 
 export interface ListImportRow {
+  id: string;
   importMode: string;
   sourcePublishedSeasonId: string | null;
 }
@@ -93,6 +94,7 @@ export interface PublishedSeasonSummary {
   externalLinks: ExternalLinkSeed[];
   genreTags: string[];
   id: string;
+  importId: string | null;
   importMode: string | null;
   languages: string[];
   notes: string | null;
@@ -137,7 +139,9 @@ export function buildPublishedListSummaries(
 ): PublishedListSummary[] {
   const importsBySeason = new Map(
     imports.flatMap((row) =>
-      row.sourcePublishedSeasonId == null ? [] : [[row.sourcePublishedSeasonId, row.importMode]],
+      row.sourcePublishedSeasonId == null
+        ? []
+        : [[row.sourcePublishedSeasonId, { id: row.id, mode: row.importMode }]],
     ),
   );
   const showsByList = groupBy(shows, (show) => show.publishedListId);
@@ -171,6 +175,7 @@ export function buildPublishedListSummaries(
             const show = currentShows.get(season.publishedShowId);
             if (show == null) return [];
             const organizationSeeds = organizations(season.organizations);
+            const importRow = importsBySeason.get(season.id) ?? null;
             return [
               {
                 id: season.id,
@@ -204,7 +209,8 @@ export function buildPublishedListSummaries(
                 organizationSeeds,
                 organizationText: organizationSeeds.map((organization) => organization.name).join(", "),
                 seasonExternalLinks: externalLinks(season.externalLinks),
-                importMode: importsBySeason.get(season.id) ?? null,
+                importId: importRow?.id ?? null,
+                importMode: importRow?.mode ?? null,
               },
             ];
           })

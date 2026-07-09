@@ -242,7 +242,7 @@ function EditableEpisode({
         if (personalRow == null) {
           tx.tables.personal_episode.create({
             id: createdId,
-            canonicalShowId: show.id,
+            canonicalShowId: isPersonalOnlySeason ? null : show.id,
             canonicalSeasonId: isPersonalOnlySeason ? null : season.id,
             canonicalEpisodeId: episode == null ? null : episode.id,
             personalSeasonId: isPersonalOnlySeason ? season.id : null,

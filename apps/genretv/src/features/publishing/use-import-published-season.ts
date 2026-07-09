@@ -118,7 +118,24 @@ export function useImportPublishedSeason() {
     }
   };
 
-  return { actionError, importSeason, savingKey };
+  const removeLinkedImport = async (season: PublishedSeasonSummary) => {
+    const importId = season.importId;
+    if (importId == null || season.importMode !== "linked") return;
+    setSavingKey(`${season.id}:remove-linked`);
+    setActionError(null);
+    try {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+        tx.tables.list_import.delete({ id: importId });
+      });
+      assertTransactionAcked(result, "Removing linked import");
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  return { actionError, importSeason, removeLinkedImport, savingKey };
 }
 
 function scheduleSection(value: string): "current" | "upcoming" | "past" {

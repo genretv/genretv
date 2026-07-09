@@ -8,10 +8,17 @@ interface PublishedListRowsTableProps {
   canImport: boolean;
   list: PublishedListSummary;
   onImportSeason: (season: PublishedSeasonSummary, importMode: ImportMode) => void;
+  onRemoveLinkedImport: (season: PublishedSeasonSummary) => void;
   savingKey: string | null;
 }
 
-export function PublishedListRowsTable({ canImport, list, onImportSeason, savingKey }: PublishedListRowsTableProps) {
+export function PublishedListRowsTable({
+  canImport,
+  list,
+  onImportSeason,
+  onRemoveLinkedImport,
+  savingKey,
+}: PublishedListRowsTableProps) {
   return (
     <ScrollArea>
       <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={980}>
@@ -107,10 +114,33 @@ export function PublishedListRowsTable({ canImport, list, onImportSeason, saving
                       Copy
                     </Button>
                   </Group>
+                ) : season.importMode === "linked" ? (
+                  <Stack gap={4}>
+                    <Badge color="blue" variant="light">
+                      Already linked
+                    </Badge>
+                    <Button
+                      size="xs"
+                      color="red"
+                      variant="subtle"
+                      disabled={!canImport || savingKey != null}
+                      loading={savingKey === `${season.id}:remove-linked`}
+                      onClick={() => {
+                        onRemoveLinkedImport(season);
+                      }}
+                    >
+                      Remove link
+                    </Button>
+                  </Stack>
                 ) : (
-                  <Badge color="teal" variant="light">
-                    Imported: {season.importMode}
-                  </Badge>
+                  <Stack gap={4}>
+                    <Badge color="teal" variant="light">
+                      Copied to your list
+                    </Badge>
+                    <Text size="xs" c="dimmed">
+                      This copy can be edited independently.
+                    </Text>
+                  </Stack>
                 )}
               </Table.Td>
             </Table.Tr>

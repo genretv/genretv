@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { expectE2eStackAvailable, localPublisher, signIn } from "./local-stack";
+import { expectE2eStackAvailable, localPublisher, localUser, signIn } from "./local-stack";
 
 test.beforeAll(async () => {
   await expectE2eStackAvailable();
@@ -48,4 +48,25 @@ test("publisher can publish a snapshot that anonymous visitors can inspect", asy
   await expect(anonymousPage.getByRole("button", { name: "Copy" }).first()).toBeDisabled();
 
   await anonymousContext.close();
+
+  const signedInContext = await browser.newContext();
+  const signedInPage = await signedInContext.newPage();
+  await signIn(signedInPage, localUser);
+  await signedInPage.goto(`/published/${slug}`);
+
+  await expect(signedInPage.getByRole("heading", { name: title })).toBeVisible({ timeout: 120_000 });
+  const importedRow = signedInPage.getByRole("row").filter({ hasText: "Alien: Earth" });
+  await importedRow.getByRole("button", { name: "Link" }).click();
+  await expect(importedRow.getByText("Already linked")).toBeVisible({ timeout: 120_000 });
+  await expect(importedRow.getByRole("button", { name: "Copy" })).toHaveCount(0);
+
+  await importedRow.getByRole("button", { name: "Remove link" }).click();
+  await expect(importedRow.getByRole("button", { name: "Link" })).toBeVisible({ timeout: 120_000 });
+  await expect(importedRow.getByRole("button", { name: "Copy" })).toBeVisible();
+
+  await importedRow.getByRole("button", { name: "Copy" }).click();
+  await expect(importedRow.getByText("Copied to your list")).toBeVisible({ timeout: 120_000 });
+  await expect(importedRow.getByText("This copy can be edited independently.")).toBeVisible();
+
+  await signedInContext.close();
 });

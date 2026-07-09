@@ -9,7 +9,7 @@ import { usePublishedListSummaries } from "../features/publishing/use-published-
 export function PublishedListRoute() {
   const { slug } = useParams({ from: "/published/$slug" });
   const { error, loading, session, summaries } = usePublishedListSummaries();
-  const { actionError, importSeason, savingKey } = useImportPublishedSeason();
+  const { actionError, importSeason, removeLinkedImport, savingKey } = useImportPublishedSeason();
   const list = useMemo(() => summaries.find((summary) => summary.slug === slug) ?? null, [slug, summaries]);
 
   return (
@@ -79,6 +79,7 @@ export function PublishedListRoute() {
             canImport={session != null}
             list={list}
             onImportSeason={(season, importMode) => void importSeason(season, importMode)}
+            onRemoveLinkedImport={(season) => void removeLinkedImport(season)}
             savingKey={savingKey}
           />
         </Stack>

@@ -7,7 +7,7 @@ import { usePublishedListSummaries } from "../features/publishing/use-published-
 
 export function PublishedRoute() {
   const { error, loading, session, summaries } = usePublishedListSummaries();
-  const { actionError, importSeason, savingKey } = useImportPublishedSeason();
+  const { actionError, importSeason, removeLinkedImport, savingKey } = useImportPublishedSeason();
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1220} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -75,6 +75,7 @@ export function PublishedRoute() {
             canImport={session != null}
             list={list}
             onImportSeason={(season, importMode) => void importSeason(season, importMode)}
+            onRemoveLinkedImport={(season) => void removeLinkedImport(season)}
             savingKey={savingKey}
           />
         </Stack>

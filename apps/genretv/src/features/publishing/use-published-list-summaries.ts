@@ -98,6 +98,7 @@ export function usePublishedListSummaries() {
     (sync) =>
       sync.drizzle
         .select({
+          id: listImport.id,
           sourcePublishedSeasonId: listImport.sourcePublishedSeasonId,
           importMode: listImport.importMode,
         })

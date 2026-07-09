@@ -125,7 +125,7 @@ describe("published list import summaries", () => {
           notes: null,
         },
       ],
-      [{ sourcePublishedSeasonId: "season-current", importMode: "linked" }],
+      [{ id: "import-current", sourcePublishedSeasonId: "season-current", importMode: "linked" }],
       [{ ownerId: "publisher-1", displayName: "Curator One", publicSlug: "curator-one" }],
     );
 
