@@ -165,25 +165,7 @@ function EditableEpisode({
     { ready: canEdit && episodeId !== newEpisodeId },
   );
   const existingEpisodeExclusion = episodeExclusions.rows[0] ?? null;
-
-  if (episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null) {
-    return (
-      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
-        <Title order={1}>Episode not found</Title>
-        <Button
-          variant="default"
-          onClick={() =>
-            void navigate({
-              to: "/manage/show/$showId/season/$seasonId",
-              params: { showId: show.id, seasonId: season.id },
-            })
-          }
-        >
-          Season
-        </Button>
-      </Stack>
-    );
-  }
+  const episodeMissing = episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null;
 
   const initialDraft = useMemo(
     () =>
@@ -223,6 +205,25 @@ function EditableEpisode({
     !personalEpisodes.loading &&
     !episodeExclusions.loading &&
     !hidingEpisode;
+
+  if (episodeMissing) {
+    return (
+      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Episode not found</Title>
+        <Button
+          variant="default"
+          onClick={() =>
+            void navigate({
+              to: "/manage/show/$showId/season/$seasonId",
+              params: { showId: show.id, seasonId: season.id },
+            })
+          }
+        >
+          Season
+        </Button>
+      </Stack>
+    );
+  }
 
   const saveOverlay = async () => {
     const createdId = personalRow?.id ?? crypto.randomUUID();

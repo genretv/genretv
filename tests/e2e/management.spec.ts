@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 
 import { expectE2eStackAvailable, localPublisher, signIn } from "./local-stack";
 
 const showsNavLink = (page: Page) => page.getByRole("banner").getByRole("link", { name: "Shows" });
+const existingShowTitle = "Alien: Earth";
+const existingSeasonLabel = "S2";
 
 test.beforeAll(async () => {
   await expectE2eStackAvailable();
@@ -101,7 +103,10 @@ test("publisher can send a show proposal for maintainer merge", async ({ browser
   ).toBeVisible();
 });
 
-test("publisher can send a season proposal that creates its canonical parent show", async ({ browser, page }, testInfo) => {
+test("publisher can send a season proposal that creates its canonical parent show", async ({
+  browser,
+  page,
+}, testInfo) => {
   testInfo.setTimeout(300_000);
 
   await signIn(page, localPublisher);
@@ -177,6 +182,117 @@ test("publisher can send an episode proposal that creates canonical show and sea
   await maintainer.context.close();
 });
 
+test("publisher can send an existing canonical season update for maintainer merge", async ({
+  browser,
+  page,
+}, testInfo) => {
+  testInfo.setTimeout(300_000);
+
+  await signIn(page, localPublisher);
+  await openCanonicalSeason(page, existingShowTitle, existingSeasonLabel);
+
+  const suffix = Date.now().toString(36);
+  const updatedTiming = `E2E season update ${suffix}`;
+  const proposalTitle = `${existingShowTitle} ${existingSeasonLabel}`;
+  const proposalNote = `Please update existing season ${suffix}`;
+
+  await page.getByLabel("When").fill(updatedTiming);
+  await page.getByLabel("Notes").fill(proposalNote);
+  await page.getByRole("button", { name: "Send to canonical" }).click();
+  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+
+  const maintainer = await reviewProposalAsMaintainer(browser, proposalTitle, proposalNote, "Approve + merge");
+  await openCanonicalSeason(maintainer.page, existingShowTitle, existingSeasonLabel);
+  await expect(maintainer.page.getByLabel("When")).toHaveValue(updatedTiming);
+  await expect(maintainer.page.getByLabel("Notes")).toHaveValue(proposalNote);
+  await maintainer.context.close();
+});
+
+test("maintainer can reject and close canonical proposals without merging", async ({ browser, page }, testInfo) => {
+  testInfo.setTimeout(300_000);
+
+  await signIn(page, localPublisher);
+
+  const suffix = Date.now().toString(36);
+  const rejectedTitle = `E2E Rejected Canonical Show ${suffix}`;
+  const rejectedNote = `Reject this proposal ${suffix}`;
+  const closedTitle = `E2E Closed Canonical Show ${suffix}`;
+  const closedNote = `Close this proposal ${suffix}`;
+
+  await sendNewShowProposal(page, rejectedTitle, rejectedNote);
+  await sendNewShowProposal(page, closedTitle, closedNote);
+
+  const rejected = await reviewProposalAsMaintainer(
+    browser,
+    rejectedTitle,
+    rejectedNote,
+    "Reject",
+    `Rejected during E2E ${suffix}`,
+  );
+  await expectProposalStatus(rejected.page, rejectedTitle, rejectedNote, "rejected");
+  await expect(rejected.page.getByText(`Reviewer note: Rejected during E2E ${suffix}`)).toBeVisible();
+  await rejected.context.close();
+
+  const closed = await reviewProposalAsMaintainer(
+    browser,
+    closedTitle,
+    closedNote,
+    "Close",
+    `Closed during E2E ${suffix}`,
+  );
+  await expectProposalStatus(closed.page, closedTitle, closedNote, "closed");
+  await expect(closed.page.getByText(`Reviewer note: Closed during E2E ${suffix}`)).toBeVisible();
+
+  await showsNavLink(closed.page).click();
+  await closed.page.getByLabel("Search").fill(rejectedTitle);
+  await expect(closed.page.locator("tbody").getByRole("button", { name: rejectedTitle })).toHaveCount(0);
+  await closed.page.getByLabel("Search").fill(closedTitle);
+  await expect(closed.page.locator("tbody").getByRole("button", { name: closedTitle })).toHaveCount(0);
+  await closed.context.close();
+});
+
+test("maintainer can identify duplicate open target proposals and close one", async ({ browser, page }, testInfo) => {
+  testInfo.setTimeout(300_000);
+
+  await signIn(page, localPublisher);
+  await openCanonicalSeason(page, existingShowTitle, existingSeasonLabel);
+
+  const suffix = Date.now().toString(36);
+  const proposalTitle = `${existingShowTitle} ${existingSeasonLabel}`;
+  const firstNote = `Duplicate first proposal ${suffix}`;
+  const secondNote = `Duplicate second proposal ${suffix}`;
+
+  await page.getByLabel("When").fill(`E2E duplicate first ${suffix}`);
+  await page.getByLabel("Notes").fill(firstNote);
+  await page.getByRole("button", { name: "Send to canonical" }).click();
+  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+
+  await page.getByLabel("When").fill(`E2E duplicate second ${suffix}`);
+  await page.getByLabel("Notes").fill(secondNote);
+  await page.getByRole("button", { name: "Send to canonical" }).click();
+  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+
+  const context = await browser.newContext();
+  const maintainerPage = await context.newPage();
+  await signIn(maintainerPage);
+  await openProposalReview(maintainerPage);
+
+  const firstRow = canonicalProposalRow(maintainerPage, proposalTitle, firstNote);
+  const secondRow = canonicalProposalRow(maintainerPage, proposalTitle, secondNote);
+  await expect(firstRow.getByText("Duplicate open target")).toBeVisible();
+  await expect(secondRow.getByText("Duplicate open target")).toBeVisible();
+
+  await secondRow.getByLabel("Canonical proposal reviewer note").fill(`Closing duplicate ${suffix}`);
+  await secondRow.getByRole("button", { name: "Close" }).click();
+  await maintainerPage.getByRole("button", { name: "Show history" }).click();
+
+  await expectProposalStatus(maintainerPage, proposalTitle, secondNote, "closed");
+  await expect(
+    canonicalProposalRow(maintainerPage, proposalTitle, firstNote).getByText("open", { exact: true }),
+  ).toBeVisible();
+  await context.close();
+});
+
 async function createPersonalShow(page: Page, showTitle: string): Promise<void> {
   await showsNavLink(page).click();
   await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
@@ -191,36 +307,105 @@ async function createPersonalShow(page: Page, showTitle: string): Promise<void> 
   await expect(page).toHaveURL(/\/manage\/show\/(?!new)[0-9a-f-]+/);
 }
 
+async function sendNewShowProposal(page: Page, showTitle: string, proposalNote: string): Promise<void> {
+  await showsNavLink(page).click();
+  await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
+  await page.getByRole("button", { name: "Add show" }).click();
+  await expect(page).toHaveURL(/\/manage\/show\/new/);
+  await page.getByLabel("Display title").fill(showTitle);
+  await page.getByLabel("Languages").fill("en");
+  await page.getByLabel("Countries").fill("US");
+  await page.getByLabel("Genres").fill("science fiction");
+  await page.getByLabel("Notes").fill(proposalNote);
+  await page.getByRole("button", { name: "Send to canonical" }).click();
+  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+}
+
 async function approveProposalAsMaintainer(
   browser: Browser,
   proposalTitle: string,
   proposalNote: string,
 ): Promise<{ context: BrowserContext; page: Page }> {
+  return reviewProposalAsMaintainer(browser, proposalTitle, proposalNote, "Approve + merge");
+}
+
+async function reviewProposalAsMaintainer(
+  browser: Browser,
+  proposalTitle: string,
+  proposalNote: string,
+  action: "Approve + merge" | "Reject" | "Close",
+  reviewerNote = "",
+): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext();
   const page = await context.newPage();
   await signIn(page);
-  await page.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
+  await openProposalReview(page);
 
   const notifications = page.getByRole("region", { name: "Notifications" });
   await expect(notifications.getByText(`Canonical proposal: ${proposalTitle}`)).toBeVisible();
   await expect(notifications.getByText(proposalNote)).toBeVisible();
-  await notifications.getByRole("button", { name: "Review proposal" }).click();
-
-  const proposalRow = page
-    .getByRole("region", { name: "Canonical proposals" })
-    .getByRole("row")
-    .filter({ hasText: proposalTitle });
-  await proposalRow.getByRole("button", { name: "Approve + merge" }).click();
-  await page.getByRole("button", { name: "Show history" }).click();
-  await expect(
-    page
-      .getByRole("region", { name: "Canonical proposals" })
-      .getByRole("row")
-      .filter({ hasText: proposalTitle })
-      .getByText("approved", { exact: true }),
-  ).toBeVisible();
+  await reviewProposalOnPage(page, proposalTitle, proposalNote, action, reviewerNote);
 
   return { context, page };
+}
+
+async function reviewProposalOnPage(
+  page: Page,
+  proposalTitle: string,
+  proposalNote: string,
+  action: "Approve + merge" | "Reject" | "Close",
+  reviewerNote = "",
+): Promise<void> {
+  await openProposalReview(page);
+  const proposalRow = canonicalProposalRow(page, proposalTitle, proposalNote);
+  if (reviewerNote !== "") {
+    await proposalRow.getByLabel("Canonical proposal reviewer note").fill(reviewerNote);
+  }
+  await proposalRow.getByRole("button", { name: action }).click();
+  await page.getByRole("button", { name: "Show history" }).click();
+  await expectProposalStatus(page, proposalTitle, proposalNote, proposalStatusForAction(action));
+}
+
+async function openProposalReview(page: Page): Promise<void> {
+  await page.getByRole("banner").getByRole("link", { name: "Publishing" }).click();
+  const reviewButton = page.getByRole("button", { name: "Review proposals" });
+  if (await reviewButton.isEnabled()) {
+    await reviewButton.click();
+  }
+}
+
+function canonicalProposalRow(page: Page, proposalTitle: string, proposalNote: string): Locator {
+  return page
+    .getByRole("region", { name: "Canonical proposals" })
+    .getByRole("row")
+    .filter({ hasText: proposalTitle })
+    .filter({ hasText: proposalNote });
+}
+
+async function expectProposalStatus(
+  page: Page,
+  proposalTitle: string,
+  proposalNote: string,
+  status: "approved" | "closed" | "open" | "rejected",
+): Promise<void> {
+  await expect(
+    canonicalProposalRow(page, proposalTitle, proposalNote).getByText(status, { exact: true }),
+  ).toBeVisible();
+}
+
+function proposalStatusForAction(action: "Approve + merge" | "Reject" | "Close"): "approved" | "closed" | "rejected" {
+  if (action === "Approve + merge") return "approved";
+  if (action === "Reject") return "rejected";
+  return "closed";
+}
+
+async function openCanonicalSeason(page: Page, showTitle: string, seasonLabel: string): Promise<void> {
+  await showsNavLink(page).click();
+  await page.getByLabel("Search").fill(showTitle);
+  await page.locator("tbody").getByRole("button", { name: showTitle }).click();
+  await expect(page.getByRole("heading", { name: showTitle })).toBeVisible();
+  await page.getByRole("button", { name: seasonLabel }).click();
+  await expect(page.getByRole("heading", { name: `${showTitle} ${seasonLabel}` })).toBeVisible();
 }
 
 async function expectCanonicalSeasonVisible(page: Page, showTitle: string, seasonLabel: string): Promise<void> {

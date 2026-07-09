@@ -201,10 +201,8 @@ export function PublishingRoute() {
       ),
     [proposalKindFilter, proposalRows, proposalStatusFilter],
   );
-  const notificationRows = useMemo(
-    () => [...notifications.rows].sort(compareNotifications),
-    [notifications.rows],
-  );
+  const openProposalTargetCounts = useMemo(() => openProposalTargetCountsFor(proposalRows), [proposalRows]);
+  const notificationRows = useMemo(() => [...notifications.rows].sort(compareNotifications), [notifications.rows]);
   const openApplicationCount = useMemo(
     () => applicationRows.filter((application) => canReviewWorkflowStatus(application.status)).length,
     [applicationRows],
@@ -823,12 +821,13 @@ export function PublishingRoute() {
                               placeholder="Optional note"
                               disabled={!canReviewApplication}
                               value={reviewNote}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                const reviewNote = event.currentTarget.value;
                                 setApplicationReviewNotes((notes) => ({
                                   ...notes,
-                                  [application.id]: event.currentTarget.value,
-                                }))
-                              }
+                                  [application.id]: reviewNote,
+                                }));
+                              }}
                             />
                             <Group gap="xs">
                               <Button
@@ -916,9 +915,7 @@ export function PublishingRoute() {
                 <Table.Tr>
                   <Table.Td colSpan={isMaintainer ? 6 : 5}>
                     <Text c="dimmed">
-                      {proposalRows.length === 0
-                        ? "No canonical proposals yet."
-                        : "No proposals match these filters."}
+                      {proposalRows.length === 0 ? "No canonical proposals yet." : "No proposals match these filters."}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -927,6 +924,11 @@ export function PublishingRoute() {
                   const reviewNote = proposalReviewNotes[proposal.id] ?? proposal.reviewerNote ?? "";
                   const payloadDetails = proposalPayloadDetails(proposal.proposedPayload);
                   const canReviewProposal = canReviewWorkflowStatus(proposal.status);
+                  const proposalTargetKey = proposalReviewTargetKey(proposal);
+                  const duplicateOpenTarget =
+                    proposal.status === "open" &&
+                    proposalTargetKey != null &&
+                    (openProposalTargetCounts.get(proposalTargetKey) ?? 0) > 1;
                   return (
                     <Table.Tr key={proposal.id}>
                       <Table.Td>
@@ -942,6 +944,11 @@ export function PublishingRoute() {
                         <Text size="xs" c="dimmed">
                           {proposalTargetText(proposal)}
                         </Text>
+                        {duplicateOpenTarget && (
+                          <Badge color="yellow" variant="light">
+                            Duplicate open target
+                          </Badge>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <Stack gap={4}>
@@ -973,12 +980,13 @@ export function PublishingRoute() {
                               placeholder="Optional note"
                               disabled={!canReviewProposal}
                               value={reviewNote}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                const reviewNote = event.currentTarget.value;
                                 setProposalReviewNotes((notes) => ({
                                   ...notes,
-                                  [proposal.id]: event.currentTarget.value,
-                                }))
-                              }
+                                  [proposal.id]: reviewNote,
+                                }));
+                              }}
                             />
                             <Group gap="xs">
                               <Button
@@ -1216,6 +1224,49 @@ function proposalTargetText(proposal: {
   if (proposal.personalSeasonId != null) return "Personal season";
   if (proposal.personalShowId != null) return "Personal show";
   return "New canonical entry";
+}
+
+function openProposalTargetCountsFor(
+  proposals: readonly {
+    canonicalEpisodeId: string | null;
+    canonicalSeasonId: string | null;
+    canonicalShowId: string | null;
+    personalEpisodeId: string | null;
+    personalSeasonId: string | null;
+    personalShowId: string | null;
+    proposalKind: string;
+    status: string;
+    title: string;
+  }[],
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const proposal of proposals) {
+    if (proposal.status !== "open") continue;
+    const key = proposalReviewTargetKey(proposal);
+    if (key == null) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function proposalReviewTargetKey(proposal: {
+  canonicalEpisodeId: string | null;
+  canonicalSeasonId: string | null;
+  canonicalShowId: string | null;
+  personalEpisodeId: string | null;
+  personalSeasonId: string | null;
+  personalShowId: string | null;
+  proposalKind: string;
+  title: string;
+}): string | null {
+  if (proposal.canonicalEpisodeId != null) return `canonical-episode:${proposal.canonicalEpisodeId}`;
+  if (proposal.canonicalSeasonId != null) return `canonical-season:${proposal.canonicalSeasonId}`;
+  if (proposal.canonicalShowId != null) return `canonical-show:${proposal.canonicalShowId}`;
+  if (proposal.personalEpisodeId != null) return `personal-episode:${proposal.personalEpisodeId}`;
+  if (proposal.personalSeasonId != null) return `personal-season:${proposal.personalSeasonId}`;
+  if (proposal.personalShowId != null) return `personal-show:${proposal.personalShowId}`;
+  const title = proposal.title.trim().toLocaleLowerCase();
+  return title === "" ? null : `new:${proposal.proposalKind}:${title}`;
 }
 
 function proposalPayloadSummary(value: unknown): string {
