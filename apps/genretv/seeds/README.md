@@ -4,6 +4,10 @@
 
 `canonical-registry.seed.json` is the derived database seed shape for the canonical pgxsinkit registry tables. It contains canonical show rows and canonical season rows with deterministic UUIDs.
 
+The derived seed also contains a `quality` report. Blocking errors fail generation and `bun run validate`; warnings are accepted when they describe honest MVP gaps, such as missing country metadata from the source page or an `S6` row implying earlier unlisted seasons.
+
+Same-title shows are merged only when the source has no conflicting external identity. If two same-title rows carry different IMDb title ids, they become separate canonical shows while retaining the same display title.
+
 Regenerate from a saved HTML snapshot:
 
 ```sh
@@ -22,6 +26,12 @@ Derive the canonical registry seed from the Blogspot artifact:
 
 ```sh
 bun run seed:canonical
+```
+
+Check committed canonical seed quality without regenerating:
+
+```sh
+bun run seed:canonical:quality
 ```
 
 Seed a local migrated Postgres database through typed Drizzle table objects:

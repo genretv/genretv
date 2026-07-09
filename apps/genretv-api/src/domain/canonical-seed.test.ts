@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildCanonicalRegistrySeedRows, type BlogspotCanonicalSeed } from "./canonical-seed";
+import {
+  analyzeCanonicalRegistrySeedRows,
+  buildCanonicalRegistrySeedRows,
+  type BlogspotCanonicalSeed,
+} from "./canonical-seed";
 
 const seed: BlogspotCanonicalSeed = {
   entries: [
@@ -106,5 +110,86 @@ describe("canonical registry seed rows", () => {
       endedReason: "Canceled",
       timing: "2024",
     });
+  });
+
+  test("splits same-title shows when external identities conflict", () => {
+    const rows = buildCanonicalRegistrySeedRows({
+      entries: [
+        {
+          ...seed.entries[0]!,
+          id: "past-488-dracula",
+          sourceRow: 488,
+          section: "past",
+          show: {
+            displayTitle: "Dracula",
+            externalLinks: [{ kind: "imdb", label: "Dracula", url: "https://www.imdb.com/title/tt9139220/" }],
+            languages: [],
+          },
+          season: { ...seed.entries[0]!.season, rawSeason: "1", tentative: false },
+        },
+        {
+          ...seed.entries[1]!,
+          id: "past-712-dracula",
+          sourceRow: 712,
+          section: "past",
+          show: {
+            displayTitle: "Dracula",
+            externalLinks: [{ kind: "imdb", label: "Dracula", url: "https://www.imdb.com/title/tt2297724/" }],
+            languages: [],
+          },
+          season: { ...seed.entries[1]!.season, rawSeason: "1", tentative: false },
+        },
+      ],
+    });
+
+    expect(rows.shows).toHaveLength(2);
+    expect(new Set(rows.seasons.map((season) => season.showId)).size).toBe(2);
+    expect(analyzeCanonicalRegistrySeedRows(rows).errors).toEqual([]);
+  });
+
+  test("normalizes ordered language and country codes", () => {
+    const rows = buildCanonicalRegistrySeedRows({
+      entries: [
+        {
+          ...seed.entries[0]!,
+          show: {
+            displayTitle: "Code Show",
+            externalLinks: [],
+            languages: [" EN ", "da", "EN", "not-a-code"],
+            countries: [" uk ", "US", "usa", "not-a-country"],
+          },
+        },
+      ],
+    });
+
+    expect(rows.shows[0]).toMatchObject({
+      languages: ["en", "da"],
+      countries: ["GB", "US"],
+    });
+  });
+
+  test("reports duplicate ordinal season rows as blocking quality errors", () => {
+    const rows = buildCanonicalRegistrySeedRows({
+      entries: [
+        {
+          ...seed.entries[0]!,
+          id: "duplicate-s1-a",
+          show: { ...seed.entries[0]!.show, externalLinks: [] },
+          season: { ...seed.entries[0]!.season, rawSeason: "1", tentative: false },
+        },
+        {
+          ...seed.entries[1]!,
+          id: "duplicate-s1-b",
+          show: { ...seed.entries[1]!.show, displayTitle: seed.entries[0]!.show.displayTitle, externalLinks: [] },
+          season: { ...seed.entries[1]!.season, rawSeason: "1", tentative: false },
+        },
+      ],
+    });
+
+    expect(analyzeCanonicalRegistrySeedRows(rows).errors).toMatchObject([
+      {
+        code: "duplicate-season-label",
+      },
+    ]);
   });
 });

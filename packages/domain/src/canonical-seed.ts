@@ -100,7 +100,34 @@ export interface CanonicalRegistrySeedRows {
   episodes: CanonicalEpisodeSeedRow[];
 }
 
+export interface CanonicalSeedQualityIssue {
+  code: string;
+  message: string;
+  refs: string[];
+}
+
+export interface CanonicalSeedQualityReport {
+  errors: CanonicalSeedQualityIssue[];
+  warnings: CanonicalSeedQualityIssue[];
+  stats: {
+    duplicateDisplayTitleCount: number;
+    inferredSeasonGapCount: number;
+    missingCountryCount: number;
+    shows: number;
+    seasons: number;
+    episodes: number;
+  };
+}
+
 const defaultLanguage = "en";
+const countryAliases = new Map([
+  ["UK", "GB"],
+  ["UNITED KINGDOM", "GB"],
+  ["USA", "US"],
+  ["UNITED STATES", "US"],
+  ["KOREA", "KR"],
+  ["SOUTH KOREA", "KR"],
+]);
 const lifecycleLabels: Record<string, string> = {
   cancelled: "Canceled",
   final_season: "Final season",
@@ -118,9 +145,10 @@ const releaseSeasonMidpoints: Record<string, { month: number; day: number }> = {
 export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): CanonicalRegistrySeedRows {
   const shows = new Map<string, CanonicalShowSeedRow>();
   const seasons: CanonicalSeasonSeedRow[] = [];
+  const titleIdentities = titleExternalIdentities(seed.entries);
 
   for (const entry of seed.entries) {
-    const showId = stableUuid(`show:${normalizeTitle(entry.show.displayTitle)}`);
+    const showId = stableUuid(showIdentityKey(entry, titleIdentities));
     const existing = shows.get(showId);
     const show =
       existing ??
@@ -136,7 +164,7 @@ export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): Can
       } satisfies CanonicalShowSeedRow);
 
     show.languages = appendUnique(show.languages, normalizeLanguages(entry.show.languages));
-    show.countries = appendUnique(show.countries, entry.show.countries ?? []);
+    show.countries = appendUnique(show.countries, normalizeCountries(entry.show.countries ?? []));
     show.genreTags = appendUnique(show.genreTags, entry.genreTags);
     show.externalLinks = mergeLinks(show.externalLinks, entry.show.externalLinks);
     show.notes = joinNotes([show.notes, ...entry.notes]);
@@ -172,12 +200,152 @@ export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): Can
   };
 }
 
+export function analyzeCanonicalRegistrySeedRows(rows: CanonicalRegistrySeedRows): CanonicalSeedQualityReport {
+  const errors: CanonicalSeedQualityIssue[] = [];
+  const warnings: CanonicalSeedQualityIssue[] = [];
+  const showsById = new Map(rows.shows.map((show) => [show.id, show]));
+  const seasonsById = new Map(rows.seasons.map((season) => [season.id, season]));
+
+  duplicateGroups(rows.shows, (show) => show.id).forEach(([id, shows]) => {
+    errors.push({
+      code: "duplicate-show-id",
+      message: `Duplicate canonical show id ${id}`,
+      refs: shows.map((show) => show.displayTitle),
+    });
+  });
+  duplicateGroups(rows.seasons, (season) => season.id).forEach(([id, seasons]) => {
+    errors.push({
+      code: "duplicate-season-id",
+      message: `Duplicate canonical season id ${id}`,
+      refs: seasons.map((season) => `${season.showId}:${season.seasonLabel}`),
+    });
+  });
+  duplicateGroups(rows.episodes, (episode) => episode.id).forEach(([id, episodes]) => {
+    errors.push({
+      code: "duplicate-episode-id",
+      message: `Duplicate canonical episode id ${id}`,
+      refs: episodes.map((episode) => `${episode.seasonId}:${episode.episodeLabel ?? "unknown"}`),
+    });
+  });
+
+  for (const season of rows.seasons) {
+    if (!showsById.has(season.showId)) {
+      errors.push({
+        code: "missing-season-show",
+        message: `Season ${season.id} references missing show ${season.showId}`,
+        refs: [season.id],
+      });
+    }
+  }
+  for (const episode of rows.episodes) {
+    if (!seasonsById.has(episode.seasonId)) {
+      errors.push({
+        code: "missing-episode-season",
+        message: `Episode ${episode.id} references missing season ${episode.seasonId}`,
+        refs: [episode.id],
+      });
+    }
+  }
+
+  duplicateGroups(rows.seasons, (season) => `${season.showId}:${normalizeSeasonLabel(season.seasonLabel)}`).forEach(
+    ([key, seasons]) => {
+      const ordinal = seasonOrdinal(seasons[0]?.seasonLabel ?? "");
+      const show = showsById.get(seasons[0]?.showId ?? "");
+      const issue = {
+        code: ordinal == null ? "duplicate-nonordinal-season-label" : "duplicate-season-label",
+        message: `${show?.displayTitle ?? key} has ${seasons.length} rows labelled ${seasons[0]?.seasonLabel ?? key}`,
+        refs: seasons.map((season) => `${season.id}:row-${season.sourceRow}`),
+      };
+      if (ordinal == null) warnings.push(issue);
+      else errors.push(issue);
+    },
+  );
+
+  duplicateGroups(rows.shows, (show) => normalizeTitle(show.displayTitle)).forEach(([title, shows]) => {
+    warnings.push({
+      code: "duplicate-display-title",
+      message: `${shows.length} canonical shows share display title ${title}`,
+      refs: shows.map((show) => show.id),
+    });
+  });
+
+  const showsWithoutCountries = rows.shows.filter((show) => show.countries.length === 0);
+  if (showsWithoutCountries.length > 0) {
+    warnings.push({
+      code: "missing-countries",
+      message: `${showsWithoutCountries.length} shows have no country metadata yet`,
+      refs: showsWithoutCountries.slice(0, 20).map((show) => show.id),
+    });
+  }
+
+  const inferredSeasonGaps = inferredSeasonGapWarnings(rows.seasons, showsById);
+  warnings.push(...inferredSeasonGaps);
+
+  return {
+    errors,
+    warnings,
+    stats: {
+      duplicateDisplayTitleCount: warnings.filter((issue) => issue.code === "duplicate-display-title").length,
+      inferredSeasonGapCount: inferredSeasonGaps.length,
+      missingCountryCount: showsWithoutCountries.length,
+      shows: rows.shows.length,
+      seasons: rows.seasons.length,
+      episodes: rows.episodes.length,
+    },
+  };
+}
+
+function titleExternalIdentities(entries: readonly BlogspotSeedEntry[]): Map<string, Set<string>> {
+  const identities = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    const externalId = primaryExternalIdentity(entry.show.externalLinks);
+    if (externalId == null) continue;
+    const title = normalizeTitle(entry.show.displayTitle);
+    identities.set(title, new Set([...(identities.get(title) ?? []), externalId]));
+  }
+  return identities;
+}
+
+function showIdentityKey(entry: BlogspotSeedEntry, titleIdentities: ReadonlyMap<string, ReadonlySet<string>>): string {
+  const externalId = primaryExternalIdentity(entry.show.externalLinks);
+  const title = normalizeTitle(entry.show.displayTitle);
+  const identities = titleIdentities.get(title);
+  if (externalId != null) return `show:${title}:${externalId}`;
+  if (identities?.size === 1) return `show:${title}:${[...identities][0]}`;
+  return identities == null ? `show:title:${title}` : `show:${title}:unlinked`;
+}
+
+function primaryExternalIdentity(links: readonly ExternalLinkSeed[]): string | null {
+  for (const link of links) {
+    const imdb = /imdb\.com\/title\/(tt\d+)/i.exec(link.url);
+    if (imdb?.[1] != null) return `imdb:${imdb[1].toLocaleLowerCase()}`;
+  }
+  return null;
+}
+
 function normalizeTitle(title: string): string {
   return title.trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }
 
 function normalizeLanguages(languages: readonly string[]): string[] {
-  return languages.length === 0 ? [defaultLanguage] : [...languages];
+  const normalized = languages.flatMap((language) => {
+    const value = language.trim().toLocaleLowerCase();
+    return /^[a-z]{2,3}$/.test(value) ? [value] : [];
+  });
+  return normalized.length === 0 ? [defaultLanguage] : appendUnique([], normalized);
+}
+
+function normalizeCountries(countries: readonly string[]): string[] {
+  return appendUnique(
+    [],
+    countries.flatMap((country) => {
+      const trimmed = country.trim();
+      if (trimmed === "") return [];
+      const aliased = countryAliases.get(trimmed.toLocaleUpperCase()) ?? trimmed;
+      const normalized = aliased.toLocaleUpperCase();
+      return /^[A-Z]{2}$/.test(normalized) ? [normalized] : [];
+    }),
+  );
 }
 
 function appendUnique(left: readonly string[], right: readonly string[]): string[] {
@@ -186,6 +354,15 @@ function appendUnique(left: readonly string[], right: readonly string[]): string
     if (value !== "" && !values.includes(value)) values.push(value);
   }
   return values;
+}
+
+function duplicateGroups<T>(values: readonly T[], keyFor: (value: T) => string): Array<[string, T[]]> {
+  const groups = new Map<string, T[]>();
+  for (const value of values) {
+    const key = keyFor(value);
+    groups.set(key, [...(groups.get(key) ?? []), value]);
+  }
+  return [...groups.entries()].filter(([, group]) => group.length > 1);
 }
 
 function mergeLinks(left: readonly ExternalLinkSeed[], right: readonly ExternalLinkSeed[]): ExternalLinkSeed[] {
@@ -204,6 +381,40 @@ function joinNotes(notes: readonly (string | null)[]): string | null {
 function seasonLabel(entry: BlogspotSeedEntry): string {
   const prefix = entry.season.extraMovie ? "Movie" : `S${entry.season.rawSeason || "?"}`;
   return entry.season.tentative ? `${prefix}?` : prefix;
+}
+
+function normalizeSeasonLabel(label: string): string {
+  return label.trim().toLocaleLowerCase().replace(/\s+/g, "");
+}
+
+function seasonOrdinal(label: string): number | null {
+  const match = /^(?:s|season|series)\s*(\d+)\??$/i.exec(label.trim());
+  if (match?.[1] == null) return null;
+  const ordinal = Number(match[1]);
+  return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
+}
+
+function inferredSeasonGapWarnings(
+  seasons: readonly CanonicalSeasonSeedRow[],
+  showsById: ReadonlyMap<string, CanonicalShowSeedRow>,
+): CanonicalSeedQualityIssue[] {
+  const byShow = new Map<string, CanonicalSeasonSeedRow[]>();
+  for (const season of seasons) {
+    byShow.set(season.showId, [...(byShow.get(season.showId) ?? []), season]);
+  }
+  const warnings: CanonicalSeedQualityIssue[] = [];
+  for (const [showId, showSeasons] of byShow) {
+    const maxOrdinal = showSeasons.reduce((max, season) => Math.max(max, seasonOrdinal(season.seasonLabel) ?? 0), 0);
+    if (maxOrdinal > showSeasons.length) {
+      const show = showsById.get(showId);
+      warnings.push({
+        code: "inferred-season-gap",
+        message: `${show?.displayTitle ?? showId} has ${showSeasons.length} listed season rows but at least ${maxOrdinal} known seasons`,
+        refs: showSeasons.map((season) => `${season.id}:row-${season.sourceRow}`),
+      });
+    }
+  }
+  return warnings;
 }
 
 function timingFor(entry: BlogspotSeedEntry): string {

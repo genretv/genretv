@@ -37,6 +37,7 @@
     "preview:genretv": "cd apps/genretv && bun run preview",
     "seed:blogspot": "bun apps/genretv/scripts/extract-blogspot-seed.ts --out apps/genretv/seeds/blogspot-canonical.seed.json",
     "seed:canonical": "bun apps/genretv/scripts/build-canonical-registry-seed.ts --out apps/genretv/seeds/canonical-registry.seed.json",
+    "seed:canonical:quality": "bun apps/genretv/scripts/check-canonical-seed-quality.ts",
     "test": "bun run test:genretv && bun run test:api",
     "test:api": "cd apps/genretv-api && bun run test",
     "test:e2e": "playwright test",
@@ -45,7 +46,7 @@
     "test:integration": "bun test tests/integration",
     "test:integration:live": "GENRETV_RUN_LOCAL_STACK_TESTS=1 bun test tests/integration",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/genretv/tsconfig.json && tsc --noEmit -p apps/genretv-api/tsconfig.json",
-    "validate": "bun run typecheck && bun run lint && bun run test && bun run build && bun run db:sync-function:check",
+    "validate": "bun run typecheck && bun run lint && bun run test && bun run seed:canonical:quality && bun run build && bun run db:sync-function:check",
     "validate:full": "bun run validate && bun run test:integration && bun run test:e2e"
   },
   "dependencies": {},
