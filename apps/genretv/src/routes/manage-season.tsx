@@ -43,6 +43,12 @@ import {
   useManagementDraft,
   type ManagementSeasonDraft,
 } from "../features/management/drafts";
+import {
+  ManagementActionBar,
+  ManagementEditorSection,
+  ParsedLinksPreview,
+  ParsedListPreview,
+} from "../features/management/editor-ui";
 import { canSendCanonicalProposal } from "../features/management/proposals";
 import { sourcePublishedSeasonIdFromLinkedId } from "../features/publishing/linked-imports";
 import { useSyncGroupsReady } from "../sync/use-sync-groups-ready";
@@ -547,163 +553,45 @@ function EditableSeason({
         </Alert>
       )}
 
-      <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 3 }}>
-          <TextInput
-            label="Season"
-            value={draft.seasonLabel}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const seasonLabel = event.currentTarget.value;
-              setDraft((current) => ({ ...current, seasonLabel }));
-            }}
-          />
-          <Select
-            label="Section"
-            value={draft.section}
-            disabled={!canEditDraft}
-            data={[
-              { value: "current", label: sectionLabels.current },
-              { value: "upcoming", label: sectionLabels.upcoming },
-              { value: "past", label: sectionLabels.past },
-            ]}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                section: (value ?? current.section) as ManagementSeasonDraft["section"],
-              }))
-            }
-          />
-          <TextInput
-            label="Episodes"
-            value={draft.episodeCount}
-            disabled={!canEditDraft}
-            error={!episodeCountValid ? "Use a whole number or leave blank" : null}
-            onChange={(event) => {
-              const episodeCount = event.currentTarget.value;
-              setDraft((current) => ({ ...current, episodeCount }));
-            }}
-          />
-        </SimpleGrid>
-        <SimpleGrid cols={{ base: 1, sm: 3 }}>
-          <TextInput
-            label="When"
-            value={draft.timing}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const timing = event.currentTarget.value;
-              setDraft((current) => ({ ...current, timing }));
-            }}
-          />
-          <TextInput
-            label="Release pattern"
-            value={draft.releasePattern}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const releasePattern = event.currentTarget.value;
-              setDraft((current) => ({ ...current, releasePattern }));
-            }}
-          />
-          <TextInput
-            label="Finished reason"
-            value={draft.endedReason}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const endedReason = event.currentTarget.value;
-              setDraft((current) => ({ ...current, endedReason }));
-            }}
-          />
-        </SimpleGrid>
-        <SimpleGrid cols={{ base: 1, sm: 3 }}>
-          <TextInput
-            label="Release window"
-            value={draft.releaseWindowText}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const releaseWindowText = event.currentTarget.value;
-              setDraft((current) => ({ ...current, releaseWindowText }));
-            }}
-          />
-          <TextInput
-            label="Finale window"
-            value={draft.finaleWindowText}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const finaleWindowText = event.currentTarget.value;
-              setDraft((current) => ({ ...current, finaleWindowText }));
-            }}
-          />
-          <TextInput
-            label="Sort key"
-            value={draft.sortKey}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const sortKey = event.currentTarget.value;
-              setDraft((current) => ({ ...current, sortKey }));
-            }}
-          />
-        </SimpleGrid>
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <Select
-            label="Date precision"
-            value={draft.releasePrecision}
-            disabled={!canEditDraft}
-            data={[
-              { value: "unknown", label: "Unknown" },
-              { value: "day", label: "Day" },
-              { value: "month", label: "Month" },
-              { value: "season", label: "Season" },
-              { value: "year", label: "Year" },
-            ]}
-            onChange={(value) => setDraft((current) => ({ ...current, releasePrecision: value ?? "unknown" }))}
-          />
-          <Select
-            label="Date confidence"
-            value={draft.dateConfidence}
-            disabled={!canEditDraft}
-            data={[
-              { value: "unknown", label: "Unknown" },
-              { value: "confirmed", label: "Confirmed" },
-              { value: "expected", label: "Expected" },
-              { value: "estimated", label: "Estimated" },
-            ]}
-            onChange={(value) => setDraft((current) => ({ ...current, dateConfidence: value ?? "unknown" }))}
-          />
-        </SimpleGrid>
-        <Textarea
-          label="Organizations"
-          autosize
-          minRows={3}
-          value={draft.organizationsText}
-          disabled={!canEditDraft}
-          onChange={(event) => {
-            const organizationsText = event.currentTarget.value;
-            setDraft((current) => ({ ...current, organizationsText }));
-          }}
-        />
-        <Textarea
-          label="Links"
-          autosize
-          minRows={3}
-          value={draft.linksText}
-          disabled={!canEditDraft}
-          onChange={(event) => {
-            const linksText = event.currentTarget.value;
-            setDraft((current) => ({ ...current, linksText }));
-          }}
-        />
-        <Textarea
-          label="Notes"
-          autosize
-          minRows={4}
-          value={draft.notes}
-          disabled={!canEditDraft}
-          onChange={(event) => {
-            const notes = event.currentTarget.value;
-            setDraft((current) => ({ ...current, notes }));
-          }}
-        />
-        <Group justify="space-between">
+      <Stack gap="lg">
+        <ManagementEditorSection title="Season identity" description="How this row appears in the schedule.">
+          <SimpleGrid cols={{ base: 1, sm: 3 }}>
+            <TextInput
+              label="Season"
+              value={draft.seasonLabel}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const seasonLabel = event.currentTarget.value;
+                setDraft((current) => ({ ...current, seasonLabel }));
+              }}
+            />
+            <Select
+              label="Section"
+              value={draft.section}
+              disabled={!canEditDraft}
+              data={[
+                { value: "current", label: sectionLabels.current },
+                { value: "upcoming", label: sectionLabels.upcoming },
+                { value: "past", label: sectionLabels.past },
+              ]}
+              onChange={(value) =>
+                setDraft((current) => ({
+                  ...current,
+                  section: (value ?? current.section) as ManagementSeasonDraft["section"],
+                }))
+              }
+            />
+            <TextInput
+              label="Episodes"
+              value={draft.episodeCount}
+              disabled={!canEditDraft}
+              error={!episodeCountValid ? "Use a whole number or leave blank" : null}
+              onChange={(event) => {
+                const episodeCount = event.currentTarget.value;
+                setDraft((current) => ({ ...current, episodeCount }));
+              }}
+            />
+          </SimpleGrid>
           <Group gap={4}>
             {season.languages.map((language) => (
               <Badge key={`${season.id}-${language}`} size="xs" variant="light">
@@ -716,7 +604,152 @@ function EditableSeason({
               </Badge>
             ))}
           </Group>
-          <Group>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="Timing" description="Human schedule text plus structured release metadata.">
+          <SimpleGrid cols={{ base: 1, sm: 3 }}>
+            <TextInput
+              label="When"
+              value={draft.timing}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const timing = event.currentTarget.value;
+                setDraft((current) => ({ ...current, timing }));
+              }}
+            />
+            <TextInput
+              label="Release pattern"
+              value={draft.releasePattern}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const releasePattern = event.currentTarget.value;
+                setDraft((current) => ({ ...current, releasePattern }));
+              }}
+            />
+            <TextInput
+              label="Finished reason"
+              value={draft.endedReason}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const endedReason = event.currentTarget.value;
+                setDraft((current) => ({ ...current, endedReason }));
+              }}
+            />
+          </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, sm: 3 }}>
+            <TextInput
+              label="Release window"
+              value={draft.releaseWindowText}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const releaseWindowText = event.currentTarget.value;
+                setDraft((current) => ({ ...current, releaseWindowText }));
+              }}
+            />
+            <TextInput
+              label="Finale window"
+              value={draft.finaleWindowText}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const finaleWindowText = event.currentTarget.value;
+                setDraft((current) => ({ ...current, finaleWindowText }));
+              }}
+            />
+            <TextInput
+              label="Sort key"
+              value={draft.sortKey}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const sortKey = event.currentTarget.value;
+                setDraft((current) => ({ ...current, sortKey }));
+              }}
+            />
+          </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <Select
+              label="Date precision"
+              value={draft.releasePrecision}
+              disabled={!canEditDraft}
+              data={[
+                { value: "unknown", label: "Unknown" },
+                { value: "day", label: "Day" },
+                { value: "month", label: "Month" },
+                { value: "season", label: "Season" },
+                { value: "year", label: "Year" },
+              ]}
+              onChange={(value) => setDraft((current) => ({ ...current, releasePrecision: value ?? "unknown" }))}
+            />
+            <Select
+              label="Date confidence"
+              value={draft.dateConfidence}
+              disabled={!canEditDraft}
+              data={[
+                { value: "unknown", label: "Unknown" },
+                { value: "confirmed", label: "Confirmed" },
+                { value: "expected", label: "Expected" },
+                { value: "estimated", label: "Estimated" },
+              ]}
+              onChange={(value) => setDraft((current) => ({ ...current, dateConfidence: value ?? "unknown" }))}
+            />
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="Organizations" description="Ordered organization names, one per line.">
+          <SimpleGrid cols={{ base: 1, md: 2 }}>
+            <Textarea
+              label="Organizations"
+              autosize
+              minRows={4}
+              value={draft.organizationsText}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const organizationsText = event.currentTarget.value;
+                setDraft((current) => ({ ...current, organizationsText }));
+              }}
+            />
+            <ParsedListPreview
+              label="Parsed organizations"
+              values={organizationTextToRows(draft.organizationsText).map((row) => row.name)}
+            />
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="References" description="Use label | url, or kind | label | url.">
+          <SimpleGrid cols={{ base: 1, md: 2 }}>
+            <Textarea
+              label="Links"
+              autosize
+              minRows={4}
+              value={draft.linksText}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const linksText = event.currentTarget.value;
+                setDraft((current) => ({ ...current, linksText }));
+              }}
+            />
+            <ParsedLinksPreview links={draftLinks} />
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="Notes">
+          <Textarea
+            label="Notes"
+            autosize
+            minRows={4}
+            value={draft.notes}
+            disabled={!canEditDraft}
+            onChange={(event) => {
+              const notes = event.currentTarget.value;
+              setDraft((current) => ({ ...current, notes }));
+            }}
+          />
+        </ManagementEditorSection>
+
+        <ManagementActionBar>
+          <Text size="sm" c={dirty ? "yellow.9" : "dimmed"}>
+            {dirty ? "Unsaved editor changes" : "No editor changes"}
+          </Text>
+          <Group gap="xs">
             <Button variant="default" disabled={!canEditDraft || !dirty} onClick={discardLocalDraft}>
               Discard
             </Button>
@@ -764,7 +797,7 @@ function EditableSeason({
               </Button>
             )}
           </Group>
-        </Group>
+        </ManagementActionBar>
         {locallySaved && (
           <Text size="sm" c="dimmed">
             Local draft saved.

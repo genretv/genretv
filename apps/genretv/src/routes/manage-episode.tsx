@@ -27,6 +27,7 @@ import {
   useManagementDraft,
   type ManagementEpisodeDraft,
 } from "../features/management/drafts";
+import { ManagementActionBar, ManagementEditorSection, ParsedLinksPreview } from "../features/management/editor-ui";
 import { canSendCanonicalProposal } from "../features/management/proposals";
 import { useSyncGroupsReady } from "../sync/use-sync-groups-ready";
 
@@ -165,7 +166,8 @@ function EditableEpisode({
     { ready: canEdit && episodeId !== newEpisodeId },
   );
   const existingEpisodeExclusion = episodeExclusions.rows[0] ?? null;
-  const episodeMissing = episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null;
+  const episodeMissing =
+    episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null;
 
   const initialDraft = useMemo(
     () =>
@@ -459,37 +461,28 @@ function EditableEpisode({
         </Alert>
       )}
 
-      <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <TextInput
-            label="Episode"
-            value={draft.episodeLabel}
-            disabled={!canEdit}
-            onChange={(event) => {
-              const episodeLabel = event.currentTarget.value;
-              setDraft((current) => ({ ...current, episodeLabel }));
-            }}
-          />
-          <TextInput
-            label="Release date"
-            value={draft.releaseDate}
-            disabled={!canEdit}
-            onChange={(event) => {
-              const releaseDate = event.currentTarget.value;
-              setDraft((current) => ({ ...current, releaseDate }));
-            }}
-          />
-        </SimpleGrid>
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <TextInput
-            label="Title"
-            value={draft.title}
-            disabled={!canEdit}
-            onChange={(event) => {
-              const title = event.currentTarget.value;
-              setDraft((current) => ({ ...current, title }));
-            }}
-          />
+      <Stack gap="lg">
+        <ManagementEditorSection title="Episode identity" description="Episode label, title, and stable ordering key.">
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <TextInput
+              label="Episode"
+              value={draft.episodeLabel}
+              disabled={!canEdit}
+              onChange={(event) => {
+                const episodeLabel = event.currentTarget.value;
+                setDraft((current) => ({ ...current, episodeLabel }));
+              }}
+            />
+            <TextInput
+              label="Title"
+              value={draft.title}
+              disabled={!canEdit}
+              onChange={(event) => {
+                const title = event.currentTarget.value;
+                setDraft((current) => ({ ...current, title }));
+              }}
+            />
+          </SimpleGrid>
           <TextInput
             label="Sort key"
             value={draft.sortKey}
@@ -499,96 +492,123 @@ function EditableEpisode({
               setDraft((current) => ({ ...current, sortKey }));
             }}
           />
-        </SimpleGrid>
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <Select
-            label="Date precision"
-            value={draft.releasePrecision}
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="Release" description="Use the same confidence/precision model as seasons.">
+          <SimpleGrid cols={{ base: 1, sm: 3 }}>
+            <TextInput
+              label="Release date"
+              value={draft.releaseDate}
+              disabled={!canEdit}
+              onChange={(event) => {
+                const releaseDate = event.currentTarget.value;
+                setDraft((current) => ({ ...current, releaseDate }));
+              }}
+            />
+            <Select
+              label="Date precision"
+              value={draft.releasePrecision}
+              disabled={!canEdit}
+              data={[
+                { value: "unknown", label: "Unknown" },
+                { value: "day", label: "Day" },
+                { value: "month", label: "Month" },
+                { value: "month_day", label: "Month/day" },
+                { value: "season", label: "Season" },
+                { value: "year", label: "Year" },
+              ]}
+              onChange={(value) => setDraft((current) => ({ ...current, releasePrecision: value ?? "unknown" }))}
+            />
+            <Select
+              label="Date confidence"
+              value={draft.dateConfidence}
+              disabled={!canEdit}
+              data={[
+                { value: "unknown", label: "Unknown" },
+                { value: "confirmed", label: "Confirmed" },
+                { value: "expected", label: "Expected" },
+                { value: "estimated", label: "Estimated" },
+              ]}
+              onChange={(value) => setDraft((current) => ({ ...current, dateConfidence: value ?? "unknown" }))}
+            />
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="References" description="Use label | url, or kind | label | url.">
+          <SimpleGrid cols={{ base: 1, md: 2 }}>
+            <Textarea
+              label="Links"
+              autosize
+              minRows={4}
+              value={draft.linksText}
+              disabled={!canEdit}
+              onChange={(event) => {
+                const linksText = event.currentTarget.value;
+                setDraft((current) => ({ ...current, linksText }));
+              }}
+            />
+            <ParsedLinksPreview links={draftLinks} />
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="Notes">
+          <Textarea
+            label="Notes"
+            autosize
+            minRows={4}
+            value={draft.notes}
             disabled={!canEdit}
-            data={[
-              { value: "unknown", label: "Unknown" },
-              { value: "day", label: "Day" },
-              { value: "month", label: "Month" },
-              { value: "month_day", label: "Month/day" },
-              { value: "season", label: "Season" },
-              { value: "year", label: "Year" },
-            ]}
-            onChange={(value) => setDraft((current) => ({ ...current, releasePrecision: value ?? "unknown" }))}
+            onChange={(event) => {
+              const notes = event.currentTarget.value;
+              setDraft((current) => ({ ...current, notes }));
+            }}
           />
-          <Select
-            label="Date confidence"
-            value={draft.dateConfidence}
-            disabled={!canEdit}
-            data={[
-              { value: "unknown", label: "Unknown" },
-              { value: "confirmed", label: "Confirmed" },
-              { value: "expected", label: "Expected" },
-              { value: "estimated", label: "Estimated" },
-            ]}
-            onChange={(value) => setDraft((current) => ({ ...current, dateConfidence: value ?? "unknown" }))}
-          />
-        </SimpleGrid>
-        <Textarea
-          label="Links"
-          autosize
-          minRows={3}
-          value={draft.linksText}
-          disabled={!canEdit}
-          onChange={(event) => {
-            const linksText = event.currentTarget.value;
-            setDraft((current) => ({ ...current, linksText }));
-          }}
-        />
-        <Textarea
-          label="Notes"
-          autosize
-          minRows={4}
-          value={draft.notes}
-          disabled={!canEdit}
-          onChange={(event) => {
-            const notes = event.currentTarget.value;
-            setDraft((current) => ({ ...current, notes }));
-          }}
-        />
-        <Group justify="flex-end">
-          <Button variant="default" disabled={!canEdit || !dirty} onClick={discardLocalDraft}>
-            Discard
-          </Button>
-          <Button variant="light" disabled={!canEdit || !dirty} onClick={saveLocalDraft}>
-            Save draft
-          </Button>
-          <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
-            Save to overlay
-          </Button>
-          {canPropose && (
-            <Button
-              variant="light"
-              disabled={!canSubmitProposal}
-              loading={proposalSaving}
-              onClick={() => void sendCanonicalProposal()}
-            >
-              Send to canonical
+        </ManagementEditorSection>
+
+        <ManagementActionBar>
+          <Text size="sm" c={dirty ? "yellow.9" : "dimmed"}>
+            {dirty ? "Unsaved editor changes" : "No editor changes"}
+          </Text>
+          <Group gap="xs">
+            <Button variant="default" disabled={!canEdit || !dirty} onClick={discardLocalDraft}>
+              Discard
             </Button>
-          )}
-          <Button
-            color="red"
-            variant="light"
-            disabled={!canHideCanonicalEpisode}
-            loading={hidingEpisode}
-            onClick={() => void hideEpisode()}
-          >
-            Hide from my list
-          </Button>
-          <Button
-            color="red"
-            variant="outline"
-            disabled={!canDeletePersonalEpisode}
-            loading={deletingEpisode}
-            onClick={() => void deletePersonalEpisode()}
-          >
-            Delete personal episode
-          </Button>
-        </Group>
+            <Button variant="light" disabled={!canEdit || !dirty} onClick={saveLocalDraft}>
+              Save draft
+            </Button>
+            <Button disabled={!canSaveOverlay} loading={savingOverlay} onClick={() => void saveOverlay()}>
+              Save to overlay
+            </Button>
+            {canPropose && (
+              <Button
+                variant="light"
+                disabled={!canSubmitProposal}
+                loading={proposalSaving}
+                onClick={() => void sendCanonicalProposal()}
+              >
+                Send to canonical
+              </Button>
+            )}
+            <Button
+              color="red"
+              variant="light"
+              disabled={!canHideCanonicalEpisode}
+              loading={hidingEpisode}
+              onClick={() => void hideEpisode()}
+            >
+              Hide from my list
+            </Button>
+            <Button
+              color="red"
+              variant="outline"
+              disabled={!canDeletePersonalEpisode}
+              loading={deletingEpisode}
+              onClick={() => void deletePersonalEpisode()}
+            >
+              Delete personal episode
+            </Button>
+          </Group>
+        </ManagementActionBar>
         {locallySaved && (
           <Text size="sm" c="dimmed">
             Local draft saved.

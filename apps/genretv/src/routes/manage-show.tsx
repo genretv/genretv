@@ -37,6 +37,12 @@ import {
   showDraftStorageKey,
   useManagementDraft,
 } from "../features/management/drafts";
+import {
+  ManagementActionBar,
+  ManagementEditorSection,
+  ParsedLinksPreview,
+  ParsedListPreview,
+} from "../features/management/editor-ui";
 import { canSendCanonicalProposal } from "../features/management/proposals";
 import { isLinkedPublishedShowId } from "../features/publishing/linked-imports";
 import { useSyncGroupsReady } from "../sync/use-sync-groups-ready";
@@ -450,103 +456,113 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         </Alert>
       )}
 
-      <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <TextInput
-            label="Display title"
-            value={draft.title}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const title = event.currentTarget.value;
-              setDraft((current) => ({ ...current, title }));
-            }}
-          />
-          <TextInput
-            label="Original title"
-            value={draft.originalTitle}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const originalTitle = event.currentTarget.value;
-              setDraft((current) => ({ ...current, originalTitle }));
-            }}
-          />
-        </SimpleGrid>
-        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+      <Stack gap="lg">
+        <ManagementEditorSection title="Basics" description="Canonical identity and title metadata.">
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <TextInput
+              label="Display title"
+              value={draft.title}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const title = event.currentTarget.value;
+                setDraft((current) => ({ ...current, title }));
+              }}
+            />
+            <TextInput
+              label="Original title"
+              value={draft.originalTitle}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const originalTitle = event.currentTarget.value;
+                setDraft((current) => ({ ...current, originalTitle }));
+              }}
+            />
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="Classification" description="Ordered values, one per line or comma separated.">
+          <SimpleGrid cols={{ base: 1, md: 3 }}>
+            <Stack gap="xs">
+              <Textarea
+                label="Languages"
+                autosize
+                minRows={3}
+                value={draft.languagesText}
+                disabled={!canEditDraft}
+                onChange={(event) => {
+                  const languagesText = event.currentTarget.value;
+                  setDraft((current) => ({ ...current, languagesText }));
+                }}
+              />
+              <ParsedListPreview label="Parsed languages" values={draftLanguages} />
+            </Stack>
+            <Stack gap="xs">
+              <Textarea
+                label="Countries"
+                autosize
+                minRows={3}
+                value={draft.countriesText}
+                disabled={!canEditDraft}
+                onChange={(event) => {
+                  const countriesText = event.currentTarget.value;
+                  setDraft((current) => ({ ...current, countriesText }));
+                }}
+              />
+              <ParsedListPreview label="Parsed countries" values={draftCountries} variant="outline" />
+            </Stack>
+            <Stack gap="xs">
+              <Textarea
+                label="Genres"
+                autosize
+                minRows={3}
+                value={draft.genresText}
+                disabled={!canEditDraft}
+                onChange={(event) => {
+                  const genresText = event.currentTarget.value;
+                  setDraft((current) => ({ ...current, genresText }));
+                }}
+              />
+              <ParsedListPreview label="Parsed genres" values={draftGenres} />
+            </Stack>
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="References" description="Use label | url, or kind | label | url.">
+          <SimpleGrid cols={{ base: 1, md: 2 }}>
+            <Textarea
+              label="Links"
+              autosize
+              minRows={4}
+              value={draft.linksText}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const linksText = event.currentTarget.value;
+                setDraft((current) => ({ ...current, linksText }));
+              }}
+            />
+            <ParsedLinksPreview links={draftLinks} />
+          </SimpleGrid>
+        </ManagementEditorSection>
+
+        <ManagementEditorSection title="Notes">
           <Textarea
-            label="Languages"
+            label="Notes"
             autosize
-            minRows={3}
-            value={draft.languagesText}
+            minRows={4}
+            value={draft.notes}
             disabled={!canEditDraft}
             onChange={(event) => {
-              const languagesText = event.currentTarget.value;
-              setDraft((current) => ({ ...current, languagesText }));
+              const notes = event.currentTarget.value;
+              setDraft((current) => ({ ...current, notes }));
             }}
           />
-          <Textarea
-            label="Countries"
-            autosize
-            minRows={3}
-            value={draft.countriesText}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const countriesText = event.currentTarget.value;
-              setDraft((current) => ({ ...current, countriesText }));
-            }}
-          />
-          <Textarea
-            label="Genres"
-            autosize
-            minRows={3}
-            value={draft.genresText}
-            disabled={!canEditDraft}
-            onChange={(event) => {
-              const genresText = event.currentTarget.value;
-              setDraft((current) => ({ ...current, genresText }));
-            }}
-          />
-        </SimpleGrid>
-        <Textarea
-          label="Links"
-          autosize
-          minRows={3}
-          value={draft.linksText}
-          disabled={!canEditDraft}
-          onChange={(event) => {
-            const linksText = event.currentTarget.value;
-            setDraft((current) => ({ ...current, linksText }));
-          }}
-        />
-        <Textarea
-          label="Notes"
-          autosize
-          minRows={4}
-          value={draft.notes}
-          disabled={!canEditDraft}
-          onChange={(event) => {
-            const notes = event.currentTarget.value;
-            setDraft((current) => ({ ...current, notes }));
-          }}
-        />
-        <Group justify="space-between" align="center">
-          <Group gap={6}>
-            {draftLanguages.map((language) => (
-              <Badge key={`${show.id}-draft-language-${language}`} size="xs" variant="light">
-                {language}
-              </Badge>
-            ))}
-            {draftCountries.map((country) => (
-              <Badge key={`${show.id}-draft-country-${country}`} size="xs" variant="outline">
-                {country}
-              </Badge>
-            ))}
-            {draftGenres.map((genre) => (
-              <Badge key={`${show.id}-draft-genre-${genre}`} size="xs" color="gray" variant="light">
-                {genre}
-              </Badge>
-            ))}
-          </Group>
-          <Group>
+        </ManagementEditorSection>
+
+        <ManagementActionBar>
+          <Text size="sm" c={dirty ? "yellow.9" : "dimmed"}>
+            {dirty ? "Unsaved editor changes" : "No editor changes"}
+          </Text>
+          <Group gap="xs">
             <Button variant="default" disabled={!canEditDraft || !dirty} onClick={discardLocalDraft}>
               Discard
             </Button>
@@ -585,7 +601,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
               </Button>
             )}
           </Group>
-        </Group>
+        </ManagementActionBar>
         {locallySaved && (
           <Text size="sm" c="dimmed">
             Local draft saved.
@@ -635,7 +651,9 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
                         {season.seasonLabel}
                       </Anchor>
                     </Table.Td>
-                    <Table.Td>{season.section === "past" ? season.endedReason : sectionLabels[season.section]}</Table.Td>
+                    <Table.Td>
+                      {season.section === "past" ? season.endedReason : sectionLabels[season.section]}
+                    </Table.Td>
                     <Table.Td>{season.timing}</Table.Td>
                     <Table.Td>
                       <Stack gap={2}>

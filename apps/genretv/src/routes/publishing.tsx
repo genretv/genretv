@@ -23,12 +23,14 @@ import type { SyncTransaction } from "@pgxsinkit/client";
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import { assertTransactionAcked } from "../domain/mutation-acks";
+import { buildManagementShows } from "../domain/schedule";
 import { formatMicrosecondTimestamp } from "../domain/time";
 import { buildCanonicalProposalMergePlan } from "../features/management/canonical-merge";
 import {
   unreadNotificationIdsForCanonicalProposal,
   unreadNotificationIdsForPublishApplication,
 } from "../features/management/notifications";
+import { proposalReviewDiffRows, type ProposalReviewDiffRow } from "../features/management/proposal-review-diff";
 import {
   canReviewWorkflowStatus,
   canPublishList,
@@ -88,6 +90,7 @@ export function PublishingRoute() {
   const isMaintainer = roles.includes("canonical_maintainer");
   const hasPublisherRole = canPublishList(roles);
   const canonical = useCanonicalSchedule();
+  const managementShows = useMemo(() => buildManagementShows(canonical.schedule.entries), [canonical.schedule.entries]);
   const normalizedSlug = normalizePublishedSlug(listSlug);
   const applications = useLiveDrizzleRows(
     (sync) =>
@@ -953,15 +956,11 @@ export function PublishingRoute() {
                       <Table.Td>
                         <Stack gap={4}>
                           <Text size="sm">{proposal.message ?? proposalPayloadSummary(proposal.proposedPayload)}</Text>
-                          {payloadDetails.length > 0 && (
-                            <Stack gap={2}>
-                              {payloadDetails.map((detail) => (
-                                <Text key={detail} size="xs" c="dimmed">
-                                  {detail}
-                                </Text>
-                              ))}
-                            </Stack>
-                          )}
+                          <ProposalReviewDiff
+                            proposal={proposal}
+                            shows={managementShows}
+                            fallbackDetails={payloadDetails}
+                          />
                           {proposal.reviewerNote != null && (
                             <Text size="xs" c="dimmed">
                               Reviewer note: {proposal.reviewerNote}
@@ -1091,6 +1090,14 @@ interface NotificationTargetProposal {
   title: string;
 }
 
+interface ReviewDiffProposal {
+  canonicalEpisodeId: string | null;
+  canonicalSeasonId: string | null;
+  canonicalShowId: string | null;
+  proposalKind: string;
+  proposedPayload: unknown;
+}
+
 interface NotificationTargetNotification {
   relatedCanonicalProposalId: string | null;
   relatedPublishApplicationId: string | null;
@@ -1101,6 +1108,61 @@ interface NotificationTarget {
   kind: "application" | "proposal";
   label: string;
   status: string;
+}
+
+function ProposalReviewDiff({
+  fallbackDetails,
+  proposal,
+  shows,
+}: {
+  fallbackDetails: readonly string[];
+  proposal: ReviewDiffProposal;
+  shows: ReturnType<typeof buildManagementShows>;
+}) {
+  const rows = proposalReviewDiffRows(proposal, shows)
+    .filter((row) => row.status !== "unchanged")
+    .slice(0, 8);
+  if (rows.length === 0) {
+    if (fallbackDetails.length === 0) return null;
+    return (
+      <Stack gap={2}>
+        {fallbackDetails.map((detail) => (
+          <Text key={detail} size="xs" c="dimmed">
+            {detail}
+          </Text>
+        ))}
+      </Stack>
+    );
+  }
+  return (
+    <Stack className="proposal-review-diff" gap={4} aria-label="Proposal review diff">
+      {rows.map((row) => (
+        <ProposalReviewDiffItem key={`${row.field}-${row.current}-${row.proposed}`} row={row} />
+      ))}
+    </Stack>
+  );
+}
+
+function ProposalReviewDiffItem({ row }: { row: ProposalReviewDiffRow }) {
+  return (
+    <Group className="proposal-review-diff-row" gap="xs" align="center" wrap="nowrap">
+      <Text className="proposal-review-diff-field" size="xs" fw={700}>
+        {row.field}
+      </Text>
+      <Text className="proposal-review-diff-value" size="xs" c="dimmed">
+        {row.current}
+      </Text>
+      <Text size="xs" c="dimmed">
+        -&gt;
+      </Text>
+      <Text className="proposal-review-diff-value" size="xs">
+        {row.proposed}
+      </Text>
+      <Badge size="xs" color={row.status === "new" ? "blue" : "yellow"} variant="light">
+        {row.status}
+      </Badge>
+    </Group>
+  );
 }
 
 function NotificationTargetText({

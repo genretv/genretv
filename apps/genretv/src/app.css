@@ -207,6 +207,49 @@ body {
   color: #075b64;
 }
 
+.management-editor-section {
+  padding-top: 16px;
+  border-top: 1px solid rgba(17, 34, 37, 0.14);
+}
+
+.management-editor-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.management-action-bar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 1;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(17, 34, 37, 0.14);
+  box-shadow: 0 10px 30px rgba(10, 20, 22, 0.12);
+}
+
+.proposal-review-diff {
+  max-width: 520px;
+  padding: 8px;
+  background: rgba(244, 248, 247, 0.9);
+  border: 1px solid rgba(17, 34, 37, 0.12);
+}
+
+.proposal-review-diff-row {
+  min-width: 0;
+}
+
+.proposal-review-diff-field {
+  width: 104px;
+  flex: 0 0 104px;
+}
+
+.proposal-review-diff-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .inline-link-button {
   padding: 0;
   font: inherit;
