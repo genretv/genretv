@@ -40,7 +40,7 @@ export function useManagementShows(): LiveManagementShows {
   );
   const shows = useMemo(
     () =>
-      includeEmptyPersonalShows(
+      applyPersonalShowsForManagement(
         buildManagementShows(canonical.schedule.entries),
         personalReady ? personalShows.rows : [],
       ),
@@ -55,7 +55,7 @@ export function useManagementShows(): LiveManagementShows {
   };
 }
 
-function includeEmptyPersonalShows(
+function applyPersonalShowsForManagement(
   existingShows: ManagementShow[],
   personalRows: ReadonlyArray<{
     canonicalShowId: string | null;
@@ -69,7 +69,24 @@ function includeEmptyPersonalShows(
     originalTitle: string | null;
   }>,
 ): ManagementShow[] {
-  const seen = new Set(existingShows.map((show) => show.id));
+  const overlays = new Map(
+    personalRows.flatMap((row) => (row.canonicalShowId == null ? [] : [[row.canonicalShowId, row]])),
+  );
+  const overlaidShows = existingShows.map((show) => {
+    const overlay = overlays.get(show.id);
+    if (overlay == null) return show;
+    return {
+      ...show,
+      title: overlay.displayTitle,
+      originalTitle: overlay.originalTitle,
+      languages: stringArray(overlay.languages),
+      countries: stringArray(overlay.countries),
+      genres: stringArray(overlay.genreTags),
+      links: externalLinks(overlay.externalLinks),
+      notes: overlay.notes,
+    };
+  });
+  const seen = new Set(overlaidShows.map((show) => show.id));
   const additions = personalRows.flatMap((row): ManagementShow[] => {
     if (row.canonicalShowId != null || seen.has(row.id)) return [];
     return [
@@ -87,7 +104,7 @@ function includeEmptyPersonalShows(
       },
     ];
   });
-  return [...existingShows, ...additions].sort((left, right) => left.title.localeCompare(right.title));
+  return [...overlaidShows, ...additions].sort((left, right) => left.title.localeCompare(right.title));
 }
 
 function stringArray(value: unknown): string[] {

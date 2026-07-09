@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
+import { assertTransactionAcked } from "../domain/mutation-acks";
 import { findManagementShow, formatEpisodeCount, sectionLabels, type ManagementShow } from "../domain/schedule";
 import {
   externalLinkTextToRows,
@@ -32,6 +33,7 @@ import {
 } from "../features/management/drafts";
 import { canSendCanonicalProposal } from "../features/management/proposals";
 import { isLinkedPublishedShowId } from "../features/publishing/linked-imports";
+import { useSyncGroupsReady } from "../sync/use-sync-groups-ready";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -71,6 +73,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const [proposalSaving, setProposalSaving] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
+  const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_show");
   const personalShows = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -190,7 +193,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const draftCountries = orderedTextToList(draft.countriesText);
   const draftGenres = orderedTextToList(draft.genresText);
   const draftLinks = externalLinkTextToRows(draft.linksText);
-  const canSaveOverlay = canEditDraft && !personalShows.loading && dirty && !savingOverlay;
+  const canSaveOverlay = canEditDraft && personalOverlay.ready && !personalShows.loading && dirty && !savingOverlay;
   const canSubmitProposal = canEditDraft && canPropose && !personalShows.loading && !proposalSaving;
   const canDeletePersonalShow =
     canEditDraft &&
@@ -227,7 +230,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         externalLinks: draftLinks,
         notes: nullableText(draft.notes),
       };
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (personalRow == null) {
           tx.tables.personal_show.create({
             id: createdId,
@@ -238,6 +241,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           tx.tables.personal_show.update({ id: personalRow.id }, patch);
         }
       });
+      assertTransactionAcked(result, "Saving show overlay");
       setOverlaySaved(true);
       if (show.id === newShowId) {
         void navigate({ to: "/manage/show/$showId", params: { showId: createdId } });
@@ -257,7 +261,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     setProposalError(null);
     setProposalSent(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.canonical_proposal.create({
           id: proposalId,
           proposalKind: "show",
@@ -291,6 +295,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           relatedCanonicalProposalId: proposalId,
         });
       });
+      assertTransactionAcked(result, "Sending canonical proposal");
       setProposalSent(true);
     } catch (cause) {
       setProposalError(cause instanceof Error ? cause.message : String(cause));
@@ -304,7 +309,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.personal_list_exclusion.create({
           id: crypto.randomUUID(),
           excludedKind: "show",
@@ -314,6 +319,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           reason: null,
         });
       });
+      assertTransactionAcked(result, "Hiding show");
       void navigate({ to: "/manage" });
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
@@ -334,7 +340,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         for (const importId of importIds) {
           tx.tables.list_import.delete({ id: importId });
         }
@@ -348,6 +354,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         }
         tx.tables.personal_show.delete({ id: personalRow.id });
       });
+      assertTransactionAcked(result, "Deleting personal show");
       void navigate({ to: "/manage" });
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
@@ -398,6 +405,11 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
       {personalShows.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this show: {personalShows.error.message}
+        </Alert>
+      )}
+      {personalOverlay.error != null && (
+        <Alert color="red" variant="light">
+          Could not finish loading your personal overlay: {personalOverlay.error.message}
         </Alert>
       )}
       {(personalSeasonsForShow.error ??

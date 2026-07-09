@@ -19,6 +19,8 @@ import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { assertTransactionAcked } from "../domain/mutation-acks";
+import { formatMicrosecondTimestamp } from "../domain/time";
 import { buildCanonicalProposalMergePlan } from "../features/management/canonical-merge";
 import {
   unreadNotificationIdsForCanonicalProposal,
@@ -192,7 +194,7 @@ export function PublishingRoute() {
     setActionError(null);
     setSaved(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.publish_application.create({
           id: applicationId,
           message: nullableText(message),
@@ -207,6 +209,7 @@ export function PublishingRoute() {
           relatedCanonicalProposalId: null,
         });
       });
+      assertTransactionAcked(result, "Submitting publisher application");
       setSaved(true);
       setMessage("");
     } catch (cause) {
@@ -236,7 +239,7 @@ export function PublishingRoute() {
     setSaved(false);
     setPublishedSaved(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (ownMatchingPublishedList == null) {
           tx.tables.published_list.create(plan.list);
         } else {
@@ -255,6 +258,7 @@ export function PublishingRoute() {
         for (const season of plan.seasons) tx.tables.published_season.create(season);
         for (const episode of plan.episodes) tx.tables.published_episode.create(episode);
       });
+      assertTransactionAcked(result, "Publishing list snapshot");
       setPublishedSaved(true);
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -268,12 +272,13 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.publish_application.update({ id }, { status, reviewerNote: nullableText(note) });
         for (const notificationId of notificationIds) {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
+      assertTransactionAcked(result, "Updating publisher application");
       setApplicationReviewNotes((notes) => withoutKey(notes, id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -287,12 +292,13 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.canonical_proposal.update({ id }, { status, reviewerNote: nullableText(note) });
         for (const notificationId of notificationIds) {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
+      assertTransactionAcked(result, "Updating canonical proposal");
       setProposalReviewNotes((notes) => withoutKey(notes, id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -318,7 +324,7 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (plan.showCreate != null) tx.tables.canonical_show.create(plan.showCreate);
         if (plan.showUpdate != null) tx.tables.canonical_show.update({ id: plan.showUpdate.id }, plan.showUpdate.patch);
         if (plan.seasonCreate != null) tx.tables.canonical_season.create(plan.seasonCreate);
@@ -337,6 +343,7 @@ export function PublishingRoute() {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
+      assertTransactionAcked(result, "Approving canonical proposal");
       setProposalReviewNotes((notes) => withoutKey(notes, proposal.id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -349,9 +356,10 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.maintainer_notification.update({ id }, { status: "read" });
       });
+      assertTransactionAcked(result, "Marking notification read");
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -820,10 +828,7 @@ function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T
   return rest;
 }
 
-function formatMicroseconds(value: bigint): string {
-  const millis = Number(value / 1000n);
-  return Number.isFinite(millis) ? new Date(millis).toLocaleString() : "";
-}
+const formatMicroseconds = formatMicrosecondTimestamp;
 
 function proposalTargetText(proposal: {
   canonicalEpisodeId: string | null;

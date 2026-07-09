@@ -4,6 +4,8 @@ import { Alert, Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } fr
 import { Link, useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
+import { formatMicrosecondTimestamp } from "../domain/time";
+
 const publishedList = genretvSyncRegistry.published_list.view!;
 const userProfile = genretvSyncRegistry.user_profile.view!;
 
@@ -138,7 +140,4 @@ export function PublicProfileRoute() {
   );
 }
 
-function formatMicroseconds(value: bigint): string {
-  const millis = Number(value / 1000n);
-  return Number.isFinite(millis) ? new Date(millis).toLocaleString() : "";
-}
+const formatMicroseconds = formatMicrosecondTimestamp;

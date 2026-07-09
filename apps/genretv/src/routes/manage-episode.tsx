@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
+import { assertTransactionAcked } from "../domain/mutation-acks";
 import {
   findManagementSeason,
   type ManagementSeason,
@@ -27,6 +28,7 @@ import {
   type ManagementEpisodeDraft,
 } from "../features/management/drafts";
 import { canSendCanonicalProposal } from "../features/management/proposals";
+import { useSyncGroupsReady } from "../sync/use-sync-groups-ready";
 
 const personalEpisode = genretvSyncRegistry.personal_episode.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -99,6 +101,7 @@ function EditableEpisode({
   const [overlaySaved, setOverlaySaved] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
+  const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_season", "personal_episode");
   const personalEpisodes = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -201,7 +204,8 @@ function EditableEpisode({
     draft.releasePrecision,
     draft.dateConfidence,
   );
-  const canSaveOverlay = canEdit && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
+  const canSaveOverlay =
+    canEdit && personalOverlay.ready && !personalEpisodes.loading && !personalSeasons.loading && dirty && !savingOverlay;
   const canSubmitProposal =
     canEdit && canPropose && !personalEpisodes.loading && !personalSeasons.loading && !proposalSaving;
   const canDeletePersonalEpisode =
@@ -229,7 +233,7 @@ function EditableEpisode({
         externalLinks: draftLinks,
         notes: nullableText(draft.notes),
       };
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (personalRow == null) {
           tx.tables.personal_episode.create({
             id: createdId,
@@ -243,6 +247,7 @@ function EditableEpisode({
           tx.tables.personal_episode.update({ id: personalRow.id }, patch);
         }
       });
+      assertTransactionAcked(result, "Saving episode overlay");
       setOverlaySaved(true);
       if (episodeId === newEpisodeId) {
         void navigate({
@@ -269,7 +274,7 @@ function EditableEpisode({
     setProposalError(null);
     setProposalSent(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.canonical_proposal.create({
           id: proposalId,
           proposalKind: "episode",
@@ -318,6 +323,7 @@ function EditableEpisode({
           relatedCanonicalProposalId: proposalId,
         });
       });
+      assertTransactionAcked(result, "Sending canonical proposal");
       setProposalSent(true);
     } catch (cause) {
       setProposalError(cause instanceof Error ? cause.message : String(cause));
@@ -332,7 +338,7 @@ function EditableEpisode({
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         tx.tables.personal_list_exclusion.create({
           id: crypto.randomUUID(),
           excludedKind: "episode",
@@ -342,6 +348,7 @@ function EditableEpisode({
           reason: null,
         });
       });
+      assertTransactionAcked(result, "Hiding episode");
       void navigate({
         to: "/manage/show/$showId/season/$seasonId",
         params: { showId: show.id, seasonId: season.id },
@@ -359,12 +366,13 @@ function EditableEpisode({
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         for (const importRow of importsForEpisode.rows) {
           tx.tables.list_import.delete({ id: importRow.id });
         }
         tx.tables.personal_episode.delete({ id: personalRow.id });
       });
+      assertTransactionAcked(result, "Deleting personal episode");
       void navigate({
         to: "/manage/show/$showId/season/$seasonId",
         params: { showId: show.id, seasonId: season.id },
@@ -416,6 +424,11 @@ function EditableEpisode({
       {personalSeasons.error != null && (
         <Alert color="red" variant="light">
           Could not load your personal overlay for this season: {personalSeasons.error.message}
+        </Alert>
+      )}
+      {personalOverlay.error != null && (
+        <Alert color="red" variant="light">
+          Could not finish loading your personal overlay: {personalOverlay.error.message}
         </Alert>
       )}
       {importsForEpisode.error != null && (

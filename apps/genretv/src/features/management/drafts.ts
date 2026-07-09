@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ManagementSeason, ManagementShow, ScheduleEpisode, ScheduleSection } from "../../domain/schedule";
 
@@ -228,19 +228,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function useManagementDraft<T>(storageKey: string, initialDraft: T) {
   const [draft, setDraft] = useState<T>(initialDraft);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const draftRef = useRef(draft);
+  const storageKeyRef = useRef(storageKey);
+  const initialDraftSerializedRef = useRef(JSON.stringify(initialDraft));
 
   useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    const currentDraftSerialized = JSON.stringify(draftRef.current);
+    const storageKeyChanged = storageKeyRef.current !== storageKey;
+    const dirtyAgainstPreviousInitial = currentDraftSerialized !== initialDraftSerializedRef.current;
+    const initialDraftSerialized = JSON.stringify(initialDraft);
+
+    storageKeyRef.current = storageKey;
+    initialDraftSerializedRef.current = initialDraftSerialized;
+
+    if (!storageKeyChanged && dirtyAgainstPreviousInitial) return;
+
     const saved = window.localStorage.getItem(storageKey);
     if (saved == null) {
-      setDraft(initialDraft);
+      if (currentDraftSerialized !== initialDraftSerialized) setDraft(initialDraft);
       setSavedAt(null);
       return;
     }
     try {
-      setDraft(JSON.parse(saved) as T);
+      if (currentDraftSerialized !== saved) setDraft(JSON.parse(saved) as T);
       setSavedAt(saved);
     } catch {
-      setDraft(initialDraft);
+      if (currentDraftSerialized !== initialDraftSerialized) setDraft(initialDraft);
       setSavedAt(null);
     }
   }, [initialDraft, storageKey]);

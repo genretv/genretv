@@ -1,6 +1,7 @@
 import { useSyncClient } from "@genretv/offline-data/hooks";
 import { useState } from "react";
 
+import { assertTransactionAcked } from "../../domain/mutation-acks";
 import type { PublishedSeasonSummary } from "./imports";
 
 export type ImportMode = "linked" | "detached";
@@ -16,7 +17,7 @@ export function useImportPublishedSeason() {
     setSavingKey(`${season.id}:${importMode}`);
     setActionError(null);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (importMode === "linked") {
           tx.tables.list_import.create({
             id: crypto.randomUUID(),
@@ -109,6 +110,7 @@ export function useImportPublishedSeason() {
           notes: null,
         });
       });
+      assertTransactionAcked(result, "Importing published season");
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {

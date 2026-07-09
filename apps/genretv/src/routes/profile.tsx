@@ -5,6 +5,8 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
+import { assertTransactionAcked } from "../domain/mutation-acks";
+import { formatMicrosecondTimestamp } from "../domain/time";
 import {
   defaultDisplayName,
   normalizeProfileSlug,
@@ -82,7 +84,7 @@ export function ProfileRoute() {
     setSaved(false);
     setError(null);
     try {
-      await client.transaction({ mode: "pessimistic" }, (tx) => {
+      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
         if (profile == null) {
           tx.tables.user_profile.create({
             id: profileId,
@@ -92,6 +94,7 @@ export function ProfileRoute() {
           tx.tables.user_profile.update({ id: profile.id }, patch);
         }
       });
+      assertTransactionAcked(result, "Saving profile");
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -198,7 +201,4 @@ export function ProfileRoute() {
   );
 }
 
-function formatMicroseconds(value: bigint): string {
-  const millis = Number(value / 1000n);
-  return Number.isFinite(millis) ? new Date(millis).toLocaleString() : "";
-}
+const formatMicroseconds = formatMicrosecondTimestamp;
