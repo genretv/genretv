@@ -18,11 +18,18 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   await expect(page.getByRole("combobox", { name: "Rows" })).toHaveValue("50");
   await expect(page.getByRole("table")).toBeVisible();
   await expect(page.getByRole("button", { name: /Show details for/ }).first()).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: /Sort by When/ })).toHaveAttribute("aria-sort", "ascending");
 
-  await expect(page.getByRole("cell", { name: "House of the Dragon", exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: /Awaiting Renewal or Cancellation/ }).click();
-  await expect(page.getByRole("cell", { name: "From", exact: true })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Renewed for final season", exact: true })).toBeVisible();
+  const waitingTab = page.getByRole("tab", { name: /Awaiting Renewal or Cancellation/ });
+  await waitingTab.click();
+  await expect(waitingTab).toHaveAttribute("aria-selected", "true");
+
+  await page.getByRole("tab", { name: /Finished/ }).click();
+  await expect(page.getByRole("columnheader", { name: /Sort by When/ })).toHaveAttribute("aria-sort", "descending");
+  await page.getByRole("button", { name: /Sort by Show/ }).click();
+  await expect(page.getByRole("columnheader", { name: /Sort by Show/ })).toHaveAttribute("aria-sort", "ascending");
+  await page.getByRole("button", { name: /Sort by Show/ }).click();
+  await expect(page.getByRole("columnheader", { name: /Sort by Show/ })).toHaveAttribute("aria-sort", "descending");
 });
 
 test("anonymous schedule preferences stay browser-local", async ({ page }) => {

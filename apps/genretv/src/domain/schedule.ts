@@ -3,7 +3,8 @@ export type ScheduleSection = SourceScheduleSection | "waiting";
 export type ShowLifecycleStatus = "open" | "ended" | "cancelled";
 export type ReleaseKind = "season" | "special" | "movie" | "pilot" | "other";
 export type EndingFilter = "all" | "canceled" | "finished" | "unknown";
-export type ScheduleSort = "when" | "title" | "organization";
+export type ScheduleSort = "ending" | "genre" | "language" | "organization" | "seasons" | "title" | "when";
+export type ScheduleSortDirection = "ascending" | "descending";
 export type ManagementSort = "title" | "seasonCount" | "organization";
 export type PageSize = (typeof pageSizeOptions)[number];
 
@@ -260,6 +261,7 @@ export interface ScheduleViewPreferences {
   organization: string;
   ending: EndingFilter;
   sort: ScheduleSort;
+  sortDirection: ScheduleSortDirection;
   pageSize: PageSize;
 }
 
@@ -280,6 +282,7 @@ export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
   organization: "all",
   ending: "all",
   sort: "when",
+  sortDirection: "ascending",
   pageSize: defaultPageSize,
 };
 
@@ -298,6 +301,10 @@ export const sectionLabels: Record<ScheduleSection, string> = {
   waiting: "Awaiting Renewal or Cancellation",
   past: "Finished",
 };
+
+export function defaultScheduleSortDirection(sort: ScheduleSort, section: ScheduleSection): ScheduleSortDirection {
+  return sort === "when" && section === "past" ? "descending" : "ascending";
+}
 
 const lifecycleLabels: Record<string, string> = {
   cancelled: "Canceled",
@@ -408,7 +415,7 @@ export function filterScheduleEntries(
       .includes(query);
   });
 
-  return [...filtered].sort((left, right) => compareEntries(left, right, preferences.sort));
+  return [...filtered].sort((left, right) => compareEntries(left, right, preferences.sort, preferences.sortDirection));
 }
 
 export function scheduleFilterOptions(entries: readonly ScheduleEntry[]) {
@@ -743,7 +750,7 @@ function projectScheduleEntries(entries: readonly ScheduleEntry[]): ScheduleEntr
       projected.push({ ...latest, section: completedSectionFor(latest.lifecycleStatus, latest.isFinal) });
     }
   }
-  return projected.sort((left, right) => compareEntries(left, right, "when"));
+  return projected.sort((left, right) => compareEntries(left, right, "when", "ascending"));
 }
 
 function compareReleaseRecency(left: ScheduleEntry, right: ScheduleEntry): number {
@@ -962,20 +969,75 @@ function hasAnySelected(values: readonly string[], selected: readonly string[]):
   return selected.length === 0 || selected.some((value) => values.includes(value));
 }
 
-function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: ScheduleSort): number {
-  if (sort === "title") return left.title.localeCompare(right.title) || compareReleaseIdentity(left, right);
-  if (sort === "organization") {
-    return (
-      left.organizationText.localeCompare(right.organizationText) ||
-      left.title.localeCompare(right.title) ||
-      compareReleaseIdentity(left, right)
-    );
+function compareEntries(
+  left: ScheduleEntry,
+  right: ScheduleEntry,
+  sort: ScheduleSort,
+  direction: ScheduleSortDirection,
+): number {
+  const primaryOrder = compareEntryField(left, right, sort, direction);
+  return primaryOrder || left.title.localeCompare(right.title) || compareReleaseIdentity(left, right);
+}
+
+function compareEntryField(
+  left: ScheduleEntry,
+  right: ScheduleEntry,
+  sort: ScheduleSort,
+  direction: ScheduleSortDirection,
+): number {
+  if (sort === "when") {
+    return compareNullableStringsInDirection(scheduleSortKey(left), scheduleSortKey(right), direction);
   }
-  return (
-    compareNullableStrings(scheduleSortKey(left), scheduleSortKey(right)) ||
-    left.title.localeCompare(right.title) ||
-    compareReleaseIdentity(left, right)
-  );
+  if (sort === "seasons") {
+    const numericOrder = compareNullableNumbersInDirection(
+      scheduleSeasonSortNumber(left),
+      scheduleSeasonSortNumber(right),
+      direction,
+    );
+    return numericOrder || applySortDirection(left.seasonLabel.localeCompare(right.seasonLabel), direction);
+  }
+
+  const leftValue = scheduleTextSortValue(left, sort);
+  const rightValue = scheduleTextSortValue(right, sort);
+  return applySortDirection(leftValue.localeCompare(rightValue), direction);
+}
+
+function scheduleTextSortValue(entry: ScheduleEntry, sort: Exclude<ScheduleSort, "seasons" | "when">): string {
+  if (sort === "title") return entry.title;
+  if (sort === "ending") return formatScheduleStatus(entry.section, entry.endedReason, entry.isFinal);
+  if (sort === "language") return entry.languages.join(", ");
+  if (sort === "organization") return entry.organizationText;
+  return entry.genreText;
+}
+
+function scheduleSeasonSortNumber(entry: ScheduleEntry): number | null {
+  return entry.section === "current" || entry.section === "upcoming" ? entry.seasonNumber : entry.officialSeasonCount;
+}
+
+function applySortDirection(order: number, direction: ScheduleSortDirection): number {
+  return direction === "descending" ? -order : order;
+}
+
+function compareNullableStringsInDirection(
+  left: string | null,
+  right: string | null,
+  direction: ScheduleSortDirection,
+): number {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return applySortDirection(left.localeCompare(right), direction);
+}
+
+function compareNullableNumbersInDirection(
+  left: number | null,
+  right: number | null,
+  direction: ScheduleSortDirection,
+): number {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return applySortDirection(left - right, direction);
 }
 
 function scheduleSortKey(entry: Pick<ScheduleEntry, "releaseWindow" | "sortKey">): string | null {

@@ -195,6 +195,46 @@ body {
   background: rgba(224, 236, 231, 0.98);
 }
 
+.schedule-sort-button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.schedule-sort-button:focus-visible {
+  outline: 2px solid #075b64;
+  outline-offset: 3px;
+}
+
+.schedule-sort-indicator {
+  width: 0;
+  height: 0;
+  flex: 0 0 auto;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  opacity: 0.28;
+}
+
+.schedule-sort-indicator:not([data-direction="descending"]) {
+  border-bottom: 6px solid currentColor;
+}
+
+.schedule-sort-indicator[data-direction="descending"] {
+  border-top: 6px solid currentColor;
+}
+
+.schedule-sort-indicator[data-active] {
+  opacity: 1;
+}
+
 .schedule-table tbody tr {
   background: rgba(255, 255, 255, 0.98);
 }

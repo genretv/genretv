@@ -5,6 +5,7 @@ import {
   buildScheduleFromRegistryRows,
   buildScheduleFromRegistrySeed,
   defaultManagementViewPreferences,
+  defaultScheduleSortDirection,
   defaultScheduleViewPreferences,
   filterManagementShows,
   findManagementShow,
@@ -578,6 +579,53 @@ describe("schedule read model", () => {
         (entry) => entry.id,
       ),
     ).toEqual(["december-2026", "autumn-2027", "autumn-2028"]);
+  });
+
+  test("orders Finished by reverse When while keeping unknown dates last", () => {
+    expect(defaultScheduleSortDirection("when", "past")).toBe("descending");
+    expect(defaultScheduleSortDirection("when", "current")).toBe("ascending");
+    expect(defaultScheduleSortDirection("when", "upcoming")).toBe("ascending");
+    expect(defaultScheduleSortDirection("when", "waiting")).toBe("ascending");
+
+    const finished = buildTestSchedule().entries.find((entry) => entry.section === "past")!;
+    const entries = [
+      { ...finished, id: "finished-2022", sortKey: "2022-06-15" },
+      { ...finished, id: "finished-unknown", sortKey: null },
+      { ...finished, id: "finished-2024", sortKey: "2024-09-01" },
+    ];
+
+    expect(
+      filterScheduleEntries(entries, {
+        ...defaultScheduleViewPreferences,
+        section: "past",
+        sortDirection: "descending",
+      }).map((entry) => entry.id),
+    ).toEqual(["finished-2024", "finished-2022", "finished-unknown"]);
+  });
+
+  test("sorts visible columns in either direction", () => {
+    const upcoming = buildTestSchedule().entries.find((entry) => entry.section === "upcoming")!;
+    const entries = [
+      { ...upcoming, id: "season-2", seasonNumber: 2, seasonLabel: "S2", title: "Beta" },
+      { ...upcoming, id: "season-4", seasonNumber: 4, seasonLabel: "S4", title: "Alpha" },
+    ];
+
+    expect(
+      filterScheduleEntries(entries, {
+        ...defaultScheduleViewPreferences,
+        section: "upcoming",
+        sort: "seasons",
+        sortDirection: "descending",
+      }).map((entry) => entry.id),
+    ).toEqual(["season-4", "season-2"]);
+    expect(
+      filterScheduleEntries(entries, {
+        ...defaultScheduleViewPreferences,
+        section: "upcoming",
+        sort: "title",
+        sortDirection: "ascending",
+      }).map((entry) => entry.id),
+    ).toEqual(["season-4", "season-2"]);
   });
 
   test("does not count standalone specials as official seasons", () => {

@@ -21,6 +21,7 @@ import { CheckboxFilter } from "../components/checkbox-filter";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
 import {
   defaultScheduleViewPreferences,
+  defaultScheduleSortDirection,
   filterScheduleEntries,
   formatEpisodeCount,
   formatScheduleSeasonCount,
@@ -35,12 +36,21 @@ import {
   type ScheduleEntry,
   type ScheduleSection,
   type ScheduleSort,
+  type ScheduleSortDirection,
   type ScheduleViewPreferences,
 } from "../domain/schedule";
 
 const storageKey = "genretv.schedule.view.v1";
 
-function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section: ScheduleSection }) {
+interface SectionTableProps {
+  entries: ScheduleEntry[];
+  onSort: (sort: ScheduleSort) => void;
+  section: ScheduleSection;
+  sort: ScheduleSort;
+  sortDirection: ScheduleSortDirection;
+}
+
+function SectionTable({ entries, onSort, section, sort, sortDirection }: SectionTableProps) {
   const showStopReason = section === "waiting" || section === "past";
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
   const columnCount = showStopReason ? 8 : 7;
@@ -61,13 +71,60 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
         <Table.Thead>
           <Table.Tr>
             <Table.Th w={44}></Table.Th>
-            <Table.Th>Show</Table.Th>
-            <Table.Th w={120}>Seasons</Table.Th>
-            <Table.Th>When</Table.Th>
-            {showStopReason && <Table.Th w={130}>Ended</Table.Th>}
-            <Table.Th w={140}>Lang</Table.Th>
-            <Table.Th>Where</Table.Th>
-            <Table.Th>Genre</Table.Th>
+            <SortableTableHeader
+              label="Show"
+              value="title"
+              activeSort={sort}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableTableHeader
+              label="Seasons"
+              value="seasons"
+              activeSort={sort}
+              direction={sortDirection}
+              onSort={onSort}
+              width={120}
+            />
+            <SortableTableHeader
+              label="When"
+              value="when"
+              activeSort={sort}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            {showStopReason && (
+              <SortableTableHeader
+                label="Ended"
+                value="ending"
+                activeSort={sort}
+                direction={sortDirection}
+                onSort={onSort}
+                width={130}
+              />
+            )}
+            <SortableTableHeader
+              label="Lang"
+              value="language"
+              activeSort={sort}
+              direction={sortDirection}
+              onSort={onSort}
+              width={140}
+            />
+            <SortableTableHeader
+              label="Where"
+              value="organization"
+              activeSort={sort}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableTableHeader
+              label="Genre"
+              value="genre"
+              activeSort={sort}
+              direction={sortDirection}
+              onSort={onSort}
+            />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -114,6 +171,42 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
         </Table.Tbody>
       </Table>
     </ScrollArea>
+  );
+}
+
+function SortableTableHeader({
+  activeSort,
+  direction,
+  label,
+  onSort,
+  value,
+  width,
+}: {
+  activeSort: ScheduleSort;
+  direction: ScheduleSortDirection;
+  label: string;
+  onSort: (sort: ScheduleSort) => void;
+  value: ScheduleSort;
+  width?: number;
+}) {
+  const active = activeSort === value;
+  return (
+    <Table.Th aria-sort={active ? direction : "none"} w={width}>
+      <button
+        aria-label={`Sort by ${label}${active ? `, currently ${direction}` : ""}`}
+        className="schedule-sort-button"
+        type="button"
+        onClick={() => onSort(value)}
+      >
+        <span>{label}</span>
+        <span
+          aria-hidden="true"
+          className="schedule-sort-indicator"
+          data-active={active || undefined}
+          data-direction={active ? direction : undefined}
+        />
+      </button>
+    </Table.Th>
   );
 }
 
@@ -192,6 +285,17 @@ export function HomeRoute() {
     setPage(1);
     setPreferences((current) => ({ ...current, ...patch }));
   };
+  const updateSort = (sort: ScheduleSort) => {
+    updatePreferences({
+      sort,
+      sortDirection:
+        sort === preferences.sort
+          ? preferences.sortDirection === "ascending"
+            ? "descending"
+            : "ascending"
+          : defaultScheduleSortDirection(sort, preferences.section),
+    });
+  };
 
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
@@ -210,7 +314,14 @@ export function HomeRoute() {
 
       <Tabs
         value={preferences.section}
-        onChange={(value) => updatePreferences({ section: parseSection(value), ending: "all" })}
+        onChange={(value) => {
+          const section = parseSection(value);
+          updatePreferences({
+            section,
+            ending: "all",
+            sortDirection: defaultScheduleSortDirection(preferences.sort, section),
+          });
+        }}
       >
         <Tabs.List className="schedule-tabs">
           {(["current", "upcoming", "waiting", "past"] as const).map((value) => (
@@ -256,9 +367,16 @@ export function HomeRoute() {
           data={[
             { value: "when", label: "When" },
             { value: "title", label: "Title" },
+            { value: "seasons", label: "Seasons" },
+            { value: "ending", label: "Ended" },
+            { value: "language", label: "Language" },
             { value: "organization", label: "Platform" },
+            { value: "genre", label: "Genre" },
           ]}
-          onChange={(value) => updatePreferences({ sort: parseSort(value) })}
+          onChange={(value) => {
+            const sort = parseSort(value);
+            updatePreferences({ sort, sortDirection: defaultScheduleSortDirection(sort, preferences.section) });
+          }}
         />
         {preferences.section === "past" && (
           <SegmentedControl
@@ -279,7 +397,13 @@ export function HomeRoute() {
         )}
       </Group>
 
-      <SectionTable entries={pageEntries} section={preferences.section} />
+      <SectionTable
+        entries={pageEntries}
+        section={preferences.section}
+        sort={preferences.sort}
+        sortDirection={preferences.sortDirection}
+        onSort={updateSort}
+      />
 
       <Group justify="space-between" align="center">
         <Text size="sm" c="dimmed">
@@ -315,15 +439,18 @@ function readStoredPreferences(): ScheduleViewPreferences {
     const raw = window.localStorage.getItem(storageKey);
     if (raw == null) return defaultScheduleViewPreferences;
     const parsed = JSON.parse(raw) as Partial<ScheduleViewPreferences> & { language?: unknown };
+    const section = parseSection(parsed.section);
+    const sort = parseSort(parsed.sort);
     return {
-      section: parseSection(parsed.section),
+      section,
       query: typeof parsed.query === "string" ? parsed.query : defaultScheduleViewPreferences.query,
       languages: parseStringArray(parsed.languages, parsed.language),
       countries: parseStringArray(parsed.countries),
       organization:
         typeof parsed.organization === "string" ? parsed.organization : defaultScheduleViewPreferences.organization,
       ending: parseEnding(parsed.ending),
-      sort: parseSort(parsed.sort),
+      sort,
+      sortDirection: parseSortDirection(parsed.sortDirection, sort, section),
       pageSize: parsePageSize(parsed.pageSize),
     };
   } catch {
@@ -344,9 +471,19 @@ function parseEnding(value: unknown): EndingFilter {
 }
 
 function parseSort(value: unknown): ScheduleSort {
-  return value === "when" || value === "title" || value === "organization"
+  return value === "when" ||
+    value === "title" ||
+    value === "seasons" ||
+    value === "ending" ||
+    value === "language" ||
+    value === "organization" ||
+    value === "genre"
     ? value
     : defaultScheduleViewPreferences.sort;
+}
+
+function parseSortDirection(value: unknown, sort: ScheduleSort, section: ScheduleSection): ScheduleSortDirection {
+  return value === "ascending" || value === "descending" ? value : defaultScheduleSortDirection(sort, section);
 }
 
 function parseStringArray(value: unknown, legacySingleValue?: unknown): string[] {
