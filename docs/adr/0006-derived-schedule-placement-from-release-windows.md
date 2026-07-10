@@ -11,3 +11,5 @@ When the source omits a year from a recognized month, date, or Release Season be
 Schedule View defaults to chronological `When` ordering, with releases lacking usable timing after dated releases. The Blogspot table row position is extraction metadata only: it is neither persisted in canonical, personal, or published Season rows nor exposed as a Schedule ordering option.
 
 Release Pattern distinguishes weekly, bulk, and unknown Seasons. Bulk streaming releases stay Now Showing for a Current Grace Period, initially five weeks. Blogspot imports from Netflix default to bulk; a parsed finale date instead identifies a normal non-bulk run. A complete set of dated Episode rows can supply the finale when the Season has no explicit finale date. For an imported bulk row recorded as current without a release date, the source update date is the conservative start of that grace period.
+
+In Now Showing, bulk releases display `Binge`. A non-bulk release with an exact start date displays the weekday derived from that date and retains any known finale, matching the recurring schedule readers need once the premiere has passed.

@@ -806,6 +806,7 @@ const releaseSeasonEndMonths: Record<string, number> = {
   autumn: 11,
   fall: 11,
 };
+const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 interface CalendarDay {
   day: number;
@@ -869,9 +870,24 @@ function deriveEntryPlacement(entry: ScheduleEntry, asOf: CalendarDay, sourceRef
     (effectiveReleaseDay == null
       ? null
       : dateKey(effectiveReleaseDay.year, effectiveReleaseDay.month, effectiveReleaseDay.day));
-  return section === sourceSection && resolvedSortKey === entry.sortKey
-    ? entry
-    : { ...entry, section, sortKey: resolvedSortKey };
+  const placedEntry =
+    section === sourceSection && resolvedSortKey === entry.sortKey
+      ? entry
+      : { ...entry, section, sortKey: resolvedSortKey };
+  return withCurrentTiming(placedEntry, effectiveReleaseDay);
+}
+
+function withCurrentTiming(entry: ScheduleEntry, releaseDay: CalendarDay | null): ScheduleEntry {
+  if (entry.section !== "current") return entry;
+  if (entry.releasePattern === "bulk") {
+    return entry.timing === "Binge" ? entry : { ...entry, timing: "Binge" };
+  }
+  if (releaseDay == null) return entry;
+
+  const weekday = weekdayNames[new Date(Date.UTC(releaseDay.year, releaseDay.month - 1, releaseDay.day)).getUTCDay()];
+  const finale = formatWindow(entry.finaleWindow);
+  const timing = [weekday, finale ? `finale ${finale}` : ""].filter(Boolean).join(" · ");
+  return timing === entry.timing ? entry : { ...entry, timing };
 }
 
 function resolveWindowDay(

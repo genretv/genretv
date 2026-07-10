@@ -285,6 +285,8 @@ describe("schedule read model", () => {
     ]);
     expect(schedule.allEntries.find((entry) => entry.id === "waiting-weekly")?.section).toBe("waiting");
     expect(schedule.allEntries.find((entry) => entry.id === "finished-final-season")?.section).toBe("past");
+    expect(schedule.allEntries.find((entry) => entry.id === "started-upcoming")?.timing).toBe("Sunday · finale Aug.9");
+    expect(schedule.allEntries.find((entry) => entry.id === "recent-bulk")?.timing).toBe("Binge");
     expect(formatScheduleStatus("waiting", null)).toBe("Awaiting Renewal or Cancellation");
     expect(schedule.counts).toEqual({ current: 2, upcoming: 1, waiting: 0, past: 0 });
     expect(
@@ -347,7 +349,10 @@ describe("schedule read model", () => {
       generatedAt: "2026-07-07T00:00:00.000Z",
     };
 
-    expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2026-07-30" }).entries[0]?.section).toBe("current");
+    expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2026-07-30" }).entries[0]).toMatchObject({
+      section: "current",
+      timing: "Binge",
+    });
     expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2026-07-31" }).entries[0]?.section).toBe("waiting");
   });
 
