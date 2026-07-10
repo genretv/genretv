@@ -512,6 +512,12 @@ describe("schedule read model", () => {
       languages: ["da", "en"],
       organizations: ["Apple", "Netflix"],
     });
+    expect(scheduleFilterOptions(schedule.entries.filter((entry) => entry.section === "current"))).toEqual({
+      countries: [],
+      genres: ["Fantasy"],
+      languages: ["da"],
+      organizations: ["Apple"],
+    });
   });
 
   test("groups schedule entries into show management rows", () => {

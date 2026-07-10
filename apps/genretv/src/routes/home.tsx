@@ -324,7 +324,10 @@ export function HomeRoute() {
   const { schedule } = useCanonicalSchedule();
   const [preferences, setPreferences] = useStoredScheduleViewPreferences();
   const [page, setPage] = useState(1);
-  const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), [schedule.entries]);
+  const filterOptions = useMemo(
+    () => scheduleFilterOptions(schedule.entries.filter((entry) => entry.section === preferences.section)),
+    [preferences.section, schedule.entries],
+  );
   const visibleEntries = useMemo(
     () => filterScheduleEntries(schedule.entries, preferences),
     [preferences, schedule.entries],
@@ -370,9 +373,18 @@ export function HomeRoute() {
         value={preferences.section}
         onChange={(value) => {
           const section = parseSection(value);
+          const nextFilterOptions = scheduleFilterOptions(
+            schedule.entries.filter((entry) => entry.section === section),
+          );
           updatePreferences({
             section,
             ending: "all",
+            languages: preferences.languages.filter((language) => nextFilterOptions.languages.includes(language)),
+            countries: preferences.countries.filter((country) => nextFilterOptions.countries.includes(country)),
+            genres: preferences.genres.filter((genre) => nextFilterOptions.genres.includes(genre)),
+            organization: nextFilterOptions.organizations.includes(preferences.organization)
+              ? preferences.organization
+              : "all",
             sortDirection: defaultScheduleSortDirection(preferences.sort, section),
           });
         }}
