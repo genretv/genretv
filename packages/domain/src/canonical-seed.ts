@@ -511,7 +511,7 @@ function capitalize(value: string): string {
 
 function sourceCalendarDate(seed: BlogspotCanonicalSeed): { year: number; month: number; day: number } {
   const label = seed.source?.updatedLabel ?? "";
-  const match = /([A-Za-z]{3,9})\.?\s+(\d{1,2}),\s*(\d{4})/.exec(label);
+  const match = /([A-Za-z]{3,9})\.?\s*(\d{1,2}),\s*(\d{4})/.exec(label);
   if (match?.[1] != null && match[2] != null && match[3] != null) {
     const month = monthNumber(match[1]);
     if (month != null) return { year: Number(match[3]), month, day: Number(match[2]) };

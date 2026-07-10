@@ -146,6 +146,46 @@ describe("canonical registry seed rows", () => {
     });
   });
 
+  test("anchors dotted yearless release dates to the source update year", () => {
+    const rows = buildCanonicalRegistrySeedRows({
+      ...seed,
+      generatedAt: "2026-07-07T00:00:00.000Z",
+      source: { updatedLabel: "Updated Jun.17, 2026:" },
+      entries: [
+        {
+          ...seed.entries[0]!,
+          season: {
+            ...seed.entries[0]!.season,
+            releaseWindow: {
+              raw: "Jun.21",
+              precision: "month_day",
+              confidence: "confirmed",
+              year: null,
+              month: 6,
+              day: 21,
+              releaseSeason: null,
+            },
+            finaleWindow: {
+              raw: "Aug.9",
+              precision: "month_day",
+              confidence: "confirmed",
+              year: null,
+              month: 8,
+              day: 9,
+              releaseSeason: null,
+            },
+          },
+        },
+      ],
+    });
+
+    expect(rows.seasons[0]).toMatchObject({
+      releaseWindow: { year: 2026 },
+      finaleWindow: { year: 2026 },
+      sortKey: "2026-06-21",
+    });
+  });
+
   test("keeps extra releases separate from official season count labels", () => {
     const rows = buildCanonicalRegistrySeedRows({
       entries: [

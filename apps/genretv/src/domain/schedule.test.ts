@@ -324,6 +324,33 @@ describe("schedule read model", () => {
     });
   });
 
+  test("keeps a dated bulk release current for five weeks", () => {
+    const rows: CanonicalRegistrySeed["rows"] = {
+      shows: [{ ...seed.rows.shows[0]!, id: "dated-bulk-show" }],
+      seasons: [
+        {
+          ...seed.rows.seasons[0]!,
+          id: "dated-bulk-season",
+          showId: "dated-bulk-show",
+          section: "upcoming",
+          releasePattern: "bulk",
+          releaseWindow: releaseWindow("Jun.25", 6, 25),
+          finaleWindow: null,
+        },
+      ],
+      episodes: [],
+    };
+    const metadata = {
+      title: "Dynamic GenreTV",
+      sourceUrl: "https://example.test",
+      updatedLabel: "Updated Jun.17, 2026:",
+      generatedAt: "2026-07-07T00:00:00.000Z",
+    };
+
+    expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2026-07-30" }).entries[0]?.section).toBe("current");
+    expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2026-07-31" }).entries[0]?.section).toBe("waiting");
+  });
+
   test("uses a complete set of episode dates as the season finale", () => {
     const schedule = buildScheduleFromRegistryRows(
       {
@@ -601,6 +628,13 @@ describe("schedule read model", () => {
         sortDirection: "descending",
       }).map((entry) => entry.id),
     ).toEqual(["finished-2024", "finished-2022", "finished-unknown"]);
+  });
+
+  test("labels a concluded final season as finished", () => {
+    expect(formatScheduleStatus("upcoming", null, true)).toBe("Upcoming");
+    expect(formatScheduleStatus("current", null, true)).toBe("Now Showing");
+    expect(formatScheduleStatus("past", null, true)).toBe("Finished");
+    expect(formatScheduleStatus("past", "Final season", true)).toBe("Finished");
   });
 
   test("sorts imprecise periods at their inclusive end after covered exact dates", () => {

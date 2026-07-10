@@ -20,7 +20,7 @@ export interface ReleaseWindowSeed {
   releaseSeason: "winter" | "spring" | "summer" | "autumn" | null;
 }
 
-interface CanonicalSeedEntry {
+export interface CanonicalSeedEntry {
   id: string;
   section: SectionKind;
   show: {
@@ -53,7 +53,7 @@ interface CanonicalSeedEntry {
   };
 }
 
-interface CanonicalSeed {
+export interface CanonicalSeed {
   schemaVersion: 1;
   generatedAt: string;
   source: {
@@ -359,8 +359,6 @@ function parseEntry(
   const displayTitle = titleCell.text;
   const { genreTags, languages } = parseGenre(genreCell.text);
   const parsedSeason = parseSeason(seasonCell.text);
-  const releasePattern =
-    timingCell.text.toLowerCase() === "binge" ? "bulk" : section === "current" ? "weekly" : "unknown";
   const lifecycleMarkers = parseMarkers(detailCell.text, seasonCell.text);
   const externalLinks: CanonicalSeedEntry["show"]["externalLinks"] = [];
   if (titleLink != null) {
@@ -380,6 +378,13 @@ function parseEntry(
     section === "past" || section === "upcoming"
       ? parseReleaseWindow(detailCell.text)
       : parseReleaseWindow(detailCell.text);
+  const isNetflix = organizations.some((organization) => organization.name.trim().toLowerCase() === "netflix");
+  const releasePattern =
+    timingCell.text.toLowerCase() === "binge" || (isNetflix && finaleWindow == null)
+      ? "bulk"
+      : section === "current" || isNetflix
+        ? "weekly"
+        : "unknown";
 
   return {
     id: `${section}-${rowNumber}-${slugify(displayTitle)}`,
@@ -410,7 +415,7 @@ function parseEntry(
   };
 }
 
-function parseSeed(html: string, sourceLabel: string): CanonicalSeed {
+export function parseSeed(html: string, sourceLabel: string): CanonicalSeed {
   const warnings: string[] = [];
   const pageTitle = stripTags(html.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "genretv");
   const updatedLabel = stripTags(html.match(/<strong>\s*(Updated[^<]+)<\/strong>/i)?.[1] ?? "") || null;

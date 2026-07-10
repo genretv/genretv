@@ -469,7 +469,10 @@ export function formatScheduleSeasonCount(
 
 export function formatScheduleStatus(section: ScheduleSection, endedReason: string | null, isFinal = false): string {
   if (section === "waiting" && isUnknownEndingReason(endedReason)) return sectionLabels.waiting;
-  if (section === "waiting" || section === "past") return endedReason || (isFinal ? "Final season" : "Unknown");
+  if (section === "past" && isFinal) {
+    return endedReason == null || endedReason.toLowerCase() === "final season" ? sectionLabels.past : endedReason;
+  }
+  if (section === "waiting" || section === "past") return endedReason || "Unknown";
   return sectionLabels[section];
 }
 
