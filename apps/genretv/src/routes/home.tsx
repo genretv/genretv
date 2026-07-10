@@ -24,6 +24,7 @@ import {
   defaultScheduleSortDirection,
   filterScheduleEntries,
   findImdbLink,
+  findOrganizationLink,
   formatEpisodeCount,
   formatScheduleSeasonCount,
   formatScheduleStatus,
@@ -163,7 +164,9 @@ function SectionTable({ entries, onSort, section, sort, sortDirection }: Section
                   <Table.Td>
                     <LanguageBadges languages={entry.languages} ownerId={entry.id} />
                   </Table.Td>
-                  <Table.Td>{entry.organizationText}</Table.Td>
+                  <Table.Td>
+                    <OrganizationLinks entry={entry} />
+                  </Table.Td>
                   <Table.Td>{entry.genreText}</Table.Td>
                 </Table.Tr>
                 {expanded && (
@@ -221,7 +224,13 @@ function SortableTableHeader({
 
 function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
   const imdbLink = findImdbLink(entry.showLinks);
-  const detailLinks = imdbLink == null ? entry.links : entry.links.filter((link) => link.url !== imdbLink.url);
+  const primaryLinkUrls = new Set(
+    entry.organizations
+      .map((organization) => findOrganizationLink(organization, entry.seasonLinks, entry.organizations.length)?.url)
+      .filter((url): url is string => url != null),
+  );
+  if (imdbLink != null) primaryLinkUrls.add(imdbLink.url);
+  const detailLinks = entry.links.filter((link) => !primaryLinkUrls.has(link.url));
   return (
     <Box py="xs">
       <Stack gap={8}>
@@ -262,6 +271,25 @@ function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
       </Stack>
     </Box>
   );
+}
+
+function OrganizationLinks({ entry }: { entry: ScheduleEntry }) {
+  if (entry.organizations.length === 0) return entry.organizationText;
+  return entry.organizations.map((organization, index) => {
+    const link = findOrganizationLink(organization, entry.seasonLinks, entry.organizations.length);
+    return (
+      <Fragment key={`${entry.id}-${organization}`}>
+        {index > 0 ? ", " : ""}
+        {link == null ? (
+          organization
+        ) : (
+          <Anchor href={link.url} target="_blank" rel="noopener noreferrer">
+            {organization}
+          </Anchor>
+        )}
+      </Fragment>
+    );
+  });
 }
 
 function LanguageBadges({ languages, ownerId }: { languages: readonly string[]; ownerId: string }) {

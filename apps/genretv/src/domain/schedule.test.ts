@@ -10,6 +10,7 @@ import {
   filterManagementShows,
   findManagementShow,
   findManagementSeason,
+  findOrganizationLink,
   filterScheduleEntries,
   formatEpisodeCount,
   formatKnownSeasonCount,
@@ -186,6 +187,19 @@ const seed: CanonicalRegistrySeed = {
 };
 
 describe("schedule read model", () => {
+  test("finds safe organization links without guessing across multiple organizations", () => {
+    const links = [
+      { label: "Apple", url: "https://tv.apple.com/show/1" },
+      { label: "Netflix", url: "javascript:alert(1)" },
+      { kind: "official", label: "Official page", url: "https://example.test/show/1" },
+    ];
+
+    expect(findOrganizationLink("Apple", links, 2)?.url).toBe("https://tv.apple.com/show/1");
+    expect(findOrganizationLink("Netflix", links, 2)).toBeNull();
+    expect(findOrganizationLink("Max", links, 2)).toBeNull();
+    expect(findOrganizationLink("Max", links, 1)?.url).toBe("https://tv.apple.com/show/1");
+  });
+
   test("builds display entries from the canonical registry seed", () => {
     const schedule = buildTestSchedule();
     const current = schedule.entries.find((entry) => entry.id === "current-a")!;

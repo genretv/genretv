@@ -3,10 +3,10 @@ import {
   defaultScheduleViewPreferences,
   filterScheduleEntries,
   findImdbLink,
+  findOrganizationLink,
   formatScheduleSeasonCount,
   formatScheduleStatus,
   type CanonicalSchedule,
-  type ExternalLinkSeed,
   type ScheduleEntry,
   type ScheduleSection,
 } from "../../domain/schedule";
@@ -73,7 +73,7 @@ function timingOrStatusCell(entry: ScheduleEntry): string {
 function organizationCell(entry: ScheduleEntry): string {
   const content = entry.organizations
     .map((organization) => {
-      const link = officialLinkFor(organization, entry.seasonLinks, entry.organizations.length);
+      const link = findOrganizationLink(organization, entry.seasonLinks, entry.organizations.length);
       return link == null ? escapeHtml(organization) : anchor(link.url, organization);
     })
     .join("/");
@@ -100,19 +100,6 @@ function finaleOrLatestRelease(entry: ScheduleEntry): string {
 
 function timingWithoutFinale(timing: string): string {
   return timing.split(/\s+·\s+finale\s+/i)[0] ?? timing;
-}
-
-function officialLinkFor(
-  organization: string,
-  links: readonly ExternalLinkSeed[],
-  organizationCount: number,
-): ExternalLinkSeed | null {
-  const matching = links.find(
-    (link) => safeHref(link.url) != null && link.label.trim().toLocaleLowerCase() === organization.toLocaleLowerCase(),
-  );
-  if (matching != null) return matching;
-  if (organizationCount !== 1) return null;
-  return links.find((link) => safeHref(link.url) != null && findImdbLink([link]) == null) ?? null;
 }
 
 function anchor(url: string, label: string): string {

@@ -484,6 +484,19 @@ export function findImdbLink(links: readonly ExternalLinkSeed[]): ExternalLinkSe
   );
 }
 
+export function findOrganizationLink(
+  organization: string,
+  links: readonly ExternalLinkSeed[],
+  organizationCount: number,
+): ExternalLinkSeed | null {
+  const matching = links.find(
+    (link) => isHttpLink(link.url) && link.label.trim().toLocaleLowerCase() === organization.toLocaleLowerCase(),
+  );
+  if (matching != null) return matching;
+  if (organizationCount !== 1) return null;
+  return links.find((link) => isHttpLink(link.url) && findImdbLink([link]) == null) ?? null;
+}
+
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
@@ -1227,6 +1240,15 @@ function mergeLinks(left: readonly ExternalLinkSeed[], right: readonly ExternalL
     byUrl.set(link.url, link);
   }
   return [...byUrl.values()];
+}
+
+function isHttpLink(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function joinNotes(notes: readonly (string | null)[]): string | null {
