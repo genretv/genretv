@@ -105,7 +105,7 @@ describe("canonical registry seed rows", () => {
       timing: "Summer 2027",
       releasePrecision: "release_season",
       dateConfidence: "estimated",
-      sortKey: "2027-07-15",
+      sortKey: "2027-08-31",
       episodeCount: null,
       notes: "source note",
     });
@@ -113,6 +113,36 @@ describe("canonical registry seed rows", () => {
       seasonNumber: 2,
       releaseKind: "season",
       timing: "2024",
+    });
+  });
+
+  test("does not assign a year or sort key to an unknown window", () => {
+    const rows = buildCanonicalRegistrySeedRows({
+      entries: [
+        {
+          ...seed.entries[1]!,
+          season: {
+            ...seed.entries[1]!.season,
+            finaleWindow: {
+              raw: "sometime after production",
+              precision: "unknown",
+              confidence: "estimated",
+              year: null,
+              month: null,
+              day: null,
+              releaseSeason: null,
+            },
+          },
+        },
+      ],
+    });
+
+    expect(rows.seasons[1]).toMatchObject({
+      sortKey: null,
+      finaleWindow: {
+        precision: "unknown",
+        year: null,
+      },
     });
   });
 

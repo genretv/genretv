@@ -30791,11 +30791,11 @@
         "releaseWindow": null,
         "finaleWindow": {
           "raw": "Jan.26. 2020",
-          "precision": "unknown",
+          "precision": "date",
           "confidence": "confirmed",
-          "year": null,
-          "month": null,
-          "day": null,
+          "year": 2020,
+          "month": 1,
+          "day": 26,
           "releaseSeason": null
         },
         "lifecycleMarkers": [],

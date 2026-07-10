@@ -6,7 +6,7 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
-    "test": "bun test src"
+    "test": "bun test src scripts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",

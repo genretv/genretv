@@ -796,12 +796,12 @@ const monthNumbers: Record<string, number> = {
   dec: 12,
   december: 12,
 };
-const releaseSeasonMidpoints: Record<string, { month: number; day: number }> = {
-  winter: { month: 2, day: 15 },
-  spring: { month: 4, day: 15 },
-  summer: { month: 7, day: 15 },
-  autumn: { month: 10, day: 15 },
-  fall: { month: 10, day: 15 },
+const releaseSeasonEndMonths: Record<string, number> = {
+  winter: 2,
+  spring: 5,
+  summer: 8,
+  autumn: 11,
+  fall: 11,
 };
 
 interface CalendarDay {
@@ -877,25 +877,20 @@ function resolveWindowDay(
   sourceReference: CalendarDay,
   notBefore: CalendarDay | null = null,
 ): CalendarDay | null {
-  const monthDay = windowMonthDay(window);
-  if (window == null || monthDay == null) return null;
-  if (window.year != null) return calendarDay(window.year, monthDay.month, monthDay.day);
+  if (window == null || windowReferenceMonth(window) == null) return null;
+  if (window.year != null) return calendarDayForWindow(window, window.year);
 
   if (notBefore != null) {
-    const sameYear = calendarDay(notBefore.year, monthDay.month, monthDay.day);
-    return sameYear.serial < notBefore.serial
-      ? calendarDay(notBefore.year + 1, monthDay.month, monthDay.day)
-      : sameYear;
+    const sameYear = calendarDayForWindow(window, notBefore.year);
+    return sameYear.serial < notBefore.serial ? calendarDayForWindow(window, notBefore.year + 1) : sameYear;
   }
 
   if (sourceSection === "upcoming") {
-    const sameYear = calendarDay(sourceReference.year, monthDay.month, monthDay.day);
-    return sameYear.serial < sourceReference.serial
-      ? calendarDay(sourceReference.year + 1, monthDay.month, monthDay.day)
-      : sameYear;
+    const sameYear = calendarDayForWindow(window, sourceReference.year);
+    return sameYear.serial < sourceReference.serial ? calendarDayForWindow(window, sourceReference.year + 1) : sameYear;
   }
 
-  return nearestCalendarDay(sourceReference, monthDay.month, monthDay.day);
+  return nearestCalendarDayForWindow(sourceReference, window);
 }
 
 function completedSectionFor(
@@ -905,17 +900,23 @@ function completedSectionFor(
   return lifecycleStatus === "open" && !isFinal ? "waiting" : "past";
 }
 
-function windowMonthDay(window: ReleaseWindowSeed | null): { month: number; day: number } | null {
-  if (window == null) return null;
-  if (window.month != null) return { month: window.month, day: window.day ?? 15 };
-  if (window.releaseSeason != null) return releaseSeasonMidpoints[window.releaseSeason] ?? null;
-  if (window.year != null) return { month: 7, day: 2 };
-  return null;
+function windowReferenceMonth(window: ReleaseWindowSeed): number | null {
+  if (window.precision === "unknown") return null;
+  if (window.month != null) return window.month;
+  if (window.releaseSeason != null) return releaseSeasonEndMonths[window.releaseSeason.toLowerCase()] ?? null;
+  return window.precision === "year" ? 12 : null;
 }
 
-function nearestCalendarDay(reference: CalendarDay, month: number, day: number): CalendarDay {
+function calendarDayForWindow(window: ReleaseWindowSeed, year: number): CalendarDay {
+  const month = windowReferenceMonth(window);
+  if (month == null) throw new Error(`Cannot create a calendar day for ${window.raw}`);
+  const day = window.day ?? lastDayOfMonth(year, month);
+  return calendarDay(year, month, day);
+}
+
+function nearestCalendarDayForWindow(reference: CalendarDay, window: ReleaseWindowSeed): CalendarDay {
   return [reference.year - 1, reference.year, reference.year + 1]
-    .map((year) => calendarDay(year, month, day))
+    .map((year) => calendarDayForWindow(window, year))
     .sort((left, right) => Math.abs(left.serial - reference.serial) - Math.abs(right.serial - reference.serial))[0]!;
 }
 
@@ -986,7 +987,12 @@ function compareEntryField(
   direction: ScheduleSortDirection,
 ): number {
   if (sort === "when") {
-    return compareNullableStringsInDirection(scheduleSortKey(left), scheduleSortKey(right), direction);
+    const exactBeforePeriod = compareContainedExactDates(left, right);
+    return (
+      exactBeforePeriod ||
+      compareNullableStringsInDirection(scheduleSortKey(left), scheduleSortKey(right), direction) ||
+      scheduleWindowPrecisionRank(left) - scheduleWindowPrecisionRank(right)
+    );
   }
   if (sort === "seasons") {
     const numericOrder = compareNullableNumbersInDirection(
@@ -1040,17 +1046,81 @@ function compareNullableNumbersInDirection(
   return applySortDirection(left - right, direction);
 }
 
-function scheduleSortKey(entry: Pick<ScheduleEntry, "releaseWindow" | "sortKey">): string | null {
+function scheduleSortKey(entry: Pick<ScheduleEntry, "finaleWindow" | "releaseWindow" | "sortKey">): string | null {
   if (entry.sortKey != null) return entry.sortKey;
-  const window = entry.releaseWindow;
-  if (window?.year == null) return null;
-  if (window.month != null && window.day != null) return dateKey(window.year, window.month, window.day);
-  if (window.month != null) return dateKey(window.year, window.month, 15);
-  if (window.releaseSeason != null) {
-    const midpoint = releaseSeasonMidpoints[window.releaseSeason.toLowerCase()];
-    if (midpoint != null) return dateKey(window.year, midpoint.month, midpoint.day);
+  const window = entry.releaseWindow ?? entry.finaleWindow;
+  if (window?.year == null || windowReferenceMonth(window) == null) return null;
+  const day = calendarDayForWindow(window, window.year);
+  return dateKey(day.year, day.month, day.day);
+}
+
+function compareContainedExactDates(left: ScheduleEntry, right: ScheduleEntry): number {
+  const leftWindow = scheduleOrderingWindow(left);
+  const rightWindow = scheduleOrderingWindow(right);
+  if (isExactWindow(leftWindow) && isBroadPeriodWindow(rightWindow) && periodContainsDate(rightWindow, leftWindow)) {
+    return -1;
   }
-  return dateKey(window.year, 7, 2);
+  if (isExactWindow(rightWindow) && isBroadPeriodWindow(leftWindow) && periodContainsDate(leftWindow, rightWindow)) {
+    return 1;
+  }
+  return 0;
+}
+
+function scheduleOrderingWindow(entry: ScheduleEntry): ReleaseWindowSeed | null {
+  return entry.releaseWindow ?? entry.finaleWindow;
+}
+
+function isExactWindow(window: ReleaseWindowSeed | null): window is ReleaseWindowSeed & {
+  day: number;
+  month: number;
+  year: number;
+} {
+  return window?.year != null && window.month != null && window.day != null;
+}
+
+function isBroadPeriodWindow(window: ReleaseWindowSeed | null): window is ReleaseWindowSeed & { year: number } {
+  return window?.year != null && !isExactWindow(window) && windowReferenceMonth(window) != null;
+}
+
+function periodContainsDate(
+  period: ReleaseWindowSeed & { year: number },
+  exact: ReleaseWindowSeed & {
+    day: number;
+    month: number;
+    year: number;
+  },
+): boolean {
+  const [start, end] = periodBounds(period);
+  const date = calendarDay(exact.year, exact.month, exact.day);
+  return date.serial >= start.serial && date.serial <= end.serial;
+}
+
+function periodBounds(window: ReleaseWindowSeed & { year: number }): [CalendarDay, CalendarDay] {
+  if (window.month != null) {
+    return [calendarDay(window.year, window.month, 1), calendarDayForWindow(window, window.year)];
+  }
+  if (window.releaseSeason != null) {
+    const season = window.releaseSeason.toLowerCase();
+    if (season === "winter") {
+      return [calendarDay(window.year - 1, 12, 1), calendarDayForWindow(window, window.year)];
+    }
+    const startMonth = season === "spring" ? 3 : season === "summer" ? 6 : 9;
+    return [calendarDay(window.year, startMonth, 1), calendarDayForWindow(window, window.year)];
+  }
+  return [calendarDay(window.year, 1, 1), calendarDay(window.year, 12, 31)];
+}
+
+function scheduleWindowPrecisionRank(entry: ScheduleEntry): number {
+  const precision = scheduleOrderingWindow(entry)?.precision ?? entry.releasePrecision;
+  if (precision === "date" || precision === "day" || precision === "month_day") return 0;
+  if (precision === "month") return 1;
+  if (precision === "release_season" || precision === "season") return 2;
+  if (precision === "year") return 3;
+  return 4;
+}
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
 function dateKey(year: number, month: number, day: number): string {

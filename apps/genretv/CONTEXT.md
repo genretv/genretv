@@ -49,7 +49,7 @@ A non-numbered Show release tracked beside ordinary Seasons, such as a special, 
 _Avoid_: Fake season, automatically inferred movie
 
 **Release Window**:
-A date, calendar season, year, or similarly imprecise period describing when a Season or Episode is expected to air or release. Imprecise Release Windows can be ordered by an approximate midpoint while preserving the original precision.
+A date, calendar season, year, or similarly imprecise period describing when a Season or Episode is expected to air or release. Imprecise Release Windows use the inclusive end of their period for ordering while preserving the original precision; exact dates within that period appear before the imprecise value.
 _Avoid_: Manual placement, sort date
 
 **Release Pattern**:

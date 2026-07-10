@@ -397,7 +397,7 @@ describe("schedule read model", () => {
     expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2027-01-03" }).entries[0]?.section).toBe("current");
   });
 
-  test("keeps estimated greenlit seasons upcoming after their sorting midpoint passes", () => {
+  test("keeps estimated greenlit seasons upcoming after their ordering period ends", () => {
     const rows: CanonicalRegistrySeed["rows"] = {
       shows: [{ ...seed.rows.shows[0]!, id: "estimated-show" }],
       seasons: [
@@ -569,8 +569,8 @@ describe("schedule read model", () => {
   test("orders Upcoming by When instead of imported source position", () => {
     const upcoming = buildTestSchedule().entries.find((entry) => entry.section === "upcoming")!;
     const entries = [
-      { ...upcoming, id: "autumn-2027", sortKey: "2027-10-15", timing: "Autumn 2027" },
-      { ...upcoming, id: "autumn-2028", sortKey: "2028-10-15", timing: "Autumn 2028" },
+      { ...upcoming, id: "autumn-2027", sortKey: "2027-11-30", timing: "Autumn 2027" },
+      { ...upcoming, id: "autumn-2028", sortKey: "2028-11-30", timing: "Autumn 2028" },
       { ...upcoming, id: "december-2026", sortKey: "2026-12-25", timing: "Dec. 25" },
     ];
 
@@ -601,6 +601,139 @@ describe("schedule read model", () => {
         sortDirection: "descending",
       }).map((entry) => entry.id),
     ).toEqual(["finished-2024", "finished-2022", "finished-unknown"]);
+  });
+
+  test("sorts imprecise periods at their inclusive end after covered exact dates", () => {
+    const upcoming = buildTestSchedule().entries.find((entry) => entry.section === "upcoming")!;
+    const entries = [
+      {
+        ...upcoming,
+        id: "year-2027",
+        title: "Broad year",
+        sortKey: null,
+        releasePrecision: "year",
+        releaseWindow: {
+          raw: "2027",
+          precision: "year",
+          confidence: "expected",
+          year: 2027,
+          month: null,
+          day: null,
+          releaseSeason: null,
+        },
+      },
+      {
+        ...upcoming,
+        id: "date-2027-12-30",
+        title: "Dated before year end",
+        sortKey: null,
+        releasePrecision: "day",
+        releaseWindow: {
+          raw: "2027-12-30",
+          precision: "day",
+          confidence: "confirmed",
+          year: 2027,
+          month: 12,
+          day: 30,
+          releaseSeason: null,
+        },
+      },
+      {
+        ...upcoming,
+        id: "date-2027-12-31",
+        title: "Dated on year end",
+        sortKey: null,
+        releasePrecision: "day",
+        releaseWindow: {
+          raw: "2027-12-31",
+          precision: "day",
+          confidence: "confirmed",
+          year: 2027,
+          month: 12,
+          day: 31,
+          releaseSeason: null,
+        },
+      },
+    ];
+
+    expect(
+      filterScheduleEntries(entries, {
+        ...defaultScheduleViewPreferences,
+        section: "upcoming",
+      }).map((entry) => entry.id),
+    ).toEqual(["date-2027-12-30", "date-2027-12-31", "year-2027"]);
+
+    expect(
+      filterScheduleEntries(
+        entries.map((entry) => ({ ...entry, section: "past" as const })),
+        {
+          ...defaultScheduleViewPreferences,
+          section: "past",
+          sortDirection: "descending",
+        },
+      ).map((entry) => entry.id),
+    ).toEqual(["date-2027-12-31", "date-2027-12-30", "year-2027"]);
+  });
+
+  test("uses the actual month end for imprecise months", () => {
+    const upcoming = buildTestSchedule().entries.find((entry) => entry.section === "upcoming")!;
+    const entries = [
+      {
+        ...upcoming,
+        id: "february-2028",
+        title: "Broad February",
+        sortKey: null,
+        releasePrecision: "month",
+        releaseWindow: {
+          raw: "February 2028",
+          precision: "month",
+          confidence: "expected",
+          year: 2028,
+          month: 2,
+          day: null,
+          releaseSeason: null,
+        },
+      },
+      {
+        ...upcoming,
+        id: "date-2028-02-29",
+        title: "Dated in February",
+        sortKey: null,
+        releasePrecision: "day",
+        releaseWindow: {
+          raw: "2028-02-29",
+          precision: "day",
+          confidence: "confirmed",
+          year: 2028,
+          month: 2,
+          day: 29,
+          releaseSeason: null,
+        },
+      },
+      {
+        ...upcoming,
+        id: "date-2028-03-01",
+        title: "Dated after February",
+        sortKey: null,
+        releasePrecision: "day",
+        releaseWindow: {
+          raw: "2028-03-01",
+          precision: "day",
+          confidence: "confirmed",
+          year: 2028,
+          month: 3,
+          day: 1,
+          releaseSeason: null,
+        },
+      },
+    ];
+
+    expect(
+      filterScheduleEntries(entries, {
+        ...defaultScheduleViewPreferences,
+        section: "upcoming",
+      }).map((entry) => entry.id),
+    ).toEqual(["date-2028-02-29", "february-2028", "date-2028-03-01"]);
   });
 
   test("sorts visible columns in either direction", () => {

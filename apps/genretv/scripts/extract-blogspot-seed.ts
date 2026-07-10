@@ -10,7 +10,7 @@ interface ParsedLink {
   url: string;
 }
 
-interface ReleaseWindowSeed {
+export interface ReleaseWindowSeed {
   raw: string;
   precision: ReleasePrecision;
   confidence: DateConfidence;
@@ -214,7 +214,7 @@ function classifySection(headerText: string): SectionKind | null {
   return null;
 }
 
-function parseReleaseWindow(rawValue: string): ReleaseWindowSeed | null {
+export function parseReleaseWindow(rawValue: string): ReleaseWindowSeed | null {
   const raw = rawValue.trim();
   if (!raw || raw === "?" || raw.toLowerCase() === "binge") return null;
 
@@ -252,7 +252,7 @@ function parseReleaseWindow(rawValue: string): ReleaseWindowSeed | null {
     };
   }
 
-  const monthMatch = normalized.match(/^([A-Za-z]+)\.?\s*(?:(\d{1,2}))?\s*(?:(\d{4}))?$/);
+  const monthMatch = normalized.match(/^([A-Za-z]+)\.?\s*(?:(\d{1,2})\.?)?\s*(?:(\d{4}))?$/);
   if (monthMatch) {
     const month = MONTHS[(monthMatch[1] ?? "").toLowerCase()];
     if (month != null) {
@@ -497,4 +497,4 @@ async function main() {
   }
 }
 
-await main();
+if (import.meta.main) await main();

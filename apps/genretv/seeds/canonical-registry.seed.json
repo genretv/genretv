@@ -17296,7 +17296,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2028-07-02",
+        "sortKey": "2028-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -17551,7 +17551,7 @@
           "releaseSeason": "spring"
         },
         "finaleWindow": null,
-        "sortKey": "2027-04-15",
+        "sortKey": "2027-05-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -17764,7 +17764,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -18194,7 +18194,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -18383,7 +18383,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [],
         "externalLinks": [],
@@ -18575,7 +18575,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -19025,14 +19025,14 @@
         "releaseWindow": null,
         "finaleWindow": {
           "raw": "Jan.26. 2020",
-          "precision": "unknown",
+          "precision": "date",
           "confidence": "confirmed",
-          "year": 2026,
-          "month": null,
-          "day": null,
+          "year": 2020,
+          "month": 1,
+          "day": 26,
           "releaseSeason": null
         },
-        "sortKey": "2026-07-02",
+        "sortKey": "2020-01-26",
         "episodeCount": null,
         "organizations": [
           {
@@ -20804,7 +20804,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-10-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -21644,7 +21644,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-15",
+        "sortKey": "2027-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -22384,7 +22384,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -22885,7 +22885,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -22965,7 +22965,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [],
         "externalLinks": [],
@@ -23541,7 +23541,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -24030,7 +24030,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -24506,7 +24506,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-15",
+        "sortKey": "2027-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -24841,7 +24841,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-03-15",
+        "sortKey": "2027-03-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -26097,7 +26097,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -26137,7 +26137,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2028-02-15",
+        "sortKey": "2028-02-29",
         "episodeCount": null,
         "organizations": [
           {
@@ -26612,7 +26612,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -26703,7 +26703,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -27132,7 +27132,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -27424,7 +27424,7 @@
           "releaseSeason": "spring"
         },
         "finaleWindow": null,
-        "sortKey": "2027-04-15",
+        "sortKey": "2027-05-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -27876,7 +27876,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2027-10-15",
+        "sortKey": "2027-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -27911,7 +27911,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2028-10-15",
+        "sortKey": "2028-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -28770,7 +28770,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -29290,7 +29290,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -29663,7 +29663,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -30010,7 +30010,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -30569,7 +30569,7 @@
           "releaseSeason": "spring"
         },
         "finaleWindow": null,
-        "sortKey": "2027-04-15",
+        "sortKey": "2027-05-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -30604,7 +30604,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -31409,7 +31409,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-10-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -31904,7 +31904,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -32587,7 +32587,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -33445,7 +33445,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -34654,7 +34654,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [],
         "externalLinks": [],
@@ -35090,7 +35090,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -35510,7 +35510,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -35810,7 +35810,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -36077,7 +36077,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -36248,7 +36248,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -36610,7 +36610,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -37763,7 +37763,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-10-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -38271,7 +38271,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -38409,7 +38409,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-15",
+        "sortKey": "2027-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -38500,7 +38500,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -38769,7 +38769,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -39007,7 +39007,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -39089,7 +39089,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -39979,7 +39979,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -40070,7 +40070,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -40742,7 +40742,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -40777,7 +40777,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -40817,7 +40817,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -40995,7 +40995,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -41962,7 +41962,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -42039,7 +42039,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -42079,7 +42079,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -42114,7 +42114,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -42755,7 +42755,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -44170,7 +44170,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -44893,7 +44893,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -46532,7 +46532,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -47361,7 +47361,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -47544,7 +47544,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -47864,7 +47864,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -48215,7 +48215,7 @@
           "releaseSeason": "spring"
         },
         "finaleWindow": null,
-        "sortKey": "2027-04-15",
+        "sortKey": "2027-05-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -48501,7 +48501,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -49226,7 +49226,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -49465,7 +49465,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -49735,7 +49735,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2028-07-15",
+        "sortKey": "2028-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -50093,7 +50093,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -50666,7 +50666,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -51479,7 +51479,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2028-07-02",
+        "sortKey": "2028-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -51791,7 +51791,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -52589,7 +52589,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -52790,7 +52790,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -53162,7 +53162,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -53197,7 +53197,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -53552,7 +53552,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -55178,7 +55178,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [],
         "externalLinks": [],
@@ -55403,7 +55403,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -55787,7 +55787,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -55883,7 +55883,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2028-07-15",
+        "sortKey": "2028-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -55965,7 +55965,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2028-07-02",
+        "sortKey": "2028-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -56061,7 +56061,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -56749,7 +56749,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -56866,7 +56866,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -58797,7 +58797,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -59235,7 +59235,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -59481,7 +59481,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -59516,7 +59516,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -60073,7 +60073,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -60289,7 +60289,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -60359,7 +60359,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -60850,7 +60850,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -61718,7 +61718,7 @@
           "releaseSeason": "winter"
         },
         "finaleWindow": null,
-        "sortKey": "2027-02-15",
+        "sortKey": "2027-02-28",
         "episodeCount": null,
         "organizations": [
           {
@@ -62536,7 +62536,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -62576,7 +62576,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -62637,7 +62637,7 @@
           "releaseSeason": "summer"
         },
         "finaleWindow": null,
-        "sortKey": "2026-07-15",
+        "sortKey": "2026-08-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -62796,7 +62796,7 @@
           "releaseSeason": "autumn"
         },
         "finaleWindow": null,
-        "sortKey": "2026-10-15",
+        "sortKey": "2026-11-30",
         "episodeCount": null,
         "organizations": [
           {
@@ -62934,7 +62934,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -64109,7 +64109,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {
@@ -64205,7 +64205,7 @@
           "releaseSeason": null
         },
         "finaleWindow": null,
-        "sortKey": "2027-07-02",
+        "sortKey": "2027-12-31",
         "episodeCount": null,
         "organizations": [
           {

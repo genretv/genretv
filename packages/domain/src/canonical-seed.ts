@@ -136,11 +136,11 @@ const countryAliases = new Map([
   ["KOREA", "KR"],
   ["SOUTH KOREA", "KR"],
 ]);
-const releaseSeasonMidpoints: Record<string, { month: number; day: number }> = {
-  winter: { month: 2, day: 15 },
-  spring: { month: 4, day: 15 },
-  summer: { month: 7, day: 15 },
-  autumn: { month: 10, day: 15 },
+const releaseSeasonEndMonths: Record<string, number> = {
+  winter: 2,
+  spring: 5,
+  summer: 8,
+  autumn: 11,
 };
 
 export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): CanonicalRegistrySeedRows {
@@ -536,10 +536,11 @@ function resolveWindowYear(
   sourceDate: { year: number; month: number; day: number },
 ): ReleaseWindowSeed | null {
   if (window == null || window.year != null) return window;
-  const referenceMonth = window.month ?? releaseSeasonMidpoints[window.releaseSeason ?? ""]?.month;
+  const referenceMonth = window.month ?? releaseSeasonEndMonths[window.releaseSeason ?? ""];
+  if (referenceMonth == null) return window;
   let year = sourceDate.year;
-  if (referenceMonth != null && section === "upcoming" && referenceMonth < sourceDate.month) year += 1;
-  if (referenceMonth != null && section === "past" && referenceMonth > sourceDate.month) year -= 1;
+  if (section === "upcoming" && referenceMonth < sourceDate.month) year += 1;
+  if (section === "past" && referenceMonth > sourceDate.month) year -= 1;
   return { ...window, year };
 }
 
@@ -654,14 +655,18 @@ function timingFor(entry: BlogspotSeedEntry): string {
 }
 
 function sortKeyFor(window: ReleaseWindowSeed | null): string | null {
-  if (window?.year == null) return null;
+  if (window?.year == null || window.precision === "unknown") return null;
   if (window.month != null && window.day != null) return dateKey(window.year, window.month, window.day);
-  if (window.month != null) return dateKey(window.year, window.month, 15);
+  if (window.month != null) return dateKey(window.year, window.month, lastDayOfMonth(window.year, window.month));
   if (window.releaseSeason != null) {
-    const midpoint = releaseSeasonMidpoints[window.releaseSeason];
-    if (midpoint != null) return dateKey(window.year, midpoint.month, midpoint.day);
+    const month = releaseSeasonEndMonths[window.releaseSeason];
+    if (month != null) return dateKey(window.year, month, lastDayOfMonth(window.year, month));
   }
-  return dateKey(window.year, 7, 2);
+  return window.precision === "year" ? dateKey(window.year, 12, 31) : null;
+}
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
 function compareSeasonRows(left: CanonicalSeasonSeedRow, right: CanonicalSeasonSeedRow): number {
