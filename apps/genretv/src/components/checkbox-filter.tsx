@@ -33,7 +33,13 @@ export function CheckboxFilter({ label, options, selected, onChange }: CheckboxF
             <Text fw={650} size="sm">
               {label}
             </Text>
-            <Button size="compact-xs" variant="subtle" disabled={selected.length === 0} onClick={() => onChange([])}>
+            <Button
+              className="checkbox-filter-clear"
+              size="compact-xs"
+              variant="default"
+              disabled={selected.length === 0}
+              onClick={() => onChange([])}
+            >
               Clear
             </Button>
           </Group>

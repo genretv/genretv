@@ -29,6 +29,14 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   await expect(avatar).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "House of the Dragon" })).toHaveCount(0);
 
+  await page.getByRole("button", { name: "Genre: 1" }).click();
+  const clearGenre = page.getByRole("button", { name: "Clear", exact: true });
+  await expect(clearGenre).toBeVisible();
+  await expect(clearGenre).toHaveCSS("color", "rgb(7, 91, 100)");
+  await clearGenre.click();
+  await expect(page.getByRole("button", { name: "Genre: All" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "House of the Dragon" })).toBeVisible();
+
   const waitingTab = page.getByRole("tab", { name: /Awaiting Renewal or Cancellation/ });
   await waitingTab.click();
   await expect(waitingTab).toHaveAttribute("aria-selected", "true");

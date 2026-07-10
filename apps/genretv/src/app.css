@@ -186,6 +186,18 @@ body {
   color: #102225;
 }
 
+.checkbox-filter-clear {
+  color: #075b64;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(7, 91, 100, 0.45);
+}
+
+.checkbox-filter-clear:hover {
+  color: #043f46;
+  background: rgba(218, 236, 228, 0.98);
+  border-color: #075b64;
+}
+
 .schedule-search {
   flex: 1 1 260px;
 }
