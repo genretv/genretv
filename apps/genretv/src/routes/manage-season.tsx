@@ -5,6 +5,7 @@ import {
   Anchor,
   Badge,
   Button,
+  Checkbox,
   Group,
   ScrollArea,
   Select,
@@ -69,7 +70,7 @@ export function ManageSeasonRoute() {
   const show = shows.find((candidate) => candidate.id === showId) ?? null;
   const result =
     seasonId === newSeasonId && show != null
-      ? { show, season: emptyManagementSeason() }
+      ? { show, season: emptyManagementSeason(show) }
       : findManagementSeason(shows, showId, seasonId);
 
   if (result == null) {
@@ -120,7 +121,7 @@ function EditableSeason({
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
   const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_show", "personal_season");
-  const status = formatScheduleStatus(season.scheduleSection, season.endedReason);
+  const status = formatScheduleStatus(season.scheduleSection, show.endedReason, season.isFinal);
   const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
   const personalSeasons = useLiveDrizzleRows(
     (sync) =>
@@ -131,9 +132,12 @@ function EditableSeason({
           canonicalShowId: personalSeason.canonicalShowId,
           canonicalSeasonId: personalSeason.canonicalSeasonId,
           section: personalSeason.section,
+          seasonNumber: personalSeason.seasonNumber,
           seasonLabel: personalSeason.seasonLabel,
+          title: personalSeason.title,
+          releaseKind: personalSeason.releaseKind,
+          isFinal: personalSeason.isFinal,
           timing: personalSeason.timing,
-          endedReason: personalSeason.endedReason,
           releasePattern: personalSeason.releasePattern,
           releasePrecision: personalSeason.releasePrecision,
           dateConfidence: personalSeason.dateConfidence,
@@ -237,6 +241,7 @@ function EditableSeason({
     initialDraft,
   );
   const draftEpisodeCount = parseEpisodeCountDraft(draft.episodeCount);
+  const draftSeasonNumber = parseSeasonNumberDraft(draft.seasonNumber);
   const draftLinks = externalLinkTextToRows(draft.linksText);
   const draftReleaseWindow = releaseWindowDraftToWindow(
     draft.releaseWindowText,
@@ -249,6 +254,8 @@ function EditableSeason({
     draft.dateConfidence,
   );
   const episodeCountValid = draft.episodeCount.trim() === "" || draftEpisodeCount != null;
+  const seasonNumberValid =
+    draft.releaseKind !== "season" || (draft.seasonNumber.trim() !== "" && draftSeasonNumber != null);
   const emptyEpisodeText =
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
   const canSaveOverlay =
@@ -258,6 +265,7 @@ function EditableSeason({
     !personalShows.loading &&
     dirty &&
     episodeCountValid &&
+    seasonNumberValid &&
     !savingOverlay;
   const canSubmitProposal =
     canEditDraft &&
@@ -265,6 +273,7 @@ function EditableSeason({
     !personalSeasons.loading &&
     !personalShows.loading &&
     episodeCountValid &&
+    seasonNumberValid &&
     !proposalSaving;
   const canAddEpisode = canEditDraft && season.id !== newSeasonId;
   const canHideCanonicalSeason =
@@ -299,9 +308,12 @@ function EditableSeason({
     try {
       const patch = {
         section: draft.section,
-        seasonLabel: draft.seasonLabel.trim() || season.seasonLabel,
+        seasonNumber: draft.releaseKind === "season" ? draftSeasonNumber : null,
+        seasonLabel: nullableText(draft.seasonLabel),
+        title: nullableText(draft.title),
+        releaseKind: draft.releaseKind,
+        isFinal: draft.isFinal,
         timing: draft.timing.trim(),
-        endedReason: draft.endedReason.trim(),
         releasePattern: nullableText(draft.releasePattern),
         releasePrecision: draft.releasePrecision,
         dateConfidence: draft.dateConfidence,
@@ -344,7 +356,11 @@ function EditableSeason({
 
   const sendCanonicalProposal = async () => {
     const proposalId = crypto.randomUUID();
-    const title = `${show.title} ${draft.seasonLabel.trim() || season.seasonLabel}`.trim();
+    const releaseLabel =
+      draft.seasonLabel.trim() ||
+      draft.title.trim() ||
+      (draftSeasonNumber == null ? draft.releaseKind : `S${draftSeasonNumber}`);
+    const title = `${show.title} ${releaseLabel}`.trim();
     const isPersonalOnlySeason = personalRow != null && personalRow.canonicalSeasonId == null;
     const isPersonalOnlyShow = personalShowRow != null && personalShowRow.canonicalShowId == null;
     setProposalSaving(true);
@@ -368,9 +384,12 @@ function EditableSeason({
             kind: "season",
             showTitle: show.title,
             section: draft.section,
-            seasonLabel: draft.seasonLabel.trim() || season.seasonLabel,
+            seasonNumber: draft.releaseKind === "season" ? draftSeasonNumber : null,
+            seasonLabel: nullableText(draft.seasonLabel),
+            title: nullableText(draft.title),
+            releaseKind: draft.releaseKind,
+            isFinal: draft.isFinal,
             timing: draft.timing.trim(),
-            endedReason: draft.endedReason.trim(),
             releasePattern: nullableText(draft.releasePattern),
             releasePrecision: draft.releasePrecision,
             dateConfidence: draft.dateConfidence,
@@ -557,13 +576,50 @@ function EditableSeason({
       <Stack gap="lg">
         <ManagementEditorSection title="Season identity" description="How this row appears in the schedule.">
           <SimpleGrid cols={{ base: 1, sm: 3 }}>
+            <Select
+              label="Release kind"
+              value={draft.releaseKind}
+              disabled={!canEditDraft}
+              data={[
+                { value: "season", label: "Season" },
+                { value: "special", label: "Special" },
+                { value: "movie", label: "Movie" },
+                { value: "pilot", label: "Pilot" },
+                { value: "other", label: "Other" },
+              ]}
+              onChange={(value) =>
+                setDraft((current) => ({
+                  ...current,
+                  releaseKind: (value ?? current.releaseKind) as ManagementSeasonDraft["releaseKind"],
+                }))
+              }
+            />
             <TextInput
-              label="Season"
+              label="Season number"
+              value={draft.seasonNumber}
+              disabled={!canEditDraft || draft.releaseKind !== "season"}
+              error={!seasonNumberValid ? "Use a positive whole number" : null}
+              onChange={(event) => {
+                const seasonNumber = event.currentTarget.value;
+                setDraft((current) => ({ ...current, seasonNumber }));
+              }}
+            />
+            <TextInput
+              label="Custom label"
               value={draft.seasonLabel}
               disabled={!canEditDraft}
               onChange={(event) => {
                 const seasonLabel = event.currentTarget.value;
                 setDraft((current) => ({ ...current, seasonLabel }));
+              }}
+            />
+            <TextInput
+              label="Release title"
+              value={draft.title}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const title = event.currentTarget.value;
+                setDraft((current) => ({ ...current, title }));
               }}
             />
             <Select
@@ -592,6 +648,16 @@ function EditableSeason({
                 setDraft((current) => ({ ...current, episodeCount }));
               }}
             />
+            <Checkbox
+              label="Final release"
+              checked={draft.isFinal}
+              disabled={!canEditDraft}
+              onChange={(event) => {
+                const isFinal = event.currentTarget.checked;
+                setDraft((current) => ({ ...current, isFinal }));
+              }}
+              mt="xl"
+            />
           </SimpleGrid>
           <Group gap={4}>
             {season.languages.map((language) => (
@@ -608,7 +674,7 @@ function EditableSeason({
         </ManagementEditorSection>
 
         <ManagementEditorSection title="Timing" description="Human schedule text plus structured release metadata.">
-          <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <TextInput
               label="When"
               value={draft.timing}
@@ -625,15 +691,6 @@ function EditableSeason({
               onChange={(event) => {
                 const releasePattern = event.currentTarget.value;
                 setDraft((current) => ({ ...current, releasePattern }));
-              }}
-            />
-            <TextInput
-              label="Finished reason"
-              value={draft.endedReason}
-              disabled={!canEditDraft}
-              onChange={(event) => {
-                const endedReason = event.currentTarget.value;
-                setDraft((current) => ({ ...current, endedReason }));
               }}
             />
           </SimpleGrid>
@@ -874,25 +931,37 @@ function EditableSeason({
 
 function seasonDraftFromPersonalRow(row: {
   dateConfidence: string;
-  endedReason: string;
   episodeCount: number | null;
   notes: string | null;
   organizations: unknown;
   externalLinks: unknown;
   finaleWindow: unknown;
   releasePattern: string | null;
+  releaseKind: string;
   releasePrecision: string;
   releaseWindow: unknown;
-  seasonLabel: string;
+  seasonLabel: string | null;
+  seasonNumber: number | null;
+  title: string | null;
+  isFinal: boolean;
   section: string;
   sortKey: string | null;
   timing: string;
 }): ManagementSeasonDraft {
   return {
     section: scheduleSection(row.section),
-    seasonLabel: row.seasonLabel,
+    seasonNumber: row.seasonNumber == null ? "" : String(row.seasonNumber),
+    seasonLabel: row.seasonLabel ?? "",
+    title: row.title ?? "",
+    releaseKind:
+      row.releaseKind === "special" ||
+      row.releaseKind === "movie" ||
+      row.releaseKind === "pilot" ||
+      row.releaseKind === "other"
+        ? row.releaseKind
+        : "season",
+    isFinal: row.isFinal,
     timing: row.timing,
-    endedReason: row.endedReason,
     releasePattern: row.releasePattern ?? "",
     releaseWindowText: releaseWindowText(row.releaseWindow),
     finaleWindowText: releaseWindowText(row.finaleWindow),
@@ -906,14 +975,19 @@ function seasonDraftFromPersonalRow(row: {
   };
 }
 
-function emptyManagementSeason(): ManagementSeason {
+function emptyManagementSeason(show: ManagementShow): ManagementSeason {
+  const nextSeasonNumber = show.seasons.reduce((maximum, season) => Math.max(maximum, season.seasonNumber ?? 0), 0) + 1;
   return {
     id: newSeasonId,
     section: "upcoming",
     scheduleSection: "upcoming",
-    seasonLabel: "S?",
+    seasonNumber: nextSeasonNumber,
+    seasonLabel: `S${nextSeasonNumber}`,
+    customSeasonLabel: null,
+    title: null,
+    releaseKind: "season",
+    isFinal: false,
     timing: "",
-    endedReason: "",
     releasePattern: null,
     releasePrecision: "unknown",
     dateConfidence: "unknown",
@@ -931,6 +1005,12 @@ function emptyManagementSeason(): ManagementSeason {
     links: [],
     episodes: [],
   };
+}
+
+function parseSeasonNumberDraft(value: string): number | null {
+  if (!/^\d+$/.test(value.trim())) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function scheduleSection(value: string): ManagementSeasonDraft["section"] {

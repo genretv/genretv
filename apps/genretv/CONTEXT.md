@@ -5,7 +5,7 @@ genretv tracks genre television schedules as editable lists. The public site pre
 ## Language
 
 **Show**:
-A television series or one-off title tracked by genretv. Shows are the primary unit for management, own their seasons and episodes, and have a display title plus optional original title. A Show can exist without Seasons in the Management View.
+A television series or one-off title tracked by genretv. Shows are the primary unit for management, own one or more Seasons, and have a display title plus optional original title.
 _Avoid_: Series entry, program, title row
 
 **Show Alias**:
@@ -17,12 +17,28 @@ A non-automatic warning that a Show may already exist, based on signals such as 
 _Avoid_: Auto-merge, title match
 
 **Season**:
-A numbered, titled, special, pilot-only, movie-like, or otherwise release-oriented part of a Show. Seasons carry schedule information such as premiere, finale, hiatus, renewal, and cancellation details; season titles are optional.
+A numbered, titled, special, pilot-only, movie-like, or otherwise release-oriented part of a Show. Every known numbered Season is represented even when most of its metadata is unknown; Seasons carry release information but Show termination belongs to the Show.
 _Avoid_: Row, season count
 
+**Season Number**:
+An optional positive ordinal identifying an ordinary numbered Season within its Show. Extra Releases do not have a Season Number.
+_Avoid_: Parsed label, row position
+
 **Season Label**:
-A structured label describing how a Season should be displayed, such as numbered, special, miniseries, pilot, movie, or unknown.
-_Avoid_: Season number zero, null season number
+An optional durable display label for a Season when its number or Release Kind is not the best reader-facing name.
+_Avoid_: Season number, temporary label
+
+**Season Title**:
+An optional title belonging to a Season, separate from its Season Number and Season Label.
+_Avoid_: Show title, Episode title
+
+**Release Kind**:
+The kind of Season row: numbered season, special, movie, pilot, or other. Release Kind and Season Number provide identity; Season Label controls optional display wording.
+_Avoid_: Schedule section, genre
+
+**Final Season**:
+A Season announced as the Show's final Season. It can be Upcoming or Now Showing and makes the Show Finished only after that Season concludes.
+_Avoid_: Ended Season, cancelled Season
 
 **Official Season Count**:
 The number of ordinary numbered seasons known for a Show. Extra releases such as specials, movies, pilots, or one-off follow-ups do not increase the Official Season Count, but can be displayed alongside it.
@@ -105,12 +121,16 @@ A recorded current, upcoming, or past classification inherited from an import or
 _Avoid_: Effective section, fixed display section
 
 **Awaiting Renewal or Cancellation**:
-The Schedule Section for a Season whose known release has concluded while its Show does not have a terminal Lifecycle Status. It separates no-longer-airing Shows from Shows known to be finished or cancelled.
+The Schedule Section represented by a Show's latest concluded Season when the Show remains open and has no current or future Season. It separates unresolved Shows from Shows known to be finished or cancelled.
 _Avoid_: Finished, now showing
 
 **Lifecycle Status**:
-A structured status describing a Show or Season's broader production state, such as ongoing, renewed, final season, ended, cancelled, completed, or unknown. Show-level status describes the overall series; Season-level status describes that specific release. Lifecycle Status is distinct from Schedule Section.
+A Show-level status describing whether the Show is open, ended, or cancelled. Renewal is represented by future Season rows, while a Final Season is marked on that Season; Lifecycle Status is distinct from Schedule Section.
 _Avoid_: Schedule section, status note
+
+**Historical Season**:
+A known Season retained in a List but omitted from the Schedule View because a later Season represents the Show's current schedule state.
+_Avoid_: Finished Show, deleted Season
 
 **Current Grace Period**:
 The period after a bulk Season release during which it still appears current in the Schedule View. Streamer season dumps use this to approximate the existing maintainer practice of leaving recently released seasons in the current section for a while.
@@ -149,7 +169,7 @@ A List Overlay change that removes an inherited Show, Season, or Episode from a 
 _Avoid_: Delete, remove upstream
 
 **Season Copy**:
-A Season-level import from a public list into a Personal List. It brings along the parent Show metadata and any known Episode records, then becomes editable through the receiving user's List Overlay.
+A Season-level import from a public list into a Personal List. It brings along the parent Show, prerequisite known Seasons needed for a coherent history, and their known Episode records, then becomes editable through the receiving user's List Overlay.
 _Avoid_: Row copy, clone
 
 **Linked Import**:
@@ -161,7 +181,7 @@ An import from a public list that becomes independent after copying. It can reme
 _Avoid_: Full clone, duplicate
 
 **Schedule View**:
-The public-facing way of reading a list, organized around current, upcoming, and finished seasons. It resembles the existing Blogspot page and is optimized for quickly seeing what is airing or coming soon; it renders Seasons with parent Show information rather than bare Show records.
+The public-facing projection of schedule-relevant Seasons, organized around now showing, upcoming, awaiting renewal or cancellation, and finished. Historical Seasons remain in the List and Management View but do not appear as schedule rows.
 _Avoid_: Normal view, front page table
 
 **Management View**:

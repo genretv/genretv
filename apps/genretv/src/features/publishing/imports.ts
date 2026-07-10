@@ -18,6 +18,8 @@ export interface PublishedShowRow {
   genreTags: unknown;
   id: string;
   languages: unknown;
+  lifecycleStatus: string;
+  endedReason: string | null;
   notes: string | null;
   originalTitle: string | null;
   publishedListId: string;
@@ -25,7 +27,6 @@ export interface PublishedShowRow {
 }
 
 export interface PublishedSeasonRow {
-  endedReason: string;
   episodeCount: number | null;
   id: string;
   notes: string | null;
@@ -35,10 +36,14 @@ export interface PublishedSeasonRow {
   dateConfidence: string;
   externalLinks: unknown;
   finaleWindow: unknown;
+  isFinal: boolean;
+  releaseKind: string;
   releasePattern: string | null;
   releasePrecision: string;
   releaseWindow: unknown;
-  seasonLabel: string;
+  seasonLabel: string | null;
+  seasonNumber: number | null;
+  title: string | null;
   section: string;
   snapshotVersion: number;
   sortKey: string | null;
@@ -88,7 +93,8 @@ export interface PublishedListSummary {
 export interface PublishedSeasonSummary {
   countries: string[];
   displayTitle: string;
-  endedReason: string;
+  lifecycleStatus: string;
+  endedReason: string | null;
   episodeCount: number | null;
   episodes: PublishedEpisodeSummary[];
   externalLinks: ExternalLinkSeed[];
@@ -107,9 +113,14 @@ export interface PublishedSeasonSummary {
   dateConfidence: string;
   finaleWindow: ReleaseWindowSeed | null;
   releasePattern: string | null;
+  releaseKind: string;
   releasePrecision: string;
   releaseWindow: ReleaseWindowSeed | null;
   seasonLabel: string;
+  customSeasonLabel: string | null;
+  seasonNumber: number | null;
+  title: string | null;
+  isFinal: boolean;
   seasonExternalLinks: ExternalLinkSeed[];
   section: string;
   showNotes: string | null;
@@ -139,9 +150,7 @@ export function buildPublishedListSummaries(
 ): PublishedListSummary[] {
   const importsBySeason = new Map(
     imports.flatMap((row) =>
-      row.sourcePublishedSeasonId == null
-        ? []
-        : [[row.sourcePublishedSeasonId, { id: row.id, mode: row.importMode }]],
+      row.sourcePublishedSeasonId == null ? [] : [[row.sourcePublishedSeasonId, { id: row.id, mode: row.importMode }]],
     ),
   );
   const showsByList = groupBy(shows, (show) => show.publishedListId);
@@ -189,10 +198,16 @@ export function buildPublishedListSummaries(
                 externalLinks: externalLinks(show.externalLinks),
                 notes: season.notes,
                 showNotes: show.notes,
-                seasonLabel: season.seasonLabel,
+                lifecycleStatus: show.lifecycleStatus,
+                endedReason: show.endedReason,
+                seasonLabel: season.seasonLabel ?? season.title ?? releaseLabel(season),
+                customSeasonLabel: season.seasonLabel,
+                seasonNumber: season.seasonNumber,
+                title: season.title,
+                releaseKind: season.releaseKind,
+                isFinal: season.isFinal,
                 section: season.section,
                 timing: season.timing,
-                endedReason: season.endedReason,
                 releasePattern: season.releasePattern,
                 releasePrecision: season.releasePrecision,
                 dateConfidence: season.dateConfidence,
@@ -218,6 +233,11 @@ export function buildPublishedListSummaries(
       };
     })
     .sort((left, right) => left.title.localeCompare(right.title));
+}
+
+function releaseLabel(season: Pick<PublishedSeasonRow, "releaseKind" | "seasonNumber">): string {
+  if (season.releaseKind === "season" && season.seasonNumber != null) return `S${season.seasonNumber}`;
+  return season.releaseKind.charAt(0).toLocaleUpperCase() + season.releaseKind.slice(1);
 }
 
 function groupBy<T>(rows: readonly T[], keyFor: (row: T) => string): Map<string, T[]> {

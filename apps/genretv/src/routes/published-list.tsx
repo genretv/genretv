@@ -78,7 +78,7 @@ export function PublishedListRoute() {
           <PublishedListRowsTable
             canImport={session != null}
             list={list}
-            onImportSeason={(season, importMode) => void importSeason(season, importMode)}
+            onImportSeason={(season, importMode) => void importSeason(season, importMode, list.seasons)}
             onRemoveLinkedImport={(season) => void removeLinkedImport(season)}
             savingKey={savingKey}
           />

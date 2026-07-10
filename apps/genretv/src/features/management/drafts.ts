@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { ManagementSeason, ManagementShow, ScheduleEpisode, SourceScheduleSection } from "../../domain/schedule";
+import type {
+  ManagementSeason,
+  ManagementShow,
+  ReleaseKind,
+  ScheduleEpisode,
+  ShowLifecycleStatus,
+  SourceScheduleSection,
+} from "../../domain/schedule";
 
 export interface ManagementShowDraft {
   title: string;
   originalTitle: string;
+  lifecycleStatus: ShowLifecycleStatus;
+  endedReason: string;
   languagesText: string;
   countriesText: string;
   genresText: string;
@@ -14,9 +23,12 @@ export interface ManagementShowDraft {
 
 export interface ManagementSeasonDraft {
   section: SourceScheduleSection;
+  seasonNumber: string;
   seasonLabel: string;
+  title: string;
+  releaseKind: ReleaseKind;
+  isFinal: boolean;
   timing: string;
-  endedReason: string;
   releasePattern: string;
   releaseWindowText: string;
   finaleWindowText: string;
@@ -44,6 +56,8 @@ export function showDraftFromShow(show: ManagementShow): ManagementShowDraft {
   return {
     title: show.title,
     originalTitle: show.originalTitle ?? "",
+    lifecycleStatus: show.lifecycleStatus,
+    endedReason: show.endedReason ?? "",
     languagesText: orderedListToText(show.languages),
     countriesText: orderedListToText(show.countries),
     genresText: orderedListToText(show.genres),
@@ -55,9 +69,12 @@ export function showDraftFromShow(show: ManagementShow): ManagementShowDraft {
 export function seasonDraftFromSeason(season: ManagementSeason): ManagementSeasonDraft {
   return {
     section: season.section,
-    seasonLabel: season.seasonLabel,
+    seasonNumber: season.seasonNumber == null ? "" : String(season.seasonNumber),
+    seasonLabel: season.customSeasonLabel ?? "",
+    title: season.title ?? "",
+    releaseKind: season.releaseKind,
+    isFinal: season.isFinal,
     timing: season.timing,
-    endedReason: season.endedReason,
     releasePattern: season.releasePattern ?? "",
     releaseWindowText: releaseWindowText(season.releaseWindow),
     finaleWindowText: releaseWindowText(season.finaleWindow),

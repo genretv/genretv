@@ -91,7 +91,9 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
                   </Table.Td>
                   <Table.Td>{formatScheduleSeasonCount(entry)}</Table.Td>
                   <Table.Td>{entry.timing}</Table.Td>
-                  {showStopReason && <Table.Td>{formatScheduleStatus(entry.section, entry.endedReason)}</Table.Td>}
+                  {showStopReason && (
+                    <Table.Td>{formatScheduleStatus(entry.section, entry.endedReason, entry.isFinal)}</Table.Td>
+                  )}
                   <Table.Td>
                     <LanguageBadges languages={entry.languages} ownerId={entry.id} />
                   </Table.Td>

@@ -41,6 +41,8 @@ export interface PublishedListDraft {
 export interface PublishedShowDraft {
   canonicalShowId: null;
   displayTitle: string;
+  lifecycleStatus: string;
+  endedReason: string | null;
   externalLinks: ExternalLinkSeed[];
   genreTags: string[];
   id: string;
@@ -57,7 +59,6 @@ export interface PublishedShowDraft {
 export interface PublishedSeasonDraft {
   canonicalSeasonId: null;
   dateConfidence: string;
-  endedReason: string;
   episodeCount: number | null;
   externalLinks: ExternalLinkSeed[];
   finaleWindow: ReleaseWindowSeed | null;
@@ -67,10 +68,14 @@ export interface PublishedSeasonDraft {
   publicationStatus: PublishedSnapshotStatus;
   publishedListId: string;
   publishedShowId: string;
+  releaseKind: string;
   releasePattern: string | null;
   releasePrecision: string;
   releaseWindow: ReleaseWindowSeed | null;
-  seasonLabel: string;
+  seasonLabel: string | null;
+  seasonNumber: number | null;
+  title: string | null;
+  isFinal: boolean;
   section: string;
   snapshotVersion: number;
   sortKey: string | null;
@@ -107,7 +112,7 @@ export function buildPublishedSnapshotPlan(
   const episodes: PublishedEpisodeDraft[] = [];
   const publicationStatus = options.publicationStatus ?? "published";
 
-  for (const entry of schedule.entries) {
+  for (const entry of schedule.allEntries) {
     const publishedShowId = showIds.get(entry.showId) ?? newId();
     if (!showIds.has(entry.showId)) {
       showIds.set(entry.showId, publishedShowId);
@@ -163,13 +168,16 @@ export function normalizePublishedSlug(value: string): string {
 
 export function filteredPublishedSnapshotSchedule(schedule: CanonicalSchedule, query: string): CanonicalSchedule {
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  const entries =
+  const allEntries =
     normalizedQuery === ""
-      ? schedule.entries
-      : schedule.entries.filter((entry) => publishedSnapshotEntryMatches(entry, normalizedQuery));
+      ? schedule.allEntries
+      : schedule.allEntries.filter((entry) => publishedSnapshotEntryMatches(entry, normalizedQuery));
+  const visibleIds = new Set(allEntries.map((entry) => entry.id));
+  const entries = schedule.entries.filter((entry) => visibleIds.has(entry.id));
   return {
     ...schedule,
     entries,
+    allEntries,
     counts: countBySection(entries),
   };
 }
@@ -189,6 +197,8 @@ function showDraft(
     canonicalShowId: null,
     displayTitle: entry.title,
     originalTitle: entry.originalTitle,
+    lifecycleStatus: entry.lifecycleStatus,
+    endedReason: entry.endedReason,
     languages: entry.languages,
     countries: entry.countries,
     genreTags: entry.genres,
@@ -213,9 +223,12 @@ function seasonDraft(
     sourcePersonalSeasonId: null,
     canonicalSeasonId: null,
     section: entry.sourceSection,
-    seasonLabel: entry.seasonLabel,
+    seasonNumber: entry.seasonNumber,
+    seasonLabel: entry.customSeasonLabel,
+    title: entry.releaseTitle,
+    releaseKind: entry.releaseKind,
+    isFinal: entry.isFinal,
     timing: entry.timing,
-    endedReason: entry.endedReason,
     releasePattern: entry.releasePattern,
     releasePrecision: entry.releasePrecision,
     dateConfidence: entry.dateConfidence,

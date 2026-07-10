@@ -39,6 +39,8 @@ const seed: CanonicalRegistrySeed = {
         id: "show-a",
         displayTitle: "A Show",
         originalTitle: null,
+        lifecycleStatus: "open",
+        endedReason: null,
         languages: ["da"],
         countries: [],
         genreTags: ["Fantasy"],
@@ -49,6 +51,8 @@ const seed: CanonicalRegistrySeed = {
         id: "show-b",
         displayTitle: "B Show",
         originalTitle: null,
+        lifecycleStatus: "open",
+        endedReason: null,
         languages: [],
         countries: [],
         genreTags: ["Sci-Fi"],
@@ -59,6 +63,8 @@ const seed: CanonicalRegistrySeed = {
         id: "show-c",
         displayTitle: "C Show",
         originalTitle: null,
+        lifecycleStatus: "cancelled",
+        endedReason: "Canceled",
         languages: ["en", "da"],
         countries: [],
         genreTags: ["Supernatural"],
@@ -71,9 +77,12 @@ const seed: CanonicalRegistrySeed = {
         id: "current-a",
         showId: "show-a",
         section: "current",
+        seasonNumber: 2,
         seasonLabel: "S2",
+        title: null,
+        releaseKind: "season",
+        isFinal: false,
         timing: "Friday",
-        endedReason: "Unknown",
         releasePattern: "weekly",
         releasePrecision: "unknown",
         dateConfidence: "unknown",
@@ -90,9 +99,12 @@ const seed: CanonicalRegistrySeed = {
         id: "upcoming-b",
         showId: "show-b",
         section: "upcoming",
+        seasonNumber: 1,
         seasonLabel: "S1?",
+        title: null,
+        releaseKind: "season",
+        isFinal: false,
         timing: "Spring",
-        endedReason: "Unknown",
         releasePattern: "weekly",
         releasePrecision: "season",
         dateConfidence: "expected",
@@ -117,9 +129,12 @@ const seed: CanonicalRegistrySeed = {
         id: "past-c",
         showId: "show-c",
         section: "past",
+        seasonNumber: 6,
         seasonLabel: "S6",
+        title: null,
+        releaseKind: "season",
+        isFinal: false,
         timing: "2024",
-        endedReason: "Canceled",
         releasePattern: "weekly",
         releasePrecision: "unknown",
         dateConfidence: "unknown",
@@ -169,18 +184,21 @@ const seed: CanonicalRegistrySeed = {
 describe("schedule read model", () => {
   test("builds display entries from the canonical registry seed", () => {
     const schedule = buildTestSchedule();
-    expect(schedule.entries[0]?.title).toBe("A Show");
-    expect(schedule.entries[0]?.originalTitle).toBeNull();
-    expect(schedule.entries[0]?.seasonLabel).toBe("S2");
-    expect(schedule.entries[1]?.languages).toEqual(["en"]);
-    expect(schedule.entries[1]?.episodeCount).toBe(2);
-    expect(schedule.entries[1]?.episodes.map((episode) => episode.episodeLabel)).toEqual(["E1", "E2"]);
-    expect(schedule.entries[1]?.episodes[0]).toMatchObject({
+    const current = schedule.entries.find((entry) => entry.id === "current-a")!;
+    const upcoming = schedule.entries.find((entry) => entry.id === "upcoming-b")!;
+    const finished = schedule.entries.find((entry) => entry.id === "past-c")!;
+    expect(current.title).toBe("A Show");
+    expect(current.originalTitle).toBeNull();
+    expect(current.seasonLabel).toBe("S2");
+    expect(upcoming.languages).toEqual(["en"]);
+    expect(upcoming.episodeCount).toBe(2);
+    expect(upcoming.episodes.map((episode) => episode.episodeLabel)).toEqual(["E1", "E2"]);
+    expect(upcoming.episodes[0]).toMatchObject({
       releaseDate: "Mar.1",
       notes: "First episode",
     });
-    expect(schedule.entries[2]?.endedReason).toBe("Canceled");
-    expect(schedule.entries[2]?.endingKind).toBe("canceled");
+    expect(finished.endedReason).toBe("Canceled");
+    expect(finished.endingKind).toBe("canceled");
   });
 
   test("builds display entries from canonical registry rows", () => {
@@ -217,7 +235,7 @@ describe("schedule read model", () => {
           id: "finished-final-season",
           showId: "dynamic-show",
           section: "current",
-          endedReason: "Final season",
+          isFinal: true,
           finaleWindow: releaseWindow("Jun.28", 6, 28),
         },
         {
@@ -261,18 +279,15 @@ describe("schedule read model", () => {
     );
 
     expect(schedule.entries.map(({ id, section }) => ({ id, section }))).toEqual([
-      { id: "waiting-weekly", section: "waiting" },
-      { id: "finished-final-season", section: "past" },
       { id: "started-upcoming", section: "current" },
       { id: "future-upcoming", section: "upcoming" },
       { id: "recent-bulk", section: "current" },
     ]);
-    expect(schedule.entries[0]?.endedReason).toBe("Unknown");
-    expect(formatScheduleStatus(schedule.entries[0]!.section, schedule.entries[0]!.endedReason)).toBe(
-      "Awaiting Renewal or Cancellation",
-    );
-    expect(schedule.counts).toEqual({ current: 2, upcoming: 1, waiting: 1, past: 1 });
-    expect(buildManagementShows(schedule.entries)[0]?.seasons[0]).toMatchObject({
+    expect(schedule.allEntries.find((entry) => entry.id === "waiting-weekly")?.section).toBe("waiting");
+    expect(schedule.allEntries.find((entry) => entry.id === "finished-final-season")?.section).toBe("past");
+    expect(formatScheduleStatus("waiting", null)).toBe("Awaiting Renewal or Cancellation");
+    expect(schedule.counts).toEqual({ current: 2, upcoming: 1, waiting: 0, past: 0 });
+    expect(buildManagementShows(schedule.allEntries)[0]?.seasons[0]).toMatchObject({
       scheduleSection: "waiting",
       section: "current",
     });
@@ -303,7 +318,7 @@ describe("schedule read model", () => {
 
     expect(schedule.entries[0]).toMatchObject({
       section: "waiting",
-      endedReason: "Unknown",
+      endedReason: null,
     });
   });
 
@@ -380,6 +395,45 @@ describe("schedule read model", () => {
     expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2027-01-03" }).entries[0]?.section).toBe("current");
   });
 
+  test("keeps estimated greenlit seasons upcoming after their sorting midpoint passes", () => {
+    const rows: CanonicalRegistrySeed["rows"] = {
+      shows: [{ ...seed.rows.shows[0]!, id: "estimated-show" }],
+      seasons: [
+        {
+          ...seed.rows.seasons[0]!,
+          id: "estimated-season",
+          showId: "estimated-show",
+          section: "upcoming",
+          seasonNumber: 3,
+          dateConfidence: "estimated",
+          releaseWindow: {
+            raw: "Spring 2027",
+            precision: "release_season",
+            confidence: "estimated",
+            year: 2027,
+            month: null,
+            day: null,
+            releaseSeason: "spring",
+          },
+        },
+      ],
+      episodes: [],
+    };
+
+    const schedule = buildScheduleFromRegistryRows(
+      rows,
+      {
+        title: "Estimated GenreTV",
+        sourceUrl: "https://example.test",
+        updatedLabel: "Updated Jun.17, 2026:",
+        generatedAt: "2026-07-07T00:00:00.000Z",
+      },
+      { asOf: "2027-12-31" },
+    );
+
+    expect(schedule.entries).toMatchObject([{ id: "estimated-season", section: "upcoming" }]);
+  });
+
   test("filters by section, language, organization, ending, and query", () => {
     const schedule = buildTestSchedule();
     const entries = filterScheduleEntries(schedule.entries, {
@@ -405,11 +459,10 @@ describe("schedule read model", () => {
 
   test("groups schedule entries into show management rows", () => {
     const schedule = buildTestSchedule();
-    const shows = buildManagementShows(schedule.entries);
+    const shows = buildManagementShows(schedule.allEntries);
     expect(shows.map((show) => show.id)).toEqual(["show-a", "show-b", "show-c"]);
     expect(findManagementShow(shows, "show-c")?.seasons).toMatchObject([
       {
-        endedReason: "Canceled",
         languages: ["en", "da"],
         notes: null,
         seasonLabel: "S6",
@@ -438,7 +491,7 @@ describe("schedule read model", () => {
 
   test("finds a management season by show and season id", () => {
     const schedule = buildTestSchedule();
-    const shows = buildManagementShows(schedule.entries);
+    const shows = buildManagementShows(schedule.allEntries);
     expect(findManagementSeason(shows, "show-b", "upcoming-b")).toMatchObject({
       show: { title: "B Show" },
       season: { seasonLabel: "S1?" },
@@ -465,10 +518,10 @@ describe("schedule read model", () => {
   });
 
   test("formats official season counts separately from special releases", () => {
-    expect(formatScheduleSeasonCount({ seasonLabel: "S6" })).toBe("6");
-    expect(formatScheduleSeasonCount({ seasonLabel: "S2 + special" })).toBe("2 + 1 special");
-    expect(formatScheduleSeasonCount({ seasonLabel: "Special" })).toBe("1 special");
-    expect(formatScheduleSeasonCount({ seasonLabel: "S3?" })).toBe("3");
+    expect(formatScheduleSeasonCount({ officialSeasonCount: 6, movieCount: 0, specialCount: 0 })).toBe("6");
+    expect(formatScheduleSeasonCount({ officialSeasonCount: 2, movieCount: 1, specialCount: 0 })).toBe("2 + 1 movie");
+    expect(formatScheduleSeasonCount({ officialSeasonCount: 2, movieCount: 0, specialCount: 1 })).toBe("2 + 1 special");
+    expect(formatScheduleSeasonCount({ officialSeasonCount: 0, movieCount: 0, specialCount: 1 })).toBe("1 special");
   });
 
   test("does not count standalone specials as official seasons", () => {
@@ -479,11 +532,14 @@ describe("schedule read model", () => {
         showId: "special-show",
         seasonLabel: "Special",
         title: "Standalone Special",
+        releaseTitle: "Standalone Special",
+        releaseKind: "special",
+        seasonNumber: null,
       },
     ]);
     expect(shows[0]).toMatchObject({
       knownSeasonCount: 0,
-      listedSeasonCount: 1,
+      listedSeasonCount: 0,
     });
   });
 });

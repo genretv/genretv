@@ -1,9 +1,8 @@
-import { useMemo } from "react";
-
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
-import { useAuth } from "../auth/auth";
+import { useMemo } from "react";
 
+import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "./live-canonical-schedule";
 import { buildManagementShows, type CanonicalSchedule, type ManagementShow } from "./schedule";
 
@@ -28,6 +27,8 @@ export function useManagementShows(): LiveManagementShows {
           canonicalShowId: personalShow.canonicalShowId,
           displayTitle: personalShow.displayTitle,
           originalTitle: personalShow.originalTitle,
+          lifecycleStatus: personalShow.lifecycleStatus,
+          endedReason: personalShow.endedReason,
           languages: personalShow.languages,
           countries: personalShow.countries,
           genreTags: personalShow.genreTags,
@@ -41,10 +42,10 @@ export function useManagementShows(): LiveManagementShows {
   const shows = useMemo(
     () =>
       applyPersonalShowsForManagement(
-        buildManagementShows(canonical.schedule.entries),
+        buildManagementShows(canonical.schedule.allEntries),
         personalReady ? personalShows.rows : [],
       ),
-    [canonical.schedule.entries, personalReady, personalShows.rows],
+    [canonical.schedule.allEntries, personalReady, personalShows.rows],
   );
 
   return {
@@ -65,6 +66,8 @@ function applyPersonalShowsForManagement(
     genreTags: unknown;
     id: string;
     languages: unknown;
+    lifecycleStatus: string;
+    endedReason: string | null;
     notes: string | null;
     originalTitle: string | null;
   }>,
@@ -79,6 +82,8 @@ function applyPersonalShowsForManagement(
       ...show,
       title: overlay.displayTitle,
       originalTitle: overlay.originalTitle,
+      lifecycleStatus: lifecycleStatus(overlay.lifecycleStatus),
+      endedReason: overlay.endedReason,
       languages: stringArray(overlay.languages),
       countries: stringArray(overlay.countries),
       genres: stringArray(overlay.genreTags),
@@ -94,6 +99,8 @@ function applyPersonalShowsForManagement(
         id: row.id,
         title: row.displayTitle,
         originalTitle: row.originalTitle,
+        lifecycleStatus: lifecycleStatus(row.lifecycleStatus),
+        endedReason: row.endedReason,
         languages: stringArray(row.languages),
         organizations: [],
         genres: stringArray(row.genreTags),
@@ -107,6 +114,10 @@ function applyPersonalShowsForManagement(
     ];
   });
   return [...overlaidShows, ...additions].sort((left, right) => left.title.localeCompare(right.title));
+}
+
+function lifecycleStatus(value: string): ManagementShow["lifecycleStatus"] {
+  return value === "ended" || value === "cancelled" ? value : "open";
 }
 
 function stringArray(value: unknown): string[] {

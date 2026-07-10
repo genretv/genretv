@@ -17,7 +17,9 @@ import {
   type CanonicalSeasonSeedRow,
   type CanonicalShowSeedRow,
   type ExternalLinkSeed,
+  type ReleaseKind,
   type ReleaseWindowSeed,
+  type ShowLifecycleStatus,
   type SourceScheduleSection,
 } from "./schedule";
 
@@ -51,6 +53,8 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           id: canonicalShow.id,
           displayTitle: canonicalShow.displayTitle,
           originalTitle: canonicalShow.originalTitle,
+          lifecycleStatus: canonicalShow.lifecycleStatus,
+          endedReason: canonicalShow.endedReason,
           languages: canonicalShow.languages,
           countries: canonicalShow.countries,
           genreTags: canonicalShow.genreTags,
@@ -67,9 +71,12 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           id: canonicalSeason.id,
           showId: canonicalSeason.showId,
           section: canonicalSeason.section,
+          seasonNumber: canonicalSeason.seasonNumber,
           seasonLabel: canonicalSeason.seasonLabel,
+          title: canonicalSeason.title,
+          releaseKind: canonicalSeason.releaseKind,
+          isFinal: canonicalSeason.isFinal,
           timing: canonicalSeason.timing,
-          endedReason: canonicalSeason.endedReason,
           releasePattern: canonicalSeason.releasePattern,
           releasePrecision: canonicalSeason.releasePrecision,
           dateConfidence: canonicalSeason.dateConfidence,
@@ -109,6 +116,8 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           canonicalShowId: personalShow.canonicalShowId,
           displayTitle: personalShow.displayTitle,
           originalTitle: personalShow.originalTitle,
+          lifecycleStatus: personalShow.lifecycleStatus,
+          endedReason: personalShow.endedReason,
           languages: personalShow.languages,
           countries: personalShow.countries,
           genreTags: personalShow.genreTags,
@@ -128,9 +137,12 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           canonicalShowId: personalSeason.canonicalShowId,
           canonicalSeasonId: personalSeason.canonicalSeasonId,
           section: personalSeason.section,
+          seasonNumber: personalSeason.seasonNumber,
           seasonLabel: personalSeason.seasonLabel,
+          title: personalSeason.title,
+          releaseKind: personalSeason.releaseKind,
+          isFinal: personalSeason.isFinal,
           timing: personalSeason.timing,
-          endedReason: personalSeason.endedReason,
           releasePattern: personalSeason.releasePattern,
           releasePrecision: personalSeason.releasePrecision,
           dateConfidence: personalSeason.dateConfidence,
@@ -211,9 +223,12 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           publicationStatus: publishedSeason.publicationStatus,
           publishedShowId: publishedSeason.publishedShowId,
           section: publishedSeason.section,
+          seasonNumber: publishedSeason.seasonNumber,
           seasonLabel: publishedSeason.seasonLabel,
+          title: publishedSeason.title,
+          releaseKind: publishedSeason.releaseKind,
+          isFinal: publishedSeason.isFinal,
           timing: publishedSeason.timing,
-          endedReason: publishedSeason.endedReason,
           releasePattern: publishedSeason.releasePattern,
           releasePrecision: publishedSeason.releasePrecision,
           dateConfidence: publishedSeason.dateConfidence,
@@ -244,6 +259,8 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           publicationStatus: publishedShow.publicationStatus,
           displayTitle: publishedShow.displayTitle,
           originalTitle: publishedShow.originalTitle,
+          lifecycleStatus: publishedShow.lifecycleStatus,
+          endedReason: publishedShow.endedReason,
           languages: publishedShow.languages,
           countries: publishedShow.countries,
           genreTags: publishedShow.genreTags,
@@ -444,6 +461,8 @@ function applyPersonalShows(
     genreTags: unknown;
     id: string;
     languages: unknown;
+    lifecycleStatus: string;
+    endedReason: string | null;
     notes: string | null;
     originalTitle: string | null;
   }>,
@@ -466,7 +485,6 @@ export function applyPersonalSeasons(
   personalRows: ReadonlyArray<{
     canonicalSeasonId: string | null;
     canonicalShowId: string | null;
-    endedReason: string;
     episodeCount: number | null;
     id: string;
     notes: string | null;
@@ -475,9 +493,13 @@ export function applyPersonalSeasons(
     externalLinks: unknown;
     dateConfidence: string;
     releasePattern: string | null;
+    releaseKind: string;
     releasePrecision: string;
     releaseWindow: unknown;
-    seasonLabel: string;
+    seasonLabel: string | null;
+    seasonNumber: number | null;
+    title: string | null;
+    isFinal: boolean;
     section: string;
     finaleWindow: unknown;
     sortKey: string | null;
@@ -501,9 +523,12 @@ export function applyPersonalSeasons(
         : {
             ...row,
             section: scheduleSection(overlay.section),
+            seasonNumber: overlay.seasonNumber,
             seasonLabel: overlay.seasonLabel,
+            title: overlay.title,
+            releaseKind: releaseKind(overlay.releaseKind),
+            isFinal: overlay.isFinal,
             timing: overlay.timing,
-            endedReason: overlay.endedReason,
             releasePattern: overlay.releasePattern,
             releasePrecision: overlay.releasePrecision,
             dateConfidence: overlay.dateConfidence,
@@ -582,7 +607,6 @@ export function applyLinkedPublishedImports(
     }>;
     seasons: ReadonlyArray<{
       dateConfidence: string;
-      endedReason: string;
       episodeCount: number | null;
       externalLinks: unknown;
       finaleWindow: unknown;
@@ -591,10 +615,14 @@ export function applyLinkedPublishedImports(
       organizations: unknown;
       publicationStatus: string;
       publishedShowId: string;
+      releaseKind: string;
       releasePattern: string | null;
       releasePrecision: string;
       releaseWindow: unknown;
-      seasonLabel: string;
+      seasonLabel: string | null;
+      seasonNumber: number | null;
+      title: string | null;
+      isFinal: boolean;
       section: string;
       sortKey: string | null;
       sourceRow: number;
@@ -607,6 +635,8 @@ export function applyLinkedPublishedImports(
       genreTags: unknown;
       id: string;
       languages: unknown;
+      lifecycleStatus: string;
+      endedReason: string | null;
       notes: string | null;
       originalTitle: string | null;
       publicationStatus: string;
@@ -678,6 +708,8 @@ function toCanonicalShowSeedRow(row: {
   genreTags: unknown;
   id: string;
   languages: unknown;
+  lifecycleStatus: string;
+  endedReason: string | null;
   notes: string | null;
   originalTitle: string | null;
 }): CanonicalShowSeedRow {
@@ -685,6 +717,8 @@ function toCanonicalShowSeedRow(row: {
     id: row.id,
     displayTitle: row.displayTitle,
     originalTitle: row.originalTitle,
+    lifecycleStatus: showLifecycleStatus(row.lifecycleStatus),
+    endedReason: row.endedReason,
     languages: stringArray(row.languages),
     countries: stringArray(row.countries),
     genreTags: stringArray(row.genreTags),
@@ -701,6 +735,8 @@ function personalShowToSeedRow(
     genreTags: unknown;
     id: string;
     languages: unknown;
+    lifecycleStatus: string;
+    endedReason: string | null;
     notes: string | null;
     originalTitle: string | null;
   },
@@ -710,6 +746,8 @@ function personalShowToSeedRow(
     id,
     displayTitle: row.displayTitle,
     originalTitle: row.originalTitle,
+    lifecycleStatus: showLifecycleStatus(row.lifecycleStatus),
+    endedReason: row.endedReason,
     languages: stringArray(row.languages),
     countries: stringArray(row.countries),
     genreTags: stringArray(row.genreTags),
@@ -720,7 +758,6 @@ function personalShowToSeedRow(
 
 function personalSeasonToSeedRow(
   row: {
-    endedReason: string;
     episodeCount: number | null;
     externalLinks: unknown;
     dateConfidence: string;
@@ -728,10 +765,14 @@ function personalSeasonToSeedRow(
     id: string;
     notes: string | null;
     organizations: unknown;
+    releaseKind: string;
     releasePattern: string | null;
     releasePrecision: string;
     releaseWindow: unknown;
-    seasonLabel: string;
+    seasonLabel: string | null;
+    seasonNumber: number | null;
+    title: string | null;
+    isFinal: boolean;
     section: string;
     sortKey: string | null;
     sourceRow: number;
@@ -744,9 +785,12 @@ function personalSeasonToSeedRow(
     id: row.id,
     showId,
     section: scheduleSection(row.section),
+    seasonNumber: row.seasonNumber,
     seasonLabel: row.seasonLabel,
+    title: row.title,
+    releaseKind: releaseKind(row.releaseKind),
+    isFinal: row.isFinal,
     timing: row.timing,
-    endedReason: row.endedReason,
     releasePattern: row.releasePattern,
     releasePrecision: row.releasePrecision,
     dateConfidence: row.dateConfidence,
@@ -763,17 +807,20 @@ function personalSeasonToSeedRow(
 
 function toCanonicalSeasonSeedRow(row: {
   dateConfidence: string;
-  endedReason: string;
   episodeCount: number | null;
   externalLinks: unknown;
   finaleWindow: unknown;
   id: string;
   notes: string | null;
   organizations: unknown;
+  releaseKind: string;
   releasePattern: string | null;
   releasePrecision: string;
   releaseWindow: unknown;
-  seasonLabel: string;
+  seasonLabel: string | null;
+  seasonNumber: number | null;
+  title: string | null;
+  isFinal: boolean;
   section: string;
   showId: string;
   sortKey: string | null;
@@ -784,9 +831,12 @@ function toCanonicalSeasonSeedRow(row: {
     id: row.id,
     showId: row.showId,
     section: scheduleSection(row.section),
+    seasonNumber: row.seasonNumber,
     seasonLabel: row.seasonLabel,
+    title: row.title,
+    releaseKind: releaseKind(row.releaseKind),
+    isFinal: row.isFinal,
     timing: row.timing,
-    endedReason: row.endedReason,
     releasePattern: row.releasePattern,
     releasePrecision: row.releasePrecision,
     dateConfidence: row.dateConfidence,
@@ -856,6 +906,8 @@ function publishedShowToSeedRow(
     genreTags: unknown;
     id: string;
     languages: unknown;
+    lifecycleStatus: string;
+    endedReason: string | null;
     notes: string | null;
     originalTitle: string | null;
   },
@@ -865,6 +917,8 @@ function publishedShowToSeedRow(
     id,
     displayTitle: row.displayTitle,
     originalTitle: row.originalTitle,
+    lifecycleStatus: showLifecycleStatus(row.lifecycleStatus),
+    endedReason: row.endedReason,
     languages: stringArray(row.languages),
     countries: stringArray(row.countries),
     genreTags: stringArray(row.genreTags),
@@ -876,16 +930,19 @@ function publishedShowToSeedRow(
 function publishedSeasonToSeedRow(
   row: {
     dateConfidence: string;
-    endedReason: string;
     episodeCount: number | null;
     externalLinks: unknown;
     finaleWindow: unknown;
     notes: string | null;
     organizations: unknown;
+    releaseKind: string;
     releasePattern: string | null;
     releasePrecision: string;
     releaseWindow: unknown;
-    seasonLabel: string;
+    seasonLabel: string | null;
+    seasonNumber: number | null;
+    title: string | null;
+    isFinal: boolean;
     section: string;
     sortKey: string | null;
     sourceRow: number;
@@ -898,9 +955,12 @@ function publishedSeasonToSeedRow(
     id,
     showId,
     section: scheduleSection(row.section),
+    seasonNumber: row.seasonNumber,
     seasonLabel: row.seasonLabel,
+    title: row.title,
+    releaseKind: releaseKind(row.releaseKind),
+    isFinal: row.isFinal,
     timing: row.timing,
-    endedReason: row.endedReason,
     releasePattern: row.releasePattern,
     releasePrecision: row.releasePrecision,
     dateConfidence: row.dateConfidence,
@@ -993,6 +1053,14 @@ function releaseWindow(value: unknown): ReleaseWindowSeed | null {
 
 function scheduleSection(value: string): SourceScheduleSection {
   return value === "current" || value === "upcoming" || value === "past" ? value : "upcoming";
+}
+
+function showLifecycleStatus(value: string): ShowLifecycleStatus {
+  return value === "ended" || value === "cancelled" ? value : "open";
+}
+
+function releaseKind(value: string): ReleaseKind {
+  return value === "special" || value === "movie" || value === "pilot" || value === "other" ? value : "season";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

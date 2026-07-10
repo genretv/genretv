@@ -1,5 +1,7 @@
 export type SourceScheduleSection = "current" | "upcoming" | "past";
 export type ScheduleSection = SourceScheduleSection | "waiting";
+export type ShowLifecycleStatus = "open" | "ended" | "cancelled";
+export type ReleaseKind = "season" | "special" | "movie" | "pilot" | "other";
 export type EndingFilter = "all" | "canceled" | "finished" | "unknown";
 export type ScheduleSort = "source" | "title" | "organization";
 export type ManagementSort = "title" | "seasonCount" | "organization";
@@ -77,6 +79,8 @@ export interface CanonicalShowSeedRow {
   id: string;
   displayTitle: string;
   originalTitle: string | null;
+  lifecycleStatus: ShowLifecycleStatus;
+  endedReason: string | null;
   languages: string[];
   countries: string[];
   genreTags: string[];
@@ -88,9 +92,12 @@ export interface CanonicalSeasonSeedRow {
   id: string;
   showId: string;
   section: SourceScheduleSection;
-  seasonLabel: string;
+  seasonNumber: number | null;
+  seasonLabel: string | null;
+  title: string | null;
+  releaseKind: ReleaseKind;
+  isFinal: boolean;
   timing: string;
-  endedReason: string;
   releasePattern: string | null;
   releasePrecision: string;
   dateConfidence: string;
@@ -144,8 +151,17 @@ export interface ScheduleEntry {
   title: string;
   originalTitle: string | null;
   seasonLabel: string;
+  customSeasonLabel: string | null;
+  seasonNumber: number | null;
+  releaseTitle: string | null;
+  releaseKind: ReleaseKind;
+  isFinal: boolean;
+  officialSeasonCount: number;
+  specialCount: number;
+  movieCount: number;
   timing: string;
-  endedReason: string;
+  lifecycleStatus: ShowLifecycleStatus;
+  endedReason: string | null;
   endingKind: Exclude<EndingFilter, "all">;
   organizationText: string;
   organizations: string[];
@@ -185,8 +201,12 @@ export interface ManagementSeason {
   section: SourceScheduleSection;
   scheduleSection: ScheduleSection;
   seasonLabel: string;
+  customSeasonLabel: string | null;
+  seasonNumber: number | null;
+  title: string | null;
+  releaseKind: ReleaseKind;
+  isFinal: boolean;
   timing: string;
-  endedReason: string;
   releasePattern: string | null;
   releasePrecision: string;
   dateConfidence: string;
@@ -209,6 +229,8 @@ export interface ManagementShow {
   id: string;
   title: string;
   originalTitle: string | null;
+  lifecycleStatus: ShowLifecycleStatus;
+  endedReason: string | null;
   languages: string[];
   organizations: string[];
   genres: string[];
@@ -226,6 +248,7 @@ export interface CanonicalSchedule {
   updatedLabel: string;
   generatedAt: string;
   entries: ScheduleEntry[];
+  allEntries: ScheduleEntry[];
   counts: Record<ScheduleSection, number>;
 }
 
@@ -293,12 +316,13 @@ export function buildScheduleFromSeed(
   seed: BlogspotCanonicalSeed,
   options: ScheduleBuildOptions = {},
 ): CanonicalSchedule {
-  const entries = deriveSchedulePlacement(
-    seed.entries.map(toScheduleEntry),
+  const allEntries = deriveSchedulePlacement(
+    withReleaseCounts(seed.entries.map(toScheduleEntry)),
     seed.source.updatedLabel,
     seed.generatedAt,
     options,
   );
+  const entries = projectScheduleEntries(allEntries);
   return {
     title: seed.source.pageTitle,
     sourceUrl: seed.source.url,
@@ -306,6 +330,7 @@ export function buildScheduleFromSeed(
     generatedAt: seed.generatedAt,
     counts: countBySection(entries),
     entries,
+    allEntries,
   };
 }
 
@@ -332,17 +357,20 @@ export function buildScheduleFromRegistryRows(
 ): CanonicalSchedule {
   const showsById = new Map(rows.shows.map((show) => [show.id, show]));
   const episodesBySeason = groupEpisodesBySeason(rows.episodes);
-  const entries = deriveSchedulePlacement(
-    rows.seasons
-      .map((season) => {
-        const show = showsById.get(season.showId);
-        return show == null ? null : toRegistryScheduleEntry(show, season, episodesBySeason.get(season.id) ?? []);
-      })
-      .filter((entry): entry is ScheduleEntry => entry != null),
+  const allEntries = deriveSchedulePlacement(
+    withReleaseCounts(
+      rows.seasons
+        .map((season) => {
+          const show = showsById.get(season.showId);
+          return show == null ? null : toRegistryScheduleEntry(show, season, episodesBySeason.get(season.id) ?? []);
+        })
+        .filter((entry): entry is ScheduleEntry => entry != null),
+    ),
     metadata.updatedLabel,
     metadata.generatedAt,
     options,
   );
+  const entries = projectScheduleEntries(allEntries);
 
   return {
     title: metadata.title,
@@ -351,6 +379,7 @@ export function buildScheduleFromRegistryRows(
     generatedAt: metadata.generatedAt,
     counts: countBySection(entries),
     entries,
+    allEntries,
   };
 }
 
@@ -372,7 +401,7 @@ export function filterScheduleEntries(
       entry.title,
       entry.seasonLabel,
       entry.timing,
-      entry.endedReason,
+      entry.endedReason ?? "",
       entry.organizationText,
       entry.genreText,
       entry.languages.join(" "),
@@ -413,19 +442,23 @@ export function formatKnownSeasonCount(show: Pick<ManagementShow, "knownSeasonCo
   return show.knownSeasonCount > show.listedSeasonCount ? `${show.knownSeasonCount}+` : String(show.knownSeasonCount);
 }
 
-export function formatScheduleSeasonCount(entry: Pick<ScheduleEntry, "seasonLabel">): string {
-  const officialCount = seasonOrdinal(entry.seasonLabel);
-  const extraCount = seasonExtraCount(entry.seasonLabel);
-  if (officialCount == null && extraCount === 0) return entry.seasonLabel;
-  const labels = [];
-  if (officialCount != null) labels.push(String(officialCount));
-  if (extraCount > 0) labels.push(`${extraCount} ${extraCount === 1 ? "special" : "specials"}`);
+export function formatScheduleSeasonCount(
+  entry: Pick<ScheduleEntry, "movieCount" | "officialSeasonCount" | "specialCount">,
+): string {
+  const labels: string[] = [];
+  if (entry.officialSeasonCount > 0 || (entry.movieCount === 0 && entry.specialCount === 0)) {
+    labels.push(String(entry.officialSeasonCount));
+  }
+  if (entry.movieCount > 0) labels.push(`${entry.movieCount} ${entry.movieCount === 1 ? "movie" : "movies"}`);
+  if (entry.specialCount > 0) {
+    labels.push(`${entry.specialCount} ${entry.specialCount === 1 ? "special" : "specials"}`);
+  }
   return labels.join(" + ");
 }
 
-export function formatScheduleStatus(section: ScheduleSection, endedReason: string): string {
+export function formatScheduleStatus(section: ScheduleSection, endedReason: string | null, isFinal = false): string {
   if (section === "waiting" && isUnknownEndingReason(endedReason)) return sectionLabels.waiting;
-  if (section === "waiting" || section === "past") return endedReason || "Unknown";
+  if (section === "waiting" || section === "past") return endedReason || (isFinal ? "Final season" : "Unknown");
   return sectionLabels[section];
 }
 
@@ -440,6 +473,8 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
         id,
         title: entry.title,
         originalTitle: entry.originalTitle,
+        lifecycleStatus: entry.lifecycleStatus,
+        endedReason: entry.endedReason,
         languages: [],
         organizations: [],
         genres: [],
@@ -462,8 +497,12 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       section: entry.sourceSection,
       scheduleSection: entry.section,
       seasonLabel: entry.seasonLabel,
+      customSeasonLabel: entry.customSeasonLabel,
+      seasonNumber: entry.seasonNumber,
+      title: entry.releaseTitle,
+      releaseKind: entry.releaseKind,
+      isFinal: entry.isFinal,
       timing: entry.timing,
-      endedReason: entry.endedReason,
       releasePattern: entry.releasePattern,
       releasePrecision: entry.releasePrecision,
       dateConfidence: entry.dateConfidence,
@@ -490,7 +529,7 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       const seasons = [...show.seasons].sort((left, right) => left.sourceRow - right.sourceRow);
       return {
         ...show,
-        listedSeasonCount: seasons.length,
+        listedSeasonCount: seasons.filter((season) => season.releaseKind === "season").length,
         knownSeasonCount: inferKnownSeasonCount(seasons),
         seasons,
       };
@@ -540,6 +579,9 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   const organizations = entry.organizations.map((organization) => organization.name).filter(Boolean);
   const genreText = entry.genreTags.join(", ") || entry.legacy.genreText;
   const endedReason = stopReasonFor(entry);
+  const lifecycleStatus = lifecycleStatusForReason(endedReason);
+  const seasonNumber = entry.season.number ?? seasonOrdinalFromRaw(entry.season.rawSeason);
+  const releaseKind: ReleaseKind = entry.season.extraMovie ? "special" : seasonNumber == null ? "other" : "season";
   const languages = normalizeLanguages(entry.show.languages);
   const countries = entry.show.countries ?? [];
   return {
@@ -551,7 +593,16 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     title: entry.show.displayTitle,
     originalTitle: null,
     seasonLabel: seasonLabel(entry),
+    customSeasonLabel: null,
+    seasonNumber: releaseKind === "season" ? seasonNumber : null,
+    releaseTitle: null,
+    releaseKind,
+    isFinal: entry.season.lifecycleMarkers.includes("final_season"),
+    officialSeasonCount: seasonNumber ?? 0,
+    specialCount: releaseKind === "special" ? 1 : 0,
+    movieCount: 0,
     timing: timingFor(entry),
+    lifecycleStatus,
     endedReason,
     endingKind: endingKindFor(endedReason),
     organizationText: organizations.length > 0 ? organizations.join(", ") : entry.legacy.organizationText,
@@ -594,10 +645,19 @@ function toRegistryScheduleEntry(
     sourceSection: season.section,
     title: show.displayTitle,
     originalTitle: show.originalTitle,
-    seasonLabel: season.seasonLabel,
+    seasonLabel: formatReleaseLabel(season),
+    customSeasonLabel: season.seasonLabel,
+    seasonNumber: season.seasonNumber,
+    releaseTitle: season.title,
+    releaseKind: season.releaseKind,
+    isFinal: season.isFinal,
+    officialSeasonCount: 0,
+    specialCount: 0,
+    movieCount: 0,
     timing: season.timing || formatRegistryTiming(season),
-    endedReason: season.endedReason || "Unknown",
-    endingKind: endingKindFor(season.endedReason),
+    lifecycleStatus: show.lifecycleStatus,
+    endedReason: show.endedReason,
+    endingKind: endingKindFor(show.endedReason),
     organizationText: organizations.join(", "),
     organizations,
     genreText,
@@ -652,6 +712,52 @@ function countBySection(entries: readonly ScheduleEntry[]): Record<ScheduleSecti
     waiting: entries.filter((entry) => entry.section === "waiting").length,
     past: entries.filter((entry) => entry.section === "past").length,
   };
+}
+
+function withReleaseCounts(entries: readonly ScheduleEntry[]): ScheduleEntry[] {
+  const counts = new Map<string, { movieCount: number; officialSeasonCount: number; specialCount: number }>();
+  for (const entry of entries) {
+    const current = counts.get(entry.showId) ?? { movieCount: 0, officialSeasonCount: 0, specialCount: 0 };
+    if (entry.releaseKind === "season") current.officialSeasonCount += 1;
+    if (entry.releaseKind === "movie") current.movieCount += 1;
+    if (entry.releaseKind === "special") current.specialCount += 1;
+    counts.set(entry.showId, current);
+  }
+  return entries.map((entry) => ({ ...entry, ...counts.get(entry.showId)! }));
+}
+
+function projectScheduleEntries(entries: readonly ScheduleEntry[]): ScheduleEntry[] {
+  const byShow = new Map<string, ScheduleEntry[]>();
+  for (const entry of entries) byShow.set(entry.showId, [...(byShow.get(entry.showId) ?? []), entry]);
+
+  const projected: ScheduleEntry[] = [];
+  for (const showEntries of byShow.values()) {
+    const activeOrFuture = showEntries.filter((entry) => entry.section === "current" || entry.section === "upcoming");
+    if (activeOrFuture.length > 0) {
+      projected.push(...activeOrFuture);
+      continue;
+    }
+    const latest = [...showEntries].sort(compareReleaseRecency)[0];
+    if (latest != null) {
+      projected.push({ ...latest, section: completedSectionFor(latest.lifecycleStatus, latest.isFinal) });
+    }
+  }
+  return projected.sort((left, right) => left.sourceRow - right.sourceRow);
+}
+
+function compareReleaseRecency(left: ScheduleEntry, right: ScheduleEntry): number {
+  return (
+    compareNullableStringsDescending(left.sortKey, right.sortKey) ||
+    (right.seasonNumber ?? -1) - (left.seasonNumber ?? -1) ||
+    right.sourceRow - left.sourceRow
+  );
+}
+
+function compareNullableStringsDescending(left: string | null, right: string | null): number {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return right.localeCompare(left);
 }
 
 const millisecondsPerDay = 86_400_000;
@@ -710,6 +816,7 @@ function deriveSchedulePlacement(
 
 function deriveEntryPlacement(entry: ScheduleEntry, asOf: CalendarDay, sourceReference: CalendarDay): ScheduleEntry {
   if (entry.sourceSection === "past") return entry;
+  if (entry.sourceSection === "upcoming" && entry.dateConfidence === "estimated") return entry;
 
   const sourceSection = entry.sourceSection;
   const releaseDay = resolveWindowDay(entry.releaseWindow, sourceSection, sourceReference);
@@ -731,17 +838,19 @@ function deriveEntryPlacement(entry: ScheduleEntry, asOf: CalendarDay, sourceRef
 
   let section: ScheduleSection = sourceSection;
   if (effectiveFinaleDay != null && effectiveFinaleDay.serial < asOf.serial) {
-    section = completedSectionFor(entry.endedReason);
+    section = completedSectionFor(entry.lifecycleStatus, entry.isFinal);
   } else if (effectiveReleaseDay != null && effectiveReleaseDay.serial > asOf.serial) {
     section = "upcoming";
   } else if (effectiveReleaseDay != null) {
     section =
       entry.releasePattern === "bulk" && effectiveReleaseDay.serial + bulkCurrentGraceDays < asOf.serial
-        ? completedSectionFor(entry.endedReason)
+        ? completedSectionFor(entry.lifecycleStatus, entry.isFinal)
         : "current";
   } else if (entry.releasePattern === "bulk" && sourceSection === "current") {
     section =
-      sourceReference.serial + bulkCurrentGraceDays < asOf.serial ? completedSectionFor(entry.endedReason) : "current";
+      sourceReference.serial + bulkCurrentGraceDays < asOf.serial
+        ? completedSectionFor(entry.lifecycleStatus, entry.isFinal)
+        : "current";
   }
 
   return section === sourceSection ? entry : { ...entry, section };
@@ -774,9 +883,11 @@ function resolveWindowDay(
   return nearestCalendarDay(sourceReference, monthDay.month, monthDay.day);
 }
 
-function completedSectionFor(endedReason: string): Extract<ScheduleSection, "waiting" | "past"> {
-  const normalized = endedReason.trim().toLocaleLowerCase();
-  return /^(?:canceled|cancelled|finished|ended|completed|final season)/.test(normalized) ? "past" : "waiting";
+function completedSectionFor(
+  lifecycleStatus: ShowLifecycleStatus,
+  isFinal: boolean,
+): Extract<ScheduleSection, "waiting" | "past"> {
+  return lifecycleStatus === "open" && !isFinal ? "waiting" : "past";
 }
 
 function windowMonthDay(window: ReleaseWindowSeed | null): { month: number; day: number } | null {
@@ -863,22 +974,11 @@ function compareManagementShows(left: ManagementShow, right: ManagementShow, sor
   return left.title.localeCompare(right.title);
 }
 
-function inferKnownSeasonCount(seasons: readonly Pick<ManagementSeason, "seasonLabel">[]): number {
-  return seasons.reduce((count, season) => Math.max(count, seasonOrdinal(season.seasonLabel) ?? 0), 0);
-}
-
-function seasonOrdinal(label: string): number | null {
-  const normalized = label.trim();
-  const match = /^(?:s|season|series)\s*(\d+)(?:\s*\+\s*(?:special|movie))?\??$/i.exec(normalized);
-  if (match?.[1] == null) return null;
-  const ordinal = Number(match[1]);
-  return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
-}
-
-function seasonExtraCount(label: string): number {
-  const normalized = label.trim();
-  if (/^(?:special|movie)\??$/i.test(normalized)) return 1;
-  return /^(?:s|season|series)\s*\d+\s*\+\s*(?:special|movie)\??$/i.test(normalized) ? 1 : 0;
+function inferKnownSeasonCount(seasons: readonly Pick<ManagementSeason, "releaseKind" | "seasonNumber">[]): number {
+  return seasons.reduce(
+    (count, season) => (season.releaseKind === "season" ? Math.max(count, season.seasonNumber ?? 0) : count),
+    0,
+  );
 }
 
 function compareSeedEpisodes(left: CanonicalEpisodeSeedRow, right: CanonicalEpisodeSeedRow): number {
@@ -962,26 +1062,42 @@ function stopReasonFor(entry: BlogspotEntrySeed): string {
   return markers.length > 0 ? markers.join(", ") : "Unknown";
 }
 
-function endingKindFor(reason: string): Exclude<EndingFilter, "all"> {
-  const normalized = reason.toLocaleLowerCase();
-  if (normalized.startsWith("canceled")) return "canceled";
-  if (normalized.startsWith("finished")) return "finished";
+function endingKindFor(reason: string | null): Exclude<EndingFilter, "all"> {
+  const normalized = reason?.toLocaleLowerCase() ?? "";
+  if (normalized.startsWith("canceled") || normalized.startsWith("cancelled")) return "canceled";
+  if (/^(?:finished|ended|completed|final season)/.test(normalized)) return "finished";
   return "unknown";
 }
 
-function isUnknownEndingReason(reason: string): boolean {
-  const normalized = reason.trim().toLocaleLowerCase();
+function isUnknownEndingReason(reason: string | null): boolean {
+  const normalized = reason?.trim().toLocaleLowerCase() ?? "";
   return normalized === "" || normalized === "unknown";
 }
 
 function seasonLabel(entry: BlogspotEntrySeed): string {
-  const extraOrdinal = entry.season.extraMovie ? seasonOrdinalFromRaw(entry.season.rawSeason) : null;
+  const ordinal = entry.season.number ?? seasonOrdinalFromRaw(entry.season.rawSeason);
   const prefix = entry.season.extraMovie
-    ? extraOrdinal == null
-      ? "Special"
-      : `S${extraOrdinal} + special`
-    : `S${entry.season.rawSeason || "?"}`;
+    ? "Special"
+    : ordinal == null
+      ? entry.season.rawSeason || "Release"
+      : `S${ordinal}`;
   return entry.season.tentative ? `${prefix}?` : prefix;
+}
+
+export function formatReleaseLabel(
+  release: Pick<CanonicalSeasonSeedRow, "releaseKind" | "seasonLabel" | "seasonNumber" | "title">,
+): string {
+  if (release.seasonLabel?.trim()) return release.seasonLabel.trim();
+  if (release.title?.trim()) return release.title.trim();
+  if (release.releaseKind === "season" && release.seasonNumber != null) return `S${release.seasonNumber}`;
+  return release.releaseKind.charAt(0).toLocaleUpperCase() + release.releaseKind.slice(1);
+}
+
+function lifecycleStatusForReason(reason: string): ShowLifecycleStatus {
+  const normalized = reason.trim().toLocaleLowerCase();
+  if (normalized.startsWith("canceled") || normalized.startsWith("cancelled")) return "cancelled";
+  if (/^(?:finished|ended|completed|final season)/.test(normalized)) return "ended";
+  return "open";
 }
 
 function seasonOrdinalFromRaw(value: string): number | null {

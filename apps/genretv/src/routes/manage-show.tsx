@@ -7,6 +7,7 @@ import {
   Button,
   Group,
   ScrollArea,
+  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -85,7 +86,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const [proposalSaving, setProposalSaving] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
-  const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_show");
+  const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_show", "personal_season");
   const personalShows = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -94,6 +95,8 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           canonicalShowId: personalShow.canonicalShowId,
           displayTitle: personalShow.displayTitle,
           originalTitle: personalShow.originalTitle,
+          lifecycleStatus: personalShow.lifecycleStatus,
+          endedReason: personalShow.endedReason,
           languages: personalShow.languages,
           countries: personalShow.countries,
           genreTags: personalShow.genreTags,
@@ -103,7 +106,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         .from(personalShow)
         .where(or(eq(personalShow.id, show.id), eq(personalShow.canonicalShowId, show.id))),
     [show.id],
-    { ready: canEdit },
+    { ready: canEdit && show.id !== newShowId },
   );
   const personalRow = personalShows.rows[0] ?? null;
   const isPersonalOnlyShow = personalRow != null && personalRow.canonicalShowId == null;
@@ -237,6 +240,8 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
       const patch = {
         displayTitle: draft.title.trim() || show.title,
         originalTitle: nullableText(draft.originalTitle),
+        lifecycleStatus: draft.lifecycleStatus,
+        endedReason: draft.lifecycleStatus === "open" ? null : nullableText(draft.endedReason),
         languages: draftLanguages,
         countries: draftCountries,
         genreTags: draftGenres,
@@ -255,6 +260,35 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         }
       });
       assertTransactionAcked(result, "Saving show overlay");
+      if (show.id === newShowId) {
+        const seasonResult = await client.transaction({ mode: "pessimistic" }, (tx) => {
+          tx.tables.personal_season.create({
+            id: crypto.randomUUID(),
+            personalShowId: createdId,
+            canonicalShowId: null,
+            canonicalSeasonId: null,
+            section: "upcoming",
+            seasonNumber: 1,
+            seasonLabel: null,
+            title: null,
+            releaseKind: "season",
+            isFinal: false,
+            timing: "",
+            releasePattern: null,
+            releasePrecision: "unknown",
+            dateConfidence: "unknown",
+            releaseWindow: null,
+            finaleWindow: null,
+            sortKey: null,
+            episodeCount: null,
+            sourceRow: 1_000_000,
+            organizations: [],
+            externalLinks: [],
+            notes: null,
+          });
+        });
+        assertTransactionAcked(seasonResult, "Creating initial season");
+      }
       setOverlaySaved(true);
       if (show.id === newShowId) {
         void navigate({ to: "/manage/show/$showId", params: { showId: createdId } });
@@ -291,6 +325,8 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             kind: "show",
             displayTitle: title,
             originalTitle: nullableText(draft.originalTitle),
+            lifecycleStatus: draft.lifecycleStatus,
+            endedReason: draft.lifecycleStatus === "open" ? null : nullableText(draft.endedReason),
             languages: draftLanguages,
             countries: draftCountries,
             genreTags: draftGenres,
@@ -466,6 +502,30 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
               onChange={(event) => {
                 const title = event.currentTarget.value;
                 setDraft((current) => ({ ...current, title }));
+              }}
+            />
+            <Select
+              label="Lifecycle"
+              data={[
+                { value: "open", label: "Open" },
+                { value: "ended", label: "Ended" },
+                { value: "cancelled", label: "Cancelled" },
+              ]}
+              value={draft.lifecycleStatus}
+              disabled={!canEditDraft}
+              onChange={(value) => {
+                if (value === "open" || value === "ended" || value === "cancelled") {
+                  setDraft((current) => ({ ...current, lifecycleStatus: value }));
+                }
+              }}
+            />
+            <TextInput
+              label="Ending reason"
+              value={draft.endedReason}
+              disabled={!canEditDraft || draft.lifecycleStatus === "open"}
+              onChange={(event) => {
+                const endedReason = event.currentTarget.value;
+                setDraft((current) => ({ ...current, endedReason }));
               }}
             />
             <TextInput
@@ -651,7 +711,9 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
                         {season.seasonLabel}
                       </Anchor>
                     </Table.Td>
-                    <Table.Td>{formatScheduleStatus(season.scheduleSection, season.endedReason)}</Table.Td>
+                    <Table.Td>
+                      {formatScheduleStatus(season.scheduleSection, show.endedReason, season.isFinal)}
+                    </Table.Td>
                     <Table.Td>{season.timing}</Table.Td>
                     <Table.Td>
                       <Stack gap={2}>
@@ -708,12 +770,17 @@ function showDraftFromPersonalRow(row: {
   genreTags: unknown;
   externalLinks: unknown;
   languages: unknown;
+  lifecycleStatus: string;
+  endedReason: string | null;
   notes: string | null;
   originalTitle: string | null;
 }): ReturnType<typeof showDraftFromShow> {
   return {
     title: row.displayTitle,
     originalTitle: row.originalTitle ?? "",
+    lifecycleStatus:
+      row.lifecycleStatus === "ended" || row.lifecycleStatus === "cancelled" ? row.lifecycleStatus : "open",
+    endedReason: row.endedReason ?? "",
     languagesText: orderedListToText(row.languages),
     countriesText: orderedListToText(row.countries),
     genresText: orderedListToText(row.genreTags),
@@ -727,6 +794,8 @@ function emptyManagementShow(): ManagementShow {
     id: newShowId,
     title: "",
     originalTitle: null,
+    lifecycleStatus: "open",
+    endedReason: null,
     languages: ["en"],
     organizations: [],
     genres: [],

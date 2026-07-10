@@ -35,6 +35,8 @@ function showDiffRows(
   return compactRows([
     diffRow("Title", current?.title, text(payload["displayTitle"])),
     diffRow("Original title", current?.originalTitle, text(payload["originalTitle"])),
+    diffRow("Lifecycle", current?.lifecycleStatus, text(payload["lifecycleStatus"])),
+    diffRow("Ending reason", current?.endedReason, text(payload["endedReason"])),
     diffRow("Languages", current?.languages, stringArray(payload["languages"])),
     diffRow("Countries", current?.countries, stringArray(payload["countries"])),
     diffRow("Genres", current?.genres, stringArray(payload["genreTags"])),
@@ -57,9 +59,12 @@ function seasonDiffRows(
   return compactRows([
     diffRow("Show", currentShow?.title, text(payload["showTitle"])),
     diffRow("Season", currentSeason?.seasonLabel, text(payload["seasonLabel"])),
+    diffRow("Season number", numberText(currentSeason?.seasonNumber), numberText(payload["seasonNumber"])),
+    diffRow("Release title", currentSeason?.title, text(payload["title"])),
+    diffRow("Release kind", currentSeason?.releaseKind, text(payload["releaseKind"])),
+    diffRow("Final release", currentSeason?.isFinal, payload["isFinal"]),
     diffRow("Section", currentSeason?.section, text(payload["section"])),
     diffRow("When", currentSeason?.timing, text(payload["timing"])),
-    diffRow("Finished reason", currentSeason?.endedReason, text(payload["endedReason"])),
     diffRow("Release pattern", currentSeason?.releasePattern, text(payload["releasePattern"])),
     diffRow(
       "Release window",

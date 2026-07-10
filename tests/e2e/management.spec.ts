@@ -120,7 +120,7 @@ test("publisher can send a season proposal that creates its canonical parent sho
   await createPersonalShow(page, showTitle);
   await page.getByRole("button", { name: "Add season" }).click();
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/new/);
-  await page.getByLabel("Season").fill(seasonLabel);
+  await page.getByLabel("Season number").fill("1");
   await page.getByLabel("When").fill("2026");
   await page.getByLabel("Episodes").fill("8");
   await page.getByLabel("Organizations").fill("E2E Streamer");
@@ -156,7 +156,7 @@ test("publisher can send an episode proposal that creates canonical show and sea
   await createPersonalShow(page, showTitle);
   await page.getByRole("button", { name: "Add season" }).click();
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/new/);
-  await page.getByLabel("Season").fill(seasonLabel);
+  await page.getByLabel("Season number").fill("1");
   await page.getByLabel("When").fill("2026");
   await page.getByLabel("Episodes").fill("1");
   await page.getByLabel("Organizations").fill("E2E Streamer");

@@ -16,6 +16,8 @@ export interface CanonicalShowCreate {
   genreTags: string[];
   id: string;
   languages: string[];
+  lifecycleStatus: "open" | "ended" | "cancelled";
+  endedReason: string | null;
   notes: string | null;
   originalTitle: string | null;
 }
@@ -24,17 +26,20 @@ export type CanonicalShowPatch = Omit<CanonicalShowCreate, "id">;
 
 export interface CanonicalSeasonCreate {
   dateConfidence: string;
-  endedReason: string;
   episodeCount: number | null;
   externalLinks: unknown[];
   finaleWindow: unknown;
   id: string;
   notes: string | null;
   organizations: unknown[];
+  releaseKind: "season" | "special" | "movie" | "pilot" | "other";
   releasePattern: string | null;
   releasePrecision: string;
   releaseWindow: unknown;
-  seasonLabel: string;
+  seasonLabel: string | null;
+  seasonNumber: number | null;
+  title: string | null;
+  isFinal: boolean;
   section: "current" | "upcoming" | "past";
   showId: string;
   sortKey: string | null;
@@ -81,6 +86,8 @@ function showMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => stri
   const patch: CanonicalShowPatch = {
     displayTitle: text(payload["displayTitle"]) ?? proposal.title,
     originalTitle: nullableText(payload["originalTitle"]),
+    lifecycleStatus: lifecycleStatus(payload["lifecycleStatus"]),
+    endedReason: nullableText(payload["endedReason"]),
     languages: stringArray(payload["languages"]),
     countries: stringArray(payload["countries"]),
     genreTags: stringArray(payload["genreTags"]),
@@ -90,7 +97,12 @@ function showMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => stri
   if (proposal.canonicalShowId != null) {
     return { ...emptyPlan(), showUpdate: { id: proposal.canonicalShowId, patch } };
   }
-  return { ...emptyPlan(), showCreate: { id: makeId(), ...patch } };
+  const showId = makeId();
+  return {
+    ...emptyPlan(),
+    showCreate: { id: showId, ...patch },
+    seasonCreate: initialSeasonCreate(showId, makeId()),
+  };
 }
 
 function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => string): CanonicalProposalMergePlan {
@@ -100,9 +112,12 @@ function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => st
   const seasonPatch: CanonicalSeasonPatch = {
     showId,
     section: scheduleSection(text(payload["section"])),
-    seasonLabel: text(payload["seasonLabel"]) ?? "Season",
+    seasonNumber: integerOrNull(payload["seasonNumber"]),
+    seasonLabel: nullableText(payload["seasonLabel"]),
+    title: nullableText(payload["title"]),
+    releaseKind: releaseKind(payload["releaseKind"]),
+    isFinal: booleanValue(payload["isFinal"]),
     timing: text(payload["timing"]) ?? "",
-    endedReason: text(payload["endedReason"]) ?? "",
     releasePattern: nullableText(payload["releasePattern"]),
     releasePrecision: text(payload["releasePrecision"]) ?? "unknown",
     dateConfidence: text(payload["dateConfidence"]) ?? "unknown",
@@ -120,6 +135,8 @@ function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => st
           id: showId,
           displayTitle: showTitle,
           originalTitle: null,
+          lifecycleStatus: "open" as const,
+          endedReason: null,
           languages: [],
           countries: [],
           genreTags: [],
@@ -187,6 +204,8 @@ function parentRowsForEpisodeProposal(
           id: showId,
           displayTitle: text(payload["showTitle"]) ?? proposal.title,
           originalTitle: null,
+          lifecycleStatus: "open" as const,
+          endedReason: null,
           languages: [],
           countries: [],
           genreTags: [],
@@ -200,9 +219,12 @@ function parentRowsForEpisodeProposal(
       id: seasonId,
       showId,
       section: scheduleSection(text(payload["section"])),
-      seasonLabel: text(payload["seasonLabel"]) ?? "Season",
+      seasonNumber: integerOrNull(payload["seasonNumber"]),
+      seasonLabel: nullableText(payload["seasonLabel"]),
+      title: nullableText(payload["seasonTitle"]),
+      releaseKind: releaseKind(payload["releaseKind"]),
+      isFinal: booleanValue(payload["isFinal"]),
       timing: text(payload["timing"]) ?? "",
-      endedReason: text(payload["endedReason"]) ?? "",
       releasePattern: nullableText(payload["releasePattern"]),
       releasePrecision: text(payload["releasePrecision"]) ?? "unknown",
       dateConfidence: text(payload["dateConfidence"]) ?? "unknown",
@@ -229,8 +251,45 @@ function emptyPlan(): CanonicalProposalMergePlan {
   };
 }
 
+function initialSeasonCreate(showId: string, id: string): CanonicalSeasonCreate {
+  return {
+    id,
+    showId,
+    section: "upcoming",
+    seasonNumber: 1,
+    seasonLabel: null,
+    title: null,
+    releaseKind: "season",
+    isFinal: false,
+    timing: "",
+    releasePattern: null,
+    releasePrecision: "unknown",
+    dateConfidence: "unknown",
+    releaseWindow: null,
+    finaleWindow: null,
+    sortKey: null,
+    episodeCount: null,
+    sourceRow: defaultSourceRow,
+    organizations: [],
+    externalLinks: [],
+    notes: null,
+  };
+}
+
 function scheduleSection(value: string | null): "current" | "upcoming" | "past" {
   return value === "current" || value === "upcoming" || value === "past" ? value : "upcoming";
+}
+
+function lifecycleStatus(value: unknown): "open" | "ended" | "cancelled" {
+  return value === "ended" || value === "cancelled" ? value : "open";
+}
+
+function releaseKind(value: unknown): "season" | "special" | "movie" | "pilot" | "other" {
+  return value === "special" || value === "movie" || value === "pilot" || value === "other" ? value : "season";
+}
+
+function booleanValue(value: unknown): boolean {
+  return value === true;
 }
 
 function record(value: unknown): Record<string, unknown> {

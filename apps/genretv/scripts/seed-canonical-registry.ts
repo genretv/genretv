@@ -34,13 +34,75 @@ async function main(): Promise<void> {
   try {
     await db.transaction(async (tx) => {
       if (seed.rows.shows.length > 0) {
-        await tx.insert(canonicalShowTable).values(seed.rows.shows).onConflictDoNothing();
+        for (const show of seed.rows.shows) {
+          await tx
+            .insert(canonicalShowTable)
+            .values(show)
+            .onConflictDoUpdate({
+              target: canonicalShowTable.id,
+              set: {
+                displayTitle: show.displayTitle,
+                originalTitle: show.originalTitle,
+                lifecycleStatus: show.lifecycleStatus,
+                endedReason: show.endedReason,
+                languages: show.languages,
+                countries: show.countries,
+                genreTags: show.genreTags,
+                externalLinks: show.externalLinks,
+                notes: show.notes,
+              },
+            });
+        }
       }
       if (seed.rows.seasons.length > 0) {
-        await tx.insert(canonicalSeasonTable).values(seed.rows.seasons).onConflictDoNothing();
+        for (const season of seed.rows.seasons) {
+          await tx
+            .insert(canonicalSeasonTable)
+            .values(season)
+            .onConflictDoUpdate({
+              target: canonicalSeasonTable.id,
+              set: {
+                showId: season.showId,
+                section: season.section,
+                seasonNumber: season.seasonNumber,
+                seasonLabel: season.seasonLabel,
+                title: season.title,
+                releaseKind: season.releaseKind,
+                isFinal: season.isFinal,
+                timing: season.timing,
+                releasePattern: season.releasePattern,
+                releasePrecision: season.releasePrecision,
+                dateConfidence: season.dateConfidence,
+                releaseWindow: season.releaseWindow,
+                finaleWindow: season.finaleWindow,
+                sortKey: season.sortKey,
+                episodeCount: season.episodeCount,
+                sourceRow: season.sourceRow,
+                organizations: season.organizations,
+                externalLinks: season.externalLinks,
+                notes: season.notes,
+              },
+            });
+        }
       }
       if (seed.rows.episodes.length > 0) {
-        await tx.insert(canonicalEpisodeTable).values(seed.rows.episodes).onConflictDoNothing();
+        for (const episode of seed.rows.episodes) {
+          await tx
+            .insert(canonicalEpisodeTable)
+            .values(episode)
+            .onConflictDoUpdate({
+              target: canonicalEpisodeTable.id,
+              set: {
+                seasonId: episode.seasonId,
+                episodeLabel: episode.episodeLabel,
+                title: episode.title,
+                releaseWindow: episode.releaseWindow,
+                sortKey: episode.sortKey,
+                externalLinks: episode.externalLinks,
+                notes: episode.notes,
+              },
+            });
+        }
       }
     });
   } finally {

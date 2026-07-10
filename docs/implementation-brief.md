@@ -28,13 +28,15 @@ Other published user overlays and the signed-in user's Personal List overlay use
 
 Primary management entities:
 
-- Show: display title, optional original title, aliases, languages, countries, genre tags, lifecycle status, organizations, external links, notes.
-- Season: parent Show, Season Label, optional title, Release Window, Date Confidence, Release Pattern, Episode Count, lifecycle status, organizations, external links, notes.
+- Show: display title, optional original title, aliases, languages, countries, genre tags, Lifecycle Status, optional ending reason, organizations, external links, notes.
+- Season: parent Show, optional Season Number, optional permanent Season Label, optional title, Release Kind, Final Season flag, Release Window, Date Confidence, Release Pattern, Episode Count, organizations, external links, notes.
 - Episode: parent Season, optional title, Episode Label, optional Release Window, notes.
 
 Release Windows support exact dates, Release Seasons, year-only values, and Unknown Values. Release Seasons use Northern Hemisphere meteorological windows for deterministic sorting while preserving fuzzy display labels.
 
-Schedule placement is derived from Release Windows, not manually assigned. Bulk streaming releases stay current for a Current Grace Period, initially five weeks.
+Every persisted Show has at least one Season, every known numbered Season has a row, and greenlighting or renewing a Show creates the corresponding future Season rows locally. Missing historical metadata and missing Episodes are valid. Multiple future Seasons can appear in Upcoming, with annual estimated Release Seasons when a multi-season order supplies no dates.
+
+Schedule placement is a local projection over the full List. Historical Seasons are retained but omitted from the Schedule View. Estimated windows order Upcoming Seasons without implying release; confirmed dates drive Now Showing. Bulk streaming releases stay current for a Current Grace Period, initially five weeks.
 
 Languages are ordered zero-or-more ISO 639 code lists. Countries are ordered zero-or-more ISO 3166-1 code lists. Default filters match any listed value, with ordering affecting display and possible future ranking.
 

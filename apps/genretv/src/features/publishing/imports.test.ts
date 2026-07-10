@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildPublishedListSummaries } from "./imports";
+import { prerequisiteReleases } from "./use-import-published-season";
 
 describe("published list import summaries", () => {
   test("uses only published current snapshot rows and marks imported seasons", () => {
@@ -34,6 +35,8 @@ describe("published list import summaries", () => {
           snapshotVersion: 2,
           displayTitle: "Shared Show",
           originalTitle: null,
+          lifecycleStatus: "open",
+          endedReason: null,
           languages: ["da", "sv"],
           countries: ["DK"],
           genreTags: ["Fantasy"],
@@ -46,6 +49,8 @@ describe("published list import summaries", () => {
           snapshotVersion: 1,
           displayTitle: "Old Show",
           originalTitle: null,
+          lifecycleStatus: "ended",
+          endedReason: "Finished",
           languages: ["en"],
           countries: ["US"],
           genreTags: [],
@@ -60,9 +65,12 @@ describe("published list import summaries", () => {
           publishedShowId: "show-current",
           snapshotVersion: 2,
           section: "current",
+          seasonNumber: 1,
           seasonLabel: "S1",
+          title: null,
+          releaseKind: "season",
+          isFinal: false,
           timing: "Fridays",
-          endedReason: "Unknown",
           releasePattern: "weekly",
           releasePrecision: "day",
           dateConfidence: "confirmed",
@@ -81,9 +89,12 @@ describe("published list import summaries", () => {
           publishedShowId: "show-stale",
           snapshotVersion: 1,
           section: "past",
+          seasonNumber: null,
           seasonLabel: "S0",
+          title: null,
+          releaseKind: "other",
+          isFinal: false,
           timing: "",
-          endedReason: "Finished",
           releasePattern: null,
           releasePrecision: "unknown",
           dateConfidence: "unknown",
@@ -128,6 +139,15 @@ describe("published list import summaries", () => {
       [{ id: "import-current", sourcePublishedSeasonId: "season-current", importMode: "linked" }],
       [{ ownerId: "publisher-1", displayName: "Curator One", publicSlug: "curator-one" }],
     );
+
+    const first = summaries[0]!.seasons[0]!;
+    const second = { ...first, id: "season-2", seasonNumber: 2, seasonLabel: "S2" };
+    const third = { ...first, id: "season-3", seasonNumber: 3, seasonLabel: "S3" };
+    expect(prerequisiteReleases(third, [third, first, second]).map((release) => release.id)).toEqual([
+      "season-current",
+      "season-2",
+      "season-3",
+    ]);
 
     expect(summaries).toHaveLength(1);
     expect(summaries[0]).toMatchObject({

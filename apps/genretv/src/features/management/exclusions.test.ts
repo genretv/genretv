@@ -35,7 +35,7 @@ describe("management exclusion summaries", () => {
         { id: "show-1", displayTitle: "Shared Show" },
         { id: "show-2", displayTitle: "Other Show" },
       ],
-      [{ id: "season-1", showId: "show-1", seasonLabel: "S1" }],
+      [{ id: "season-1", showId: "show-1", seasonLabel: "S1", seasonNumber: 1, releaseKind: "season" }],
       [{ id: "episode-1", seasonId: "season-1", episodeLabel: "E1", title: "Pilot" }],
     );
 

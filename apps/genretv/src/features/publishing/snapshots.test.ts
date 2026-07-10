@@ -9,6 +9,7 @@ const schedule: CanonicalSchedule = {
   updatedLabel: "Updated",
   generatedAt: "2026-07-08T00:00:00.000Z",
   counts: { current: 1, upcoming: 1, waiting: 0, past: 0 },
+  allEntries: [],
   entries: [
     {
       id: "season-1",
@@ -18,9 +19,18 @@ const schedule: CanonicalSchedule = {
       sourceSection: "current",
       title: "Shared Show",
       originalTitle: null,
+      seasonNumber: 1,
       seasonLabel: "S1",
+      customSeasonLabel: null,
+      releaseTitle: null,
+      releaseKind: "season",
+      isFinal: false,
+      officialSeasonCount: 2,
+      specialCount: 0,
+      movieCount: 0,
       timing: "Fridays",
-      endedReason: "Unknown",
+      lifecycleStatus: "open",
+      endedReason: null,
       endingKind: "unknown",
       organizationText: "Netflix",
       organizations: ["Netflix"],
@@ -81,9 +91,18 @@ const schedule: CanonicalSchedule = {
       sourceSection: "upcoming",
       title: "Shared Show",
       originalTitle: null,
+      seasonNumber: 2,
       seasonLabel: "S2",
+      customSeasonLabel: null,
+      releaseTitle: null,
+      releaseKind: "season",
+      isFinal: false,
+      officialSeasonCount: 2,
+      specialCount: 0,
+      movieCount: 0,
       timing: "2027",
-      endedReason: "Unknown",
+      lifecycleStatus: "open",
+      endedReason: null,
       endingKind: "unknown",
       organizationText: "Netflix",
       organizations: ["Netflix"],
@@ -108,6 +127,7 @@ const schedule: CanonicalSchedule = {
     },
   ],
 };
+schedule.allEntries = schedule.entries;
 
 describe("published snapshot planning", () => {
   test("normalizes stable public slugs", () => {

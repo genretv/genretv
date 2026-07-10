@@ -49,7 +49,9 @@ export function ManageHiddenRoute() {
         .select({
           id: canonicalSeason.id,
           showId: canonicalSeason.showId,
+          seasonNumber: canonicalSeason.seasonNumber,
           seasonLabel: canonicalSeason.seasonLabel,
+          releaseKind: canonicalSeason.releaseKind,
         })
         .from(canonicalSeason),
     [],

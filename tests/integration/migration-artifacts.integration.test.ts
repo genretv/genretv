@@ -74,8 +74,29 @@ describe("database artifact contract", () => {
     expect(migration).toContain('CREATE TRIGGER "canonical_proposal_notify_maintainers_after_insert"');
     expect(migration).toContain('"maintainer_notification"');
     expect(migration).toContain("public.pgxsinkit_clock_us()");
-    expect(migration).toContain('REVOKE ALL ON FUNCTION "public"."genretv_notify_publish_application_insert"() FROM PUBLIC');
-    expect(migration).toContain('REVOKE ALL ON FUNCTION "public"."genretv_notify_canonical_proposal_insert"() FROM PUBLIC');
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION "public"."genretv_notify_publish_application_insert"() FROM PUBLIC',
+    );
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION "public"."genretv_notify_canonical_proposal_insert"() FROM PUBLIC',
+    );
     expect(migration).toContain("Drizzle cannot express PostgreSQL trigger functions or trigger bindings");
+  });
+
+  test("moves ending state to Shows and preserves structured Season history", async () => {
+    const fields = await readFile(join(drizzleDir, "20260710021506_full_season_fields", "migration.sql"), "utf8");
+    const lifecycle = await readFile(join(drizzleDir, "20260710021520_move_show_lifecycle", "migration.sql"), "utf8");
+    const cleanup = await readFile(join(drizzleDir, "20260710021614_remove_season_ending", "migration.sql"), "utf8");
+
+    for (const field of ["season_number", "release_kind", "is_final"]) {
+      expect(fields).toContain(`ADD COLUMN "${field}"`);
+    }
+    expect(fields).toContain('ADD COLUMN "lifecycle_status"');
+    expect(lifecycle).toContain('UPDATE "canonical_show" AS target');
+    expect(lifecycle).toContain('UPDATE "personal_show" AS target');
+    expect(lifecycle).toContain('UPDATE "published_show" AS target');
+    expect(cleanup).toContain('ALTER TABLE "canonical_season" DROP COLUMN "ended_reason"');
+    expect(cleanup).toContain('ALTER TABLE "personal_season" DROP COLUMN "ended_reason"');
+    expect(cleanup).toContain('ALTER TABLE "published_season" DROP COLUMN "ended_reason"');
   });
 });

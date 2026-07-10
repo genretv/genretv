@@ -65,7 +65,11 @@ export function PublishedListRowsTable({
               </Table.Td>
               <Table.Td>
                 <Stack gap={2}>
-                  <Text size="sm">{season.section === "past" ? season.endedReason : season.timing}</Text>
+                  <Text size="sm">
+                    {season.section === "past"
+                      ? (season.endedReason ?? (season.isFinal ? "Final season" : "Finished"))
+                      : season.timing}
+                  </Text>
                   {season.releasePattern != null && (
                     <Text size="xs" c="dimmed">
                       {season.releasePattern}

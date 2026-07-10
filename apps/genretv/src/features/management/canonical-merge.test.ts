@@ -4,7 +4,7 @@ import { buildCanonicalProposalMergePlan } from "./canonical-merge";
 
 describe("canonical proposal merge planning", () => {
   test("creates a new canonical show from a show proposal", () => {
-    const ids = idSequence("show-new");
+    const ids = idSequence("show-new", "season-new");
     const plan = buildCanonicalProposalMergePlan(
       {
         proposalKind: "show",
@@ -34,6 +34,12 @@ describe("canonical proposal merge planning", () => {
       notes: "Worth adding",
     });
     expect(plan.showUpdate).toBeNull();
+    expect(plan.seasonCreate).toMatchObject({
+      id: "season-new",
+      showId: "show-new",
+      seasonNumber: 1,
+      releaseKind: "season",
+    });
   });
 
   test("updates an existing canonical show from a show proposal", () => {
@@ -55,6 +61,8 @@ describe("canonical proposal merge planning", () => {
       patch: {
         displayTitle: "Better Title",
         originalTitle: null,
+        lifecycleStatus: "open",
+        endedReason: null,
         languages: [],
         countries: [],
         genreTags: [],
@@ -76,7 +84,9 @@ describe("canonical proposal merge planning", () => {
         proposedPayload: {
           showTitle: "Show",
           section: "current",
+          seasonNumber: 1,
           seasonLabel: "Season 1",
+          releaseKind: "season",
           timing: "Fridays",
           episodeCount: 8,
         },
@@ -106,8 +116,10 @@ describe("canonical proposal merge planning", () => {
         title: "Show Season 2",
         proposedPayload: {
           seasonLabel: "Season 2",
+          seasonNumber: 2,
+          releaseKind: "season",
+          isFinal: true,
           section: "past",
-          endedReason: "finished",
           releasePattern: "weekly",
           releasePrecision: "season",
           dateConfidence: "expected",
@@ -127,7 +139,9 @@ describe("canonical proposal merge planning", () => {
         showId: "show-1",
         section: "past",
         seasonLabel: "Season 2",
-        endedReason: "finished",
+        seasonNumber: 2,
+        releaseKind: "season",
+        isFinal: true,
         releasePattern: "weekly",
         releasePrecision: "season",
         dateConfidence: "expected",
@@ -213,6 +227,8 @@ describe("canonical proposal merge planning", () => {
         proposedPayload: {
           showTitle: "New Show",
           seasonLabel: "Season 1",
+          seasonNumber: 1,
+          releaseKind: "season",
           section: "current",
           timing: "Mondays",
           releasePrecision: "season",
@@ -238,6 +254,8 @@ describe("canonical proposal merge planning", () => {
       showId: "show-new",
       section: "current",
       seasonLabel: "Season 1",
+      seasonNumber: 1,
+      releaseKind: "season",
       timing: "Mondays",
       releasePrecision: "season",
       dateConfidence: "expected",

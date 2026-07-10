@@ -14,7 +14,9 @@ export interface ExclusionShowRow {
 
 export interface ExclusionSeasonRow {
   id: string;
-  seasonLabel: string;
+  releaseKind: string;
+  seasonLabel: string | null;
+  seasonNumber: number | null;
   showId: string;
 }
 
@@ -64,14 +66,22 @@ function exclusionLabel(
   if (exclusion.excludedKind === "season" && exclusion.canonicalSeasonId != null) {
     const season = seasonsById.get(exclusion.canonicalSeasonId);
     if (season == null) return exclusion.canonicalSeasonId;
-    return `${showsById.get(season.showId)?.displayTitle ?? season.showId} ${season.seasonLabel}`.trim();
+    return `${showsById.get(season.showId)?.displayTitle ?? season.showId} ${releaseLabel(season)}`.trim();
   }
   if (exclusion.excludedKind === "episode" && exclusion.canonicalEpisodeId != null) {
     const episode = episodesById.get(exclusion.canonicalEpisodeId);
     if (episode == null) return exclusion.canonicalEpisodeId;
     const season = seasonsById.get(episode.seasonId);
     const showTitle = season == null ? null : (showsById.get(season.showId)?.displayTitle ?? season.showId);
-    return [showTitle, season?.seasonLabel, episode.episodeLabel, episode.title].filter(Boolean).join(" · ");
+    return [showTitle, season == null ? null : releaseLabel(season), episode.episodeLabel, episode.title]
+      .filter(Boolean)
+      .join(" · ");
   }
   return exclusion.id;
+}
+
+function releaseLabel(season: ExclusionSeasonRow): string {
+  if (season.seasonLabel != null && season.seasonLabel.trim() !== "") return season.seasonLabel;
+  if (season.releaseKind === "season" && season.seasonNumber != null) return `S${season.seasonNumber}`;
+  return season.releaseKind;
 }
