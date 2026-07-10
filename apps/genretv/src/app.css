@@ -22,6 +22,34 @@ body {
   background: transparent;
 }
 
+.app-header-content {
+  flex-wrap: nowrap;
+}
+
+.app-header-nav {
+  gap: var(--mantine-spacing-lg);
+}
+
+@media (max-width: 47.99em) {
+  .app-header-content {
+    align-content: center;
+    row-gap: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .app-header-nav {
+    width: 100%;
+    gap: var(--mantine-spacing-sm);
+    flex-wrap: nowrap;
+  }
+
+  .app-header-actions {
+    margin-left: auto;
+  }
+}
+
 .schedule-panel {
   color: #102225;
   background: rgba(255, 255, 255, 0.9);
@@ -251,6 +279,18 @@ body {
   color: #075b64;
 }
 
+.schedule-details-toggle {
+  color: #075b64;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(7, 91, 100, 0.45);
+}
+
+.schedule-details-toggle:hover {
+  color: #043f46;
+  background: rgba(218, 236, 228, 0.98);
+  border-color: #075b64;
+}
+
 .management-editor-section {
   padding-top: 16px;
   border-top: 1px solid rgba(17, 34, 37, 0.14);
@@ -259,6 +299,11 @@ body {
 .management-editor-section:first-of-type {
   padding-top: 0;
   border-top: 0;
+}
+
+.export-section {
+  padding-top: 16px;
+  border-top: 1px solid rgba(17, 34, 37, 0.14);
 }
 
 .management-action-bar {

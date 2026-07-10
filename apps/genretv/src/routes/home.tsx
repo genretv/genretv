@@ -23,6 +23,7 @@ import {
   defaultScheduleViewPreferences,
   defaultScheduleSortDirection,
   filterScheduleEntries,
+  findImdbLink,
   formatEpisodeCount,
   formatScheduleSeasonCount,
   formatScheduleStatus,
@@ -130,21 +131,29 @@ function SectionTable({ entries, onSort, section, sort, sortDirection }: Section
         <Table.Tbody>
           {entries.map((entry) => {
             const expanded = expandedIds.has(entry.id);
+            const imdbLink = findImdbLink(entry.showLinks);
             return (
               <Fragment key={entry.id}>
                 <Table.Tr>
                   <Table.Td>
                     <ActionIcon
                       aria-label={`${expanded ? "Hide" : "Show"} details for ${entry.title}`}
+                      className="schedule-details-toggle"
                       size="sm"
-                      variant="subtle"
+                      variant="default"
                       onClick={() => toggleExpanded(entry.id)}
                     >
                       {expanded ? "-" : "+"}
                     </ActionIcon>
                   </Table.Td>
                   <Table.Td>
-                    <Text fw={600}>{entry.title}</Text>
+                    {imdbLink == null ? (
+                      <Text fw={600}>{entry.title}</Text>
+                    ) : (
+                      <Anchor fw={600} href={imdbLink.url} target="_blank" rel="noopener noreferrer">
+                        {entry.title}
+                      </Anchor>
+                    )}
                   </Table.Td>
                   <Table.Td>{formatScheduleSeasonCount(entry)}</Table.Td>
                   <Table.Td>{entry.timing}</Table.Td>
@@ -211,12 +220,14 @@ function SortableTableHeader({
 }
 
 function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
+  const imdbLink = findImdbLink(entry.showLinks);
+  const detailLinks = imdbLink == null ? entry.links : entry.links.filter((link) => link.url !== imdbLink.url);
   return (
     <Box py="xs">
       <Stack gap={8}>
-        {entry.links.length > 0 && (
+        {detailLinks.length > 0 && (
           <Group gap={8}>
-            {entry.links.map((link) => (
+            {detailLinks.map((link) => (
               <Anchor key={`${entry.id}-${link.kind}-${link.url}`} href={link.url} target="_blank" size="sm">
                 {link.kind ?? link.label}
               </Anchor>

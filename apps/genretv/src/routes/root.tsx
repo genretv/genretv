@@ -6,10 +6,10 @@ import { useAuth } from "../auth/auth";
 export function RootLayout() {
   const { session, signOut } = useAuth();
   return (
-    <AppShell header={{ height: 58 }} padding="md">
+    <AppShell header={{ height: { base: 104, sm: 58 } }} padding="md">
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group gap="lg">
+        <Group className="app-header-content" h="100%" px="md" justify="space-between">
+          <Group className="app-header-nav">
             <Anchor component={Link} to="/" underline="never" c="dark">
               <Text fw={800}>GenreTV</Text>
             </Anchor>
@@ -27,7 +27,10 @@ export function RootLayout() {
             </Anchor>
           </Group>
           {session ? (
-            <Group gap="sm">
+            <Group className="app-header-actions" gap="sm">
+              <Button size="xs" component={Link} to="/export" variant="default">
+                Export
+              </Button>
               <Text component={Link} to="/profile" size="sm" c="dimmed">
                 {session.user.email}
               </Text>
@@ -36,9 +39,14 @@ export function RootLayout() {
               </Button>
             </Group>
           ) : (
-            <Button size="xs" component={Link} to="/login" variant="default">
-              Sign in
-            </Button>
+            <Group className="app-header-actions" gap="sm">
+              <Button size="xs" component={Link} to="/export" variant="default">
+                Export
+              </Button>
+              <Button size="xs" component={Link} to="/login" variant="default">
+                Sign in
+              </Button>
+            </Group>
           )}
         </Group>
       </AppShell.Header>

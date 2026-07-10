@@ -252,6 +252,14 @@ _Avoid_: REST fetch, server materialized copy
 The normal client-side construction of display data from synced pgxsinkit registry tables and views, usually through live Drizzle queries against local PGlite.
 _Avoid_: Server materialized overlay, special read-model layer
 
+**HTML Schedule Export**:
+A portable, unstyled, single-root HTML fragment containing the four unfiltered Schedule View sections as original-style schedule tables. It exports resolved Show and Season schedule information without Episode details, interactive controls, pagination, saved view preferences, classes, or presentation attributes.
+_Avoid_: Page snapshot, filtered export, episode export
+
+**Personal HTML Export**:
+An HTML Schedule Export of the fully resolved Personal List, including the Canonical List baseline after applying the user's edits, exclusions, additions, and linked or detached imports. It is not an export of sparse Personal Overlay rows.
+_Avoid_: Overlay dump, personal-row export
+
 **Public List Slug**:
 A stable, shareable URL identifier for a published user's list. The Canonical List remains the root public schedule, while user-published lists use their own slugs.
 _Avoid_: Username-as-id, list UUID URL

@@ -91,7 +91,13 @@ const seed: CanonicalRegistrySeed = {
         finaleWindow: null,
         sortKey: null,
         episodeCount: null,
-        organizations: [{ name: "Apple", role: "streamer", externalLinks: [] }],
+        organizations: [
+          {
+            name: "Apple",
+            role: "streamer",
+            externalLinks: [{ label: "Apple", url: "https://tv.apple.com/" }],
+          },
+        ],
         externalLinks: [],
         notes: null,
       },
@@ -188,6 +194,7 @@ describe("schedule read model", () => {
     expect(current.title).toBe("A Show");
     expect(current.originalTitle).toBeNull();
     expect(current.seasonLabel).toBe("S2");
+    expect(current.seasonLinks).toEqual([{ label: "Apple", url: "https://tv.apple.com/" }]);
     expect(upcoming.languages).toEqual(["en"]);
     expect(upcoming.episodeCount).toBe(2);
     expect(upcoming.episodes.map((episode) => episode.episodeLabel)).toEqual(["E1", "E2"]);

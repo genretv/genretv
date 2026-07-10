@@ -476,6 +476,14 @@ export function formatScheduleStatus(section: ScheduleSection, endedReason: stri
   return sectionLabels[section];
 }
 
+export function findImdbLink(links: readonly ExternalLinkSeed[]): ExternalLinkSeed | null {
+  return (
+    links.find((link) => link.kind?.toLocaleLowerCase() === "imdb") ??
+    links.find((link) => /(^|\.)imdb\.com\/title\//i.test(link.url)) ??
+    null
+  );
+}
+
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
@@ -590,6 +598,10 @@ export function findManagementSeason(
 
 function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   const organizations = entry.organizations.map((organization) => organization.name).filter(Boolean);
+  const seasonLinks = mergeLinks(
+    [],
+    entry.organizations.flatMap((organization) => organization.externalLinks),
+  );
   const genreText = entry.genreTags.join(", ") || entry.legacy.genreText;
   const endedReason = stopReasonFor(entry);
   const lifecycleStatus = lifecycleStatusForReason(endedReason);
@@ -624,8 +636,8 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     languages,
     countries,
     showLinks: entry.show.externalLinks,
-    links: entry.show.externalLinks,
-    seasonLinks: [],
+    links: mergeLinks(entry.show.externalLinks, seasonLinks),
+    seasonLinks,
     notes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
     seasonNotes: entry.notes.length > 0 ? entry.notes.join("\n\n") : null,
     releasePattern: entry.season.releasePattern,
@@ -646,9 +658,13 @@ function toRegistryScheduleEntry(
   episodes: readonly CanonicalEpisodeSeedRow[],
 ): ScheduleEntry {
   const organizations = season.organizations.map((organization) => organization.name).filter(Boolean);
+  const seasonLinks = mergeLinks(
+    season.externalLinks,
+    season.organizations.flatMap((organization) => organization.externalLinks),
+  );
   const genreText = show.genreTags.join(", ");
   const languages = normalizeLanguages(show.languages);
-  const links = mergeLinks(show.externalLinks, season.externalLinks);
+  const links = mergeLinks(show.externalLinks, seasonLinks);
   return {
     id: season.id,
     showId: show.id,
@@ -677,7 +693,7 @@ function toRegistryScheduleEntry(
     countries: show.countries,
     showLinks: show.externalLinks,
     links,
-    seasonLinks: season.externalLinks,
+    seasonLinks,
     notes: show.notes,
     seasonNotes: season.notes,
     releasePattern: season.releasePattern,

@@ -1,5 +1,6 @@
 import { createHashHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 
+import { ExportRoute } from "./routes/export";
 import { HomeRoute } from "./routes/home";
 import { LoginRoute, RecoverRoute, ResetPasswordRoute, SignUpRoute } from "./routes/login";
 import { ManageRoute } from "./routes/manage";
@@ -20,6 +21,12 @@ const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: HomeRoute,
+});
+
+const exportRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/export",
+  component: ExportRoute,
 });
 
 const loginRoute = createRoute({
@@ -108,6 +115,7 @@ const publishedListRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  exportRoute,
   loginRoute,
   signUpRoute,
   recoverRoute,

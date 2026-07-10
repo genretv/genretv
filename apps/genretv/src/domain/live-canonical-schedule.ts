@@ -36,8 +36,11 @@ const publishedEpisode = genretvSyncRegistry.published_episode.view!;
 const listImport = genretvSyncRegistry.list_import.view!;
 
 export interface LiveCanonicalSchedule {
+  canonicalLoading: boolean;
+  canonicalSchedule: CanonicalSchedule;
   error: Error | null;
   loading: boolean;
+  personalLoading: boolean;
   schedule: CanonicalSchedule;
   usingFallback: boolean;
 }
@@ -290,49 +293,47 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
   );
 
   const usingFallback = shows.rows.length === 0 || seasons.rows.length === 0;
+  const baseCanonicalRows = useMemo(
+    () => ({
+      shows: shows.rows.map(toCanonicalShowSeedRow),
+      seasons: seasons.rows.map(toCanonicalSeasonSeedRow),
+      episodes: episodes.rows.map(toCanonicalEpisodeSeedRow),
+    }),
+    [episodes.rows, seasons.rows, shows.rows],
+  );
+  const canonicalSchedule = useMemo(
+    () =>
+      usingFallback
+        ? buildCanonicalSchedule({ asOf })
+        : buildScheduleFromRegistryRows(baseCanonicalRows, scheduleMetadata(), { asOf }),
+    [asOf, baseCanonicalRows, usingFallback],
+  );
   const schedule = useMemo(() => {
-    if (usingFallback) return buildCanonicalSchedule({ asOf });
-    const canonicalRows = applyPersonalExclusions(
-      {
-        shows: shows.rows.map(toCanonicalShowSeedRow),
-        seasons: seasons.rows.map(toCanonicalSeasonSeedRow),
-        episodes: episodes.rows.map(toCanonicalEpisodeSeedRow),
-      },
-      personalReady ? personalExclusions.rows : [],
-    );
+    if (!personalReady || usingFallback) return canonicalSchedule;
+    const canonicalRows = applyPersonalExclusions(baseCanonicalRows, personalExclusions.rows);
     const personalRows = {
-      shows: applyPersonalShows(canonicalRows.shows, personalReady ? personalShows.rows : []),
-      seasons: applyPersonalSeasons(canonicalRows.seasons, personalReady ? personalSeasons.rows : []),
-      episodes: applyPersonalEpisodes(canonicalRows.episodes, personalReady ? personalEpisodes.rows : []),
+      shows: applyPersonalShows(canonicalRows.shows, personalShows.rows),
+      seasons: applyPersonalSeasons(canonicalRows.seasons, personalSeasons.rows),
+      episodes: applyPersonalEpisodes(canonicalRows.episodes, personalEpisodes.rows),
     };
-    const linkedRows = applyLinkedPublishedImports(
-      personalRows,
-      personalReady ? listImports.rows : [],
-      personalReady
-        ? {
-            shows: publishedShows.rows,
-            seasons: publishedSeasons.rows,
-            episodes: publishedEpisodes.rows,
-          }
-        : { shows: [], seasons: [], episodes: [] },
-    );
+    const linkedRows = applyLinkedPublishedImports(personalRows, listImports.rows, {
+      shows: publishedShows.rows,
+      seasons: publishedSeasons.rows,
+      episodes: publishedEpisodes.rows,
+    });
     return buildScheduleFromRegistryRows(
       {
         shows: linkedRows.shows,
         seasons: linkedRows.seasons,
         episodes: linkedRows.episodes,
       },
-      {
-        title: fallbackSchedule.title,
-        sourceUrl: fallbackSchedule.sourceUrl,
-        updatedLabel: fallbackSchedule.updatedLabel,
-        generatedAt: fallbackSchedule.generatedAt,
-      },
+      scheduleMetadata(),
       { asOf },
     );
   }, [
     asOf,
-    episodes.rows,
+    baseCanonicalRows,
+    canonicalSchedule,
     personalExclusions.rows,
     personalEpisodes.rows,
     personalReady,
@@ -342,27 +343,28 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     publishedEpisodes.rows,
     publishedSeasons.rows,
     publishedShows.rows,
-    seasons.rows,
-    shows.rows,
     usingFallback,
   ]);
 
+  const canonicalLoading = shows.loading || seasons.loading || episodes.loading;
+  const personalLoading =
+    personalReady &&
+    (personalShows.loading ||
+      personalSeasons.loading ||
+      personalEpisodes.loading ||
+      personalExclusions.loading ||
+      listImports.loading ||
+      publishedShows.loading ||
+      publishedSeasons.loading ||
+      publishedEpisodes.loading);
+
   return {
+    canonicalLoading,
+    canonicalSchedule,
     schedule,
     usingFallback,
-    loading:
-      shows.loading ||
-      seasons.loading ||
-      episodes.loading ||
-      (personalReady &&
-        (personalShows.loading ||
-          personalSeasons.loading ||
-          personalEpisodes.loading ||
-          personalExclusions.loading ||
-          listImports.loading ||
-          publishedShows.loading ||
-          publishedSeasons.loading ||
-          publishedEpisodes.loading)),
+    loading: canonicalLoading || personalLoading,
+    personalLoading,
     error:
       shows.error ??
       seasons.error ??
@@ -377,6 +379,15 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           publishedSeasons.error ??
           publishedEpisodes.error)
         : null),
+  };
+}
+
+function scheduleMetadata() {
+  return {
+    title: fallbackSchedule.title,
+    sourceUrl: fallbackSchedule.sourceUrl,
+    updatedLabel: fallbackSchedule.updatedLabel,
+    generatedAt: fallbackSchedule.generatedAt,
   };
 }
 
