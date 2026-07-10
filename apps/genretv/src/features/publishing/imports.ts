@@ -47,7 +47,6 @@ export interface PublishedSeasonRow {
   section: string;
   snapshotVersion: number;
   sortKey: string | null;
-  sourceRow: number;
   timing: string;
 }
 
@@ -125,7 +124,6 @@ export interface PublishedSeasonSummary {
   section: string;
   showNotes: string | null;
   sortKey: string | null;
-  sourceRow: number;
   timing: string;
 }
 
@@ -219,7 +217,6 @@ export function buildPublishedListSummaries(
                   .map(toEpisodeSummary)
                   .sort(compareEpisodes),
                 sortKey: season.sortKey,
-                sourceRow: season.sourceRow,
                 organizations: organizationSeeds.map((organization) => organization.name),
                 organizationSeeds,
                 organizationText: organizationSeeds.map((organization) => organization.name).join(", "),
@@ -229,7 +226,7 @@ export function buildPublishedListSummaries(
               },
             ];
           })
-          .sort((left, right) => left.sourceRow - right.sourceRow),
+          .sort(compareReleases),
       };
     })
     .sort((left, right) => left.title.localeCompare(right.title));
@@ -272,6 +269,22 @@ function compareEpisodes(left: PublishedEpisodeSummary, right: PublishedEpisodeS
     (left.episodeLabel ?? "").localeCompare(right.episodeLabel ?? "") ||
     left.id.localeCompare(right.id)
   );
+}
+
+function compareReleases(left: PublishedSeasonSummary, right: PublishedSeasonSummary): number {
+  return (
+    compareNullableStrings(left.sortKey, right.sortKey) ||
+    (left.seasonNumber ?? Number.MAX_SAFE_INTEGER) - (right.seasonNumber ?? Number.MAX_SAFE_INTEGER) ||
+    left.releaseKind.localeCompare(right.releaseKind) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function compareNullableStrings(left: string | null, right: string | null): number {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return left.localeCompare(right);
 }
 
 function organizations(value: unknown): CanonicalSeasonSeedRow["organizations"] {

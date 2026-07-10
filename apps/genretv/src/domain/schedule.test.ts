@@ -90,7 +90,6 @@ const seed: CanonicalRegistrySeed = {
         finaleWindow: null,
         sortKey: null,
         episodeCount: null,
-        sourceRow: 3,
         organizations: [{ name: "Apple", role: "streamer", externalLinks: [] }],
         externalLinks: [],
         notes: null,
@@ -120,7 +119,6 @@ const seed: CanonicalRegistrySeed = {
         finaleWindow: null,
         sortKey: null,
         episodeCount: 2,
-        sourceRow: 2,
         organizations: [{ name: "Netflix", role: "streamer", externalLinks: [] }],
         externalLinks: [],
         notes: null,
@@ -142,7 +140,6 @@ const seed: CanonicalRegistrySeed = {
         finaleWindow: null,
         sortKey: null,
         episodeCount: null,
-        sourceRow: 1,
         organizations: [{ name: "Netflix", role: "streamer", externalLinks: [] }],
         externalLinks: [],
         notes: null,
@@ -215,7 +212,9 @@ describe("schedule read model", () => {
     expect(schedule.title).toBe("Live GenreTV");
     expect(schedule.sourceUrl).toBe("https://live.example.test");
     expect(schedule.counts).toEqual({ current: 1, upcoming: 1, waiting: 0, past: 1 });
-    expect(schedule.entries[1]?.episodes.map((episode) => episode.title)).toEqual(["Pilot", "Second Landing"]);
+    expect(
+      schedule.entries.find((entry) => entry.id === "upcoming-b")?.episodes.map((episode) => episode.title),
+    ).toEqual(["Pilot", "Second Landing"]);
   });
 
   test("derives schedule placement from release dates at the current date", () => {
@@ -287,7 +286,9 @@ describe("schedule read model", () => {
     expect(schedule.allEntries.find((entry) => entry.id === "finished-final-season")?.section).toBe("past");
     expect(formatScheduleStatus("waiting", null)).toBe("Awaiting Renewal or Cancellation");
     expect(schedule.counts).toEqual({ current: 2, upcoming: 1, waiting: 0, past: 0 });
-    expect(buildManagementShows(schedule.allEntries)[0]?.seasons[0]).toMatchObject({
+    expect(
+      buildManagementShows(schedule.allEntries)[0]?.seasons.find((season) => season.id === "waiting-weekly"),
+    ).toMatchObject({
       scheduleSection: "waiting",
       section: "current",
     });
@@ -512,16 +513,71 @@ describe("schedule read model", () => {
 
   test("formats explicit and derived episode counts", () => {
     const schedule = buildTestSchedule();
+    const episodes = schedule.entries.find((entry) => entry.id === "upcoming-b")?.episodes ?? [];
     expect(formatEpisodeCount(null, [])).toBe("Unknown");
-    expect(formatEpisodeCount(null, schedule.entries[1]?.episodes ?? [])).toBe("2");
-    expect(formatEpisodeCount(10, schedule.entries[1]?.episodes ?? [])).toBe("10");
+    expect(formatEpisodeCount(null, episodes)).toBe("2");
+    expect(formatEpisodeCount(10, episodes)).toBe("10");
   });
 
   test("formats official season counts separately from special releases", () => {
-    expect(formatScheduleSeasonCount({ officialSeasonCount: 6, movieCount: 0, specialCount: 0 })).toBe("6");
-    expect(formatScheduleSeasonCount({ officialSeasonCount: 2, movieCount: 1, specialCount: 0 })).toBe("2 + 1 movie");
-    expect(formatScheduleSeasonCount({ officialSeasonCount: 2, movieCount: 0, specialCount: 1 })).toBe("2 + 1 special");
-    expect(formatScheduleSeasonCount({ officialSeasonCount: 0, movieCount: 0, specialCount: 1 })).toBe("1 special");
+    const finishedRelease = {
+      section: "past" as const,
+      seasonNumber: 6,
+      seasonLabel: "S6",
+      releaseKind: "season" as const,
+    };
+    expect(
+      formatScheduleSeasonCount({ ...finishedRelease, officialSeasonCount: 6, movieCount: 0, specialCount: 0 }),
+    ).toBe("6");
+    expect(
+      formatScheduleSeasonCount({ ...finishedRelease, officialSeasonCount: 2, movieCount: 1, specialCount: 0 }),
+    ).toBe("2 + 1 movie");
+    expect(
+      formatScheduleSeasonCount({ ...finishedRelease, officialSeasonCount: 2, movieCount: 0, specialCount: 1 }),
+    ).toBe("2 + 1 special");
+    expect(
+      formatScheduleSeasonCount({ ...finishedRelease, officialSeasonCount: 0, movieCount: 0, specialCount: 1 }),
+    ).toBe("1 special");
+  });
+
+  test("formats active and upcoming rows as their specific release", () => {
+    expect(
+      formatScheduleSeasonCount({
+        section: "upcoming",
+        seasonNumber: 4,
+        seasonLabel: "S4",
+        releaseKind: "season",
+        officialSeasonCount: 5,
+        movieCount: 0,
+        specialCount: 0,
+      }),
+    ).toBe("4");
+    expect(
+      formatScheduleSeasonCount({
+        section: "upcoming",
+        seasonNumber: null,
+        seasonLabel: "Special",
+        releaseKind: "special",
+        officialSeasonCount: 2,
+        movieCount: 0,
+        specialCount: 1,
+      }),
+    ).toBe("Special");
+  });
+
+  test("orders Upcoming by When instead of imported source position", () => {
+    const upcoming = buildTestSchedule().entries.find((entry) => entry.section === "upcoming")!;
+    const entries = [
+      { ...upcoming, id: "autumn-2027", sortKey: "2027-10-15", timing: "Autumn 2027" },
+      { ...upcoming, id: "autumn-2028", sortKey: "2028-10-15", timing: "Autumn 2028" },
+      { ...upcoming, id: "december-2026", sortKey: "2026-12-25", timing: "Dec. 25" },
+    ];
+
+    expect(
+      filterScheduleEntries(entries, { ...defaultScheduleViewPreferences, section: "upcoming" }).map(
+        (entry) => entry.id,
+      ),
+    ).toEqual(["december-2026", "autumn-2027", "autumn-2028"]);
   });
 
   test("does not count standalone specials as official seasons", () => {

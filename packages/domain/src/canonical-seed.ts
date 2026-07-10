@@ -23,7 +23,6 @@ interface ReleaseWindowSeed {
 interface BlogspotSeedEntry {
   id: string;
   section: ScheduleSection;
-  sourceRow: number;
   show: {
     displayTitle: string;
     originalTitle?: string | null;
@@ -87,7 +86,6 @@ export interface CanonicalSeasonSeedRow {
   finaleWindow: ReleaseWindowSeed | null;
   sortKey: string | null;
   episodeCount: number | null;
-  sourceRow: number;
   organizations: Array<{ name: string; role: string; externalLinks: ExternalLinkSeed[] }>;
   externalLinks: ExternalLinkSeed[];
   notes: string | null;
@@ -188,7 +186,7 @@ export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): Can
     const seasonNumber = entry.season.number ?? seasonOrdinalFromRaw(entry.season.rawSeason);
     if (seasonNumber != null) {
       for (let number = 1; number <= seasonNumber; number += 1) {
-        ensureHistoricalSeason(seasons, showId, number, entry.sourceRow);
+        ensureHistoricalSeason(seasons, showId, number);
       }
     }
 
@@ -216,7 +214,6 @@ export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): Can
       finaleWindow,
       sortKey: sortKeyFor(releaseWindow ?? finaleWindow),
       episodeCount: null,
-      sourceRow: entry.sourceRow,
       organizations: entry.organizations,
       externalLinks: [],
       notes: joinNotes(entry.notes),
@@ -259,7 +256,6 @@ export function buildCanonicalRegistrySeedRows(seed: BlogspotCanonicalSeed): Can
         finaleWindow: null,
         sortKey: sortKeyFor(releaseWindow),
         episodeCount: null,
-        sourceRow: entry.sourceRow,
         organizations: entry.organizations,
         externalLinks: [],
         notes: null,
@@ -340,7 +336,7 @@ export function analyzeCanonicalRegistrySeedRows(rows: CanonicalRegistrySeedRows
       errors.push({
         code: "duplicate-season-identity",
         message: `${show.displayTitle} has ${duplicates.length} rows for season ${number}`,
-        refs: duplicates.map((season) => `${season.id}:row-${season.sourceRow}`),
+        refs: duplicates.map((season) => season.id),
       });
     }
     const maxNumber = numbered.reduce((max, season) => Math.max(max, season.seasonNumber ?? 0), 0);
@@ -392,7 +388,6 @@ function ensureHistoricalSeason(
   seasons: Map<string, CanonicalSeasonSeedRow>,
   showId: string,
   seasonNumber: number,
-  sourceRow: number,
 ): void {
   const identity = numberedSeasonIdentity(showId, seasonNumber);
   if (seasons.has(identity)) return;
@@ -413,7 +408,6 @@ function ensureHistoricalSeason(
     finaleWindow: null,
     sortKey: null,
     episodeCount: null,
-    sourceRow,
     organizations: [],
     externalLinks: [],
     notes: null,
@@ -671,8 +665,8 @@ function sortKeyFor(window: ReleaseWindowSeed | null): string | null {
 }
 
 function compareSeasonRows(left: CanonicalSeasonSeedRow, right: CanonicalSeasonSeedRow): number {
-  const sourceOrder = left.sourceRow - right.sourceRow;
-  if (sourceOrder !== 0) return sourceOrder;
+  const showOrder = left.showId.localeCompare(right.showId);
+  if (showOrder !== 0) return showOrder;
   const numberOrder = (left.seasonNumber ?? Number.MAX_SAFE_INTEGER) - (right.seasonNumber ?? Number.MAX_SAFE_INTEGER);
   if (numberOrder !== 0) return numberOrder;
   return left.id.localeCompare(right.id);

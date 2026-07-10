@@ -1,1 +1,0 @@
-CREATE POLICY "user_profile_public_read" ON "user_profile" AS PERMISSIVE FOR SELECT TO "anon", "authenticated" USING ("is_public" IS TRUE);

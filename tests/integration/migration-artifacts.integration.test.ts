@@ -6,15 +6,18 @@ import { join } from "node:path";
 const drizzleDir = "infra/drizzle";
 
 describe("database artifact contract", () => {
-  test("commits Drizzle 1.0 migration folders for utilities, schema, grants, and sync artifact", async () => {
+  test("commits one fresh Drizzle baseline plus required custom migrations", async () => {
     const folders = (await readdir(drizzleDir, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
 
+    expect(folders).toHaveLength(6);
     expect(folders.some((folder) => folder.endsWith("_pgxsinkit_utilities"))).toBe(true);
-    expect(folders.some((folder) => folder.endsWith("_canonical_registry"))).toBe(true);
+    expect(folders.some((folder) => folder.endsWith("_baseline"))).toBe(true);
     expect(folders.some((folder) => folder.endsWith("_canonical_public_grants"))).toBe(true);
+    expect(folders.some((folder) => folder.endsWith("_workflow_review_policies"))).toBe(true);
+    expect(folders.some((folder) => folder.endsWith("_workflow_notification_fanout"))).toBe(true);
     expect(folders.some((folder) => folder.endsWith("_sync_artifact"))).toBe(true);
 
     for (const folder of folders) {
@@ -83,20 +86,38 @@ describe("database artifact contract", () => {
     expect(migration).toContain("Drizzle cannot express PostgreSQL trigger functions or trigger bindings");
   });
 
-  test("moves ending state to Shows and preserves structured Season history", async () => {
-    const fields = await readFile(join(drizzleDir, "20260710021506_full_season_fields", "migration.sql"), "utf8");
-    const lifecycle = await readFile(join(drizzleDir, "20260710021520_move_show_lifecycle", "migration.sql"), "utf8");
-    const cleanup = await readFile(join(drizzleDir, "20260710021614_remove_season_ending", "migration.sql"), "utf8");
+  test("models Show lifecycle and structured Season history directly in the baseline", async () => {
+    const folders = (await readdir(drizzleDir, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    const baselineFolder = folders.find((folder) => folder.endsWith("_baseline"));
+
+    expect(baselineFolder).toBeString();
+
+    const baseline = await readFile(join(drizzleDir, baselineFolder!, "migration.sql"), "utf8");
 
     for (const field of ["season_number", "release_kind", "is_final"]) {
-      expect(fields).toContain(`ADD COLUMN "${field}"`);
+      expect(baseline).toContain(`"${field}"`);
     }
-    expect(fields).toContain('ADD COLUMN "lifecycle_status"');
-    expect(lifecycle).toContain('UPDATE "canonical_show" AS target');
-    expect(lifecycle).toContain('UPDATE "personal_show" AS target');
-    expect(lifecycle).toContain('UPDATE "published_show" AS target');
-    expect(cleanup).toContain('ALTER TABLE "canonical_season" DROP COLUMN "ended_reason"');
-    expect(cleanup).toContain('ALTER TABLE "personal_season" DROP COLUMN "ended_reason"');
-    expect(cleanup).toContain('ALTER TABLE "published_season" DROP COLUMN "ended_reason"');
+    expect(baseline).toContain('"lifecycle_status"');
+    expect(baseline).not.toContain('"source_row"');
+    expect(baseline).not.toContain("DROP COLUMN");
+
+    for (const table of ["canonical_season", "personal_season", "published_season"]) {
+      const tableDefinition = baseline.match(new RegExp(`CREATE TABLE "${table}" \\(([\\s\\S]*?)\\n\\);`))?.[1];
+      expect(tableDefinition).toBeString();
+      expect(tableDefinition).not.toContain('"ended_reason"');
+    }
+  });
+
+  test("documents and automates migration regeneration", async () => {
+    const packageJson = await readFile("package.json", "utf8");
+    const script = await readFile("scripts/regenerate-drizzle-migrations.ts", "utf8");
+
+    expect(existsSync("docs/runbooks/regenerating-drizzle-migrations.md")).toBe(true);
+    expect(packageJson).toContain('"db:migrations:regenerate"');
+    expect(script).toContain('"canonical_public_grants"');
+    expect(script).toContain('"workflow_review_policies"');
+    expect(script).toContain('"workflow_notification_fanout"');
   });
 });

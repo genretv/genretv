@@ -102,7 +102,6 @@ describe("canonical proposal merge planning", () => {
       seasonLabel: "Season 1",
       timing: "Fridays",
       episodeCount: 8,
-      sourceRow: 1_000_000,
     });
   });
 
@@ -266,7 +265,6 @@ describe("canonical proposal merge planning", () => {
       organizations: [{ name: "Netflix", role: "unknown", externalLinks: [] }],
       externalLinks: [{ label: "Wikipedia", url: "https://wikipedia.test/show" }],
       notes: "Parent note",
-      sourceRow: 1_000_000,
     });
     expect(plan.episodeCreate).toMatchObject({
       id: "episode-new",

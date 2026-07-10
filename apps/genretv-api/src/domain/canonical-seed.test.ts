@@ -11,7 +11,6 @@ const seed: BlogspotCanonicalSeed = {
     {
       id: "upcoming-1-the-show",
       section: "upcoming",
-      sourceRow: 2,
       show: {
         displayTitle: "The Show",
         externalLinks: [{ kind: "imdb", label: "IMDb", url: "https://www.imdb.com/title/tt1/" }],
@@ -44,7 +43,6 @@ const seed: BlogspotCanonicalSeed = {
     {
       id: "past-2-the-show",
       section: "past",
-      sourceRow: 5,
       show: {
         displayTitle: "The Show",
         externalLinks: [{ kind: "official", label: "Official", url: "https://example.test/show" }],
@@ -97,7 +95,7 @@ describe("canonical registry seed rows", () => {
   test("preserves season metadata for sync", () => {
     const rows = buildCanonicalRegistrySeedRows(seed);
 
-    expect(rows.seasons.map((season) => season.sourceRow)).toEqual([2, 5]);
+    expect(rows.seasons.map((season) => season.seasonNumber)).toEqual([1, 2]);
     expect(rows.seasons[0]).toMatchObject({
       seasonNumber: 1,
       seasonLabel: null,
@@ -204,7 +202,6 @@ describe("canonical registry seed rows", () => {
         {
           ...seed.entries[0]!,
           id: "past-488-dracula",
-          sourceRow: 488,
           section: "past",
           show: {
             displayTitle: "Dracula",
@@ -216,7 +213,6 @@ describe("canonical registry seed rows", () => {
         {
           ...seed.entries[1]!,
           id: "past-712-dracula",
-          sourceRow: 712,
           section: "past",
           show: {
             displayTitle: "Dracula",

@@ -118,9 +118,7 @@ test("publisher can send a season proposal that creates its canonical parent sho
   const proposalNote = `Please merge season ${suffix}`;
 
   await createPersonalShow(page, showTitle);
-  await page.getByRole("button", { name: "Add season" }).click();
-  await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/new/);
-  await page.getByLabel("Season number").fill("1");
+  await openInitialPersonalSeason(page, showTitle, seasonLabel);
   await page.getByLabel("When").fill("2026");
   await page.getByLabel("Episodes").fill("8");
   await page.getByLabel("Organizations").fill("E2E Streamer");
@@ -154,9 +152,7 @@ test("publisher can send an episode proposal that creates canonical show and sea
   const proposalNote = `Please merge episode ${suffix}`;
 
   await createPersonalShow(page, showTitle);
-  await page.getByRole("button", { name: "Add season" }).click();
-  await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/new/);
-  await page.getByLabel("Season number").fill("1");
+  await openInitialPersonalSeason(page, showTitle, seasonLabel);
   await page.getByLabel("When").fill("2026");
   await page.getByLabel("Episodes").fill("1");
   await page.getByLabel("Organizations").fill("E2E Streamer");
@@ -397,6 +393,12 @@ function proposalStatusForAction(action: "Approve + merge" | "Reject" | "Close")
   if (action === "Approve + merge") return "approved";
   if (action === "Reject") return "rejected";
   return "closed";
+}
+
+async function openInitialPersonalSeason(page: Page, showTitle: string, seasonLabel: string): Promise<void> {
+  await page.getByRole("button", { name: seasonLabel }).click();
+  await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/[0-9a-f-]+/);
+  await expect(page.getByRole("heading", { name: `${showTitle} ${seasonLabel}` })).toBeVisible();
 }
 
 async function openCanonicalSeason(page: Page, showTitle: string, seasonLabel: string): Promise<void> {

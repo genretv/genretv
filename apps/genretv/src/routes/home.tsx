@@ -241,11 +241,11 @@ export function HomeRoute() {
           onChange={(countries) => updatePreferences({ countries })}
         />
         <Select
-          label="Source"
+          label="Platform"
           value={preferences.organization}
           searchable
           data={[
-            { value: "all", label: "All sources" },
+            { value: "all", label: "All platforms" },
             ...filterOptions.organizations.map((organization) => ({ value: organization, label: organization })),
           ]}
           onChange={(value) => updatePreferences({ organization: value ?? "all" })}
@@ -254,9 +254,9 @@ export function HomeRoute() {
           label="Sort"
           value={preferences.sort}
           data={[
-            { value: "source", label: "Original order" },
+            { value: "when", label: "When" },
             { value: "title", label: "Title" },
-            { value: "organization", label: "Source" },
+            { value: "organization", label: "Platform" },
           ]}
           onChange={(value) => updatePreferences({ sort: parseSort(value) })}
         />
@@ -344,7 +344,7 @@ function parseEnding(value: unknown): EndingFilter {
 }
 
 function parseSort(value: unknown): ScheduleSort {
-  return value === "source" || value === "title" || value === "organization"
+  return value === "when" || value === "title" || value === "organization"
     ? value
     : defaultScheduleViewPreferences.sort;
 }

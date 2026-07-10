@@ -6,4 +6,6 @@ The effective sections, in display order, are Now Showing, Upcoming, Awaiting Re
 
 Exact dates, Release Seasons, and year-only values can all participate in placement and ordering by using an approximate midpoint for imprecise periods while preserving the original precision and Date Confidence for display and filtering. Release Seasons use Northern Hemisphere meteorological windows. When the source omits a year because the page supplies chronological context, the source update date anchors that year inference. Estimated windows order Upcoming Seasons but never make them Now Showing merely because the estimate passes.
 
+Schedule View defaults to chronological `When` ordering, with releases lacking usable timing after dated releases. The Blogspot table row position is extraction metadata only: it is neither persisted in canonical, personal, or published Season rows nor exposed as a Schedule ordering option.
+
 Release Pattern distinguishes weekly, bulk, and unknown Seasons. Bulk streaming releases stay Now Showing for a Current Grace Period, initially five weeks. A complete set of dated Episode rows can supply the finale when the Season has no explicit finale date. For an imported bulk row recorded as current without a release date, the source update date is the conservative start of that grace period.

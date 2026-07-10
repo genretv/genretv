@@ -3,7 +3,7 @@ export type ScheduleSection = SourceScheduleSection | "waiting";
 export type ShowLifecycleStatus = "open" | "ended" | "cancelled";
 export type ReleaseKind = "season" | "special" | "movie" | "pilot" | "other";
 export type EndingFilter = "all" | "canceled" | "finished" | "unknown";
-export type ScheduleSort = "source" | "title" | "organization";
+export type ScheduleSort = "when" | "title" | "organization";
 export type ManagementSort = "title" | "seasonCount" | "organization";
 export type PageSize = (typeof pageSizeOptions)[number];
 
@@ -29,7 +29,6 @@ export interface ReleaseWindowSeed {
 export interface BlogspotEntrySeed {
   id: string;
   section: SourceScheduleSection;
-  sourceRow: number;
   show: {
     displayTitle: string;
     externalLinks: ExternalLinkSeed[];
@@ -105,7 +104,6 @@ export interface CanonicalSeasonSeedRow {
   finaleWindow: ReleaseWindowSeed | null;
   sortKey: string | null;
   episodeCount: number | null;
-  sourceRow: number;
   organizations: Array<{ name: string; role: string; externalLinks: ExternalLinkSeed[] }>;
   externalLinks: ExternalLinkSeed[];
   notes: string | null;
@@ -145,7 +143,6 @@ export interface CanonicalRegistrySeed {
 export interface ScheduleEntry {
   id: string;
   showId: string;
-  sourceRow: number;
   section: ScheduleSection;
   sourceSection: SourceScheduleSection;
   title: string;
@@ -218,7 +215,6 @@ export interface ManagementSeason {
   genreText: string;
   languages: string[];
   countries: string[];
-  sourceRow: number;
   episodeCount: number | null;
   notes: string | null;
   links: ExternalLinkSeed[];
@@ -283,7 +279,7 @@ export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
   countries: [],
   organization: "all",
   ending: "all",
-  sort: "source",
+  sort: "when",
   pageSize: defaultPageSize,
 };
 
@@ -443,8 +439,16 @@ export function formatKnownSeasonCount(show: Pick<ManagementShow, "knownSeasonCo
 }
 
 export function formatScheduleSeasonCount(
-  entry: Pick<ScheduleEntry, "movieCount" | "officialSeasonCount" | "specialCount">,
+  entry: Pick<
+    ScheduleEntry,
+    "movieCount" | "officialSeasonCount" | "releaseKind" | "seasonLabel" | "seasonNumber" | "section" | "specialCount"
+  >,
 ): string {
+  if (entry.section === "current" || entry.section === "upcoming") {
+    return entry.releaseKind === "season" && entry.seasonNumber != null
+      ? String(entry.seasonNumber)
+      : entry.seasonLabel;
+  }
   const labels: string[] = [];
   if (entry.officialSeasonCount > 0 || (entry.movieCount === 0 && entry.specialCount === 0)) {
     labels.push(String(entry.officialSeasonCount));
@@ -514,7 +518,6 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
       genreText: entry.genreText,
       languages: entry.languages,
       countries: entry.countries,
-      sourceRow: entry.sourceRow,
       episodeCount: entry.episodeCount,
       notes: entry.seasonNotes,
       links: entry.seasonLinks,
@@ -526,7 +529,7 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
 
   return [...shows.values()]
     .map((show) => {
-      const seasons = [...show.seasons].sort((left, right) => left.sourceRow - right.sourceRow);
+      const seasons = [...show.seasons].sort(compareManagementSeasons);
       return {
         ...show,
         listedSeasonCount: seasons.filter((season) => season.releaseKind === "season").length,
@@ -587,7 +590,6 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
   return {
     id: entry.id,
     showId: showIdForTitle(entry.show.displayTitle),
-    sourceRow: entry.sourceRow,
     section: entry.section,
     sourceSection: entry.section,
     title: entry.show.displayTitle,
@@ -640,7 +642,6 @@ function toRegistryScheduleEntry(
   return {
     id: season.id,
     showId: show.id,
-    sourceRow: season.sourceRow,
     section: season.section,
     sourceSection: season.section,
     title: show.displayTitle,
@@ -742,14 +743,14 @@ function projectScheduleEntries(entries: readonly ScheduleEntry[]): ScheduleEntr
       projected.push({ ...latest, section: completedSectionFor(latest.lifecycleStatus, latest.isFinal) });
     }
   }
-  return projected.sort((left, right) => left.sourceRow - right.sourceRow);
+  return projected.sort((left, right) => compareEntries(left, right, "when"));
 }
 
 function compareReleaseRecency(left: ScheduleEntry, right: ScheduleEntry): number {
   return (
     compareNullableStringsDescending(left.sortKey, right.sortKey) ||
     (right.seasonNumber ?? -1) - (left.seasonNumber ?? -1) ||
-    right.sourceRow - left.sourceRow
+    right.id.localeCompare(left.id)
   );
 }
 
@@ -853,7 +854,14 @@ function deriveEntryPlacement(entry: ScheduleEntry, asOf: CalendarDay, sourceRef
         : "current";
   }
 
-  return section === sourceSection ? entry : { ...entry, section };
+  const resolvedSortKey =
+    entry.sortKey ??
+    (effectiveReleaseDay == null
+      ? null
+      : dateKey(effectiveReleaseDay.year, effectiveReleaseDay.month, effectiveReleaseDay.day));
+  return section === sourceSection && resolvedSortKey === entry.sortKey
+    ? entry
+    : { ...entry, section, sortKey: resolvedSortKey };
 }
 
 function resolveWindowDay(
@@ -955,11 +963,52 @@ function hasAnySelected(values: readonly string[], selected: readonly string[]):
 }
 
 function compareEntries(left: ScheduleEntry, right: ScheduleEntry, sort: ScheduleSort): number {
-  if (sort === "title") return left.title.localeCompare(right.title);
+  if (sort === "title") return left.title.localeCompare(right.title) || compareReleaseIdentity(left, right);
   if (sort === "organization") {
-    return left.organizationText.localeCompare(right.organizationText) || left.sourceRow - right.sourceRow;
+    return (
+      left.organizationText.localeCompare(right.organizationText) ||
+      left.title.localeCompare(right.title) ||
+      compareReleaseIdentity(left, right)
+    );
   }
-  return left.sourceRow - right.sourceRow;
+  return (
+    compareNullableStrings(scheduleSortKey(left), scheduleSortKey(right)) ||
+    left.title.localeCompare(right.title) ||
+    compareReleaseIdentity(left, right)
+  );
+}
+
+function scheduleSortKey(entry: Pick<ScheduleEntry, "releaseWindow" | "sortKey">): string | null {
+  if (entry.sortKey != null) return entry.sortKey;
+  const window = entry.releaseWindow;
+  if (window?.year == null) return null;
+  if (window.month != null && window.day != null) return dateKey(window.year, window.month, window.day);
+  if (window.month != null) return dateKey(window.year, window.month, 15);
+  if (window.releaseSeason != null) {
+    const midpoint = releaseSeasonMidpoints[window.releaseSeason.toLowerCase()];
+    if (midpoint != null) return dateKey(window.year, midpoint.month, midpoint.day);
+  }
+  return dateKey(window.year, 7, 2);
+}
+
+function dateKey(year: number, month: number, day: number): string {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function compareReleaseIdentity(
+  left: Pick<ScheduleEntry, "id" | "releaseKind" | "seasonNumber">,
+  right: Pick<ScheduleEntry, "id" | "releaseKind" | "seasonNumber">,
+): number {
+  const numberOrder = (left.seasonNumber ?? Number.MAX_SAFE_INTEGER) - (right.seasonNumber ?? Number.MAX_SAFE_INTEGER);
+  return numberOrder || left.releaseKind.localeCompare(right.releaseKind) || left.id.localeCompare(right.id);
+}
+
+function compareManagementSeasons(left: ManagementSeason, right: ManagementSeason): number {
+  return (
+    compareNullableStrings(scheduleSortKey(left), scheduleSortKey(right)) ||
+    compareReleaseIdentity(left, right) ||
+    left.seasonLabel.localeCompare(right.seasonLabel)
+  );
 }
 
 function compareManagementShows(left: ManagementShow, right: ManagementShow, sort: ManagementSort): number {

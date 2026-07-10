@@ -281,7 +281,6 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             finaleWindow: null,
             sortKey: null,
             episodeCount: null,
-            sourceRow: 1_000_000,
             organizations: [],
             externalLinks: [],
             notes: null,

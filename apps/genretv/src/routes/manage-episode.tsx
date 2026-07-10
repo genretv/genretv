@@ -312,7 +312,6 @@ function EditableEpisode({
             finaleWindow: season.finaleWindow,
             seasonSortKey: season.sortKey,
             seasonEpisodeCount: season.episodeCount,
-            sourceRow: season.sourceRow,
             organizations: season.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
             seasonExternalLinks: season.links,
             seasonNotes: season.notes,

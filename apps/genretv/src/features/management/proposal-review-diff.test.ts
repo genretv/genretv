@@ -99,7 +99,6 @@ function managementShow(): ManagementShow {
         scheduleSection: "upcoming",
         section: "upcoming",
         sortKey: null,
-        sourceRow: 1,
         timing: "Upcoming",
       },
     ],

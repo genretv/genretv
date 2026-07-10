@@ -14,7 +14,6 @@ const schedule: CanonicalSchedule = {
     {
       id: "season-1",
       showId: "show-1",
-      sourceRow: 2,
       section: "current",
       sourceSection: "current",
       title: "Shared Show",
@@ -86,7 +85,6 @@ const schedule: CanonicalSchedule = {
     {
       id: "season-2",
       showId: "show-1",
-      sourceRow: 3,
       section: "upcoming",
       sourceSection: "upcoming",
       title: "Shared Show",

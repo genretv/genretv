@@ -80,7 +80,6 @@ export interface PublishedSeasonDraft {
   snapshotVersion: number;
   sortKey: string | null;
   sourcePersonalSeasonId: null;
-  sourceRow: number;
   timing: string;
 }
 
@@ -236,7 +235,6 @@ function seasonDraft(
     finaleWindow: entry.finaleWindow,
     sortKey: entry.sortKey,
     episodeCount: entry.episodeCount,
-    sourceRow: entry.sourceRow,
     organizations: entry.organizations.map((name) => ({ name, role: "unknown", externalLinks: [] })),
     externalLinks: entry.seasonLinks,
     notes: entry.seasonNotes,

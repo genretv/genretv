@@ -77,7 +77,6 @@ async function main(): Promise<void> {
                 finaleWindow: season.finaleWindow,
                 sortKey: season.sortKey,
                 episodeCount: season.episodeCount,
-                sourceRow: season.sourceRow,
                 organizations: season.organizations,
                 externalLinks: season.externalLinks,
                 notes: season.notes,

@@ -1,5 +1,3 @@
-const defaultSourceRow = 1_000_000;
-
 export interface CanonicalProposalMergeInput {
   canonicalEpisodeId: string | null;
   canonicalSeasonId: string | null;
@@ -43,11 +41,10 @@ export interface CanonicalSeasonCreate {
   section: "current" | "upcoming" | "past";
   showId: string;
   sortKey: string | null;
-  sourceRow: number;
   timing: string;
 }
 
-export type CanonicalSeasonPatch = Omit<CanonicalSeasonCreate, "id" | "sourceRow">;
+export type CanonicalSeasonPatch = Omit<CanonicalSeasonCreate, "id">;
 
 export interface CanonicalEpisodeCreate {
   episodeLabel: string | null;
@@ -152,7 +149,6 @@ function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => st
     showCreate,
     seasonCreate: {
       id: makeId(),
-      sourceRow: integerOrNull(payload["sourceRow"]) ?? defaultSourceRow,
       ...seasonPatch,
     },
   };
@@ -232,7 +228,6 @@ function parentRowsForEpisodeProposal(
       finaleWindow: payload["finaleWindow"] ?? null,
       sortKey: nullableText(payload["seasonSortKey"]),
       episodeCount: integerOrNull(payload["seasonEpisodeCount"]),
-      sourceRow: integerOrNull(payload["sourceRow"]) ?? defaultSourceRow,
       organizations: arrayValue(payload["organizations"]),
       externalLinks: arrayValue(payload["seasonExternalLinks"]),
       notes: nullableText(payload["seasonNotes"]),
@@ -269,7 +264,6 @@ function initialSeasonCreate(showId: string, id: string): CanonicalSeasonCreate 
     finaleWindow: null,
     sortKey: null,
     episodeCount: null,
-    sourceRow: defaultSourceRow,
     organizations: [],
     externalLinks: [],
     notes: null,

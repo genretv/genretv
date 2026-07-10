@@ -13,6 +13,7 @@
     "build:genretv": "cd apps/genretv && bun run build",
     "db:generate": "drizzle-kit generate --config=infra/drizzle.config.ts",
     "db:migrate:local": "bun --bun drizzle-kit migrate --config=infra/drizzle.config.ts",
+    "db:migrations:regenerate": "bun scripts/regenerate-drizzle-migrations.ts --confirm",
     "db:seed:canonical:local": "bun apps/genretv/scripts/seed-canonical-registry.ts",
     "db:sync-function:check": "pgxsinkit-generate --utilities --check --project-dir . --config infra/drizzle.config.ts --name 20260708000000_pgxsinkit_utilities && pgxsinkit-generate --check --registry packages/domain/src/registry.ts --export genretvSyncRegistry --project-dir . --config infra/drizzle.config.ts",
     "db:sync-function:generate": "pgxsinkit-generate --registry packages/domain/src/registry.ts --export genretvSyncRegistry --project-dir . --config infra/drizzle.config.ts --name sync_artifact",

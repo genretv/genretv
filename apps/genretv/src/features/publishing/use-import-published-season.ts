@@ -75,7 +75,6 @@ export function useImportPublishedSeason() {
             finaleWindow: release.finaleWindow,
             sortKey: release.sortKey,
             episodeCount: release.episodeCount,
-            sourceRow: release.sourceRow,
             organizations: release.organizationSeeds,
             externalLinks: release.seasonExternalLinks,
             notes: release.notes,

@@ -23,7 +23,6 @@ interface ReleaseWindowSeed {
 interface CanonicalSeedEntry {
   id: string;
   section: SectionKind;
-  sourceRow: number;
   show: {
     displayTitle: string;
     externalLinks: Array<{ kind: "imdb" | "official" | "other"; label: string; url: string }>;
@@ -335,7 +334,7 @@ function parseOrganization(cellText: string, links: ParsedLink[]): CanonicalSeed
 function parseEntry(
   section: SectionKind,
   rowHtml: string,
-  sourceRow: number,
+  rowNumber: number,
   warnings: string[],
 ): CanonicalSeedEntry | null {
   const cells = extractCells(rowHtml);
@@ -374,7 +373,7 @@ function parseEntry(
   }));
   const organizations = parseOrganization(organizationCell.text, organizationLinks);
 
-  if (cells.length !== 6) warnings.push(`Row ${sourceRow} parsed with ${cells.length} cells: ${displayTitle}`);
+  if (cells.length !== 6) warnings.push(`Row ${rowNumber} parsed with ${cells.length} cells: ${displayTitle}`);
 
   const releaseWindow = section === "upcoming" ? parseReleaseWindow(timingCell.text) : null;
   const finaleWindow =
@@ -383,9 +382,8 @@ function parseEntry(
       : parseReleaseWindow(detailCell.text);
 
   return {
-    id: `${section}-${sourceRow}-${slugify(displayTitle)}`,
+    id: `${section}-${rowNumber}-${slugify(displayTitle)}`,
     section,
-    sourceRow,
     show: {
       displayTitle,
       externalLinks,

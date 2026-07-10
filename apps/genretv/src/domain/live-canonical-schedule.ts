@@ -84,7 +84,6 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           finaleWindow: canonicalSeason.finaleWindow,
           sortKey: canonicalSeason.sortKey,
           episodeCount: canonicalSeason.episodeCount,
-          sourceRow: canonicalSeason.sourceRow,
           organizations: canonicalSeason.organizations,
           externalLinks: canonicalSeason.externalLinks,
           notes: canonicalSeason.notes,
@@ -150,7 +149,6 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           finaleWindow: personalSeason.finaleWindow,
           sortKey: personalSeason.sortKey,
           episodeCount: personalSeason.episodeCount,
-          sourceRow: personalSeason.sourceRow,
           organizations: personalSeason.organizations,
           externalLinks: personalSeason.externalLinks,
           notes: personalSeason.notes,
@@ -236,7 +234,6 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           finaleWindow: publishedSeason.finaleWindow,
           sortKey: publishedSeason.sortKey,
           episodeCount: publishedSeason.episodeCount,
-          sourceRow: publishedSeason.sourceRow,
           organizations: publishedSeason.organizations,
           externalLinks: publishedSeason.externalLinks,
           notes: publishedSeason.notes,
@@ -503,17 +500,16 @@ export function applyPersonalSeasons(
     section: string;
     finaleWindow: unknown;
     sortKey: string | null;
-    sourceRow: number;
     timing: string;
   }>,
 ): CanonicalSeasonSeedRow[] {
   const overlays = new Map(
     personalRows.flatMap((row) => (row.canonicalSeasonId == null ? [] : [[row.canonicalSeasonId, row]])),
   );
-  const additions = personalRows.flatMap((row, index) => {
+  const additions = personalRows.flatMap((row) => {
     if (row.canonicalSeasonId != null) return [];
     const showId = row.personalShowId ?? row.canonicalShowId;
-    return showId == null ? [] : [personalSeasonToSeedRow(row, showId, index)];
+    return showId == null ? [] : [personalSeasonToSeedRow(row, showId)];
   });
   return [
     ...canonicalRows.map((row) => {
@@ -536,7 +532,6 @@ export function applyPersonalSeasons(
             finaleWindow: releaseWindow(overlay.finaleWindow),
             sortKey: overlay.sortKey,
             episodeCount: overlay.episodeCount,
-            sourceRow: overlay.sourceRow,
             organizations: organizations(overlay.organizations),
             externalLinks: externalLinks(overlay.externalLinks),
             notes: overlay.notes,
@@ -625,7 +620,6 @@ export function applyLinkedPublishedImports(
       isFinal: boolean;
       section: string;
       sortKey: string | null;
-      sourceRow: number;
       timing: string;
     }>;
     shows: ReadonlyArray<{
@@ -775,11 +769,9 @@ function personalSeasonToSeedRow(
     isFinal: boolean;
     section: string;
     sortKey: string | null;
-    sourceRow: number;
     timing: string;
   },
   showId: string,
-  index: number,
 ): CanonicalSeasonSeedRow {
   return {
     id: row.id,
@@ -798,7 +790,6 @@ function personalSeasonToSeedRow(
     finaleWindow: releaseWindow(row.finaleWindow),
     sortKey: row.sortKey,
     episodeCount: row.episodeCount,
-    sourceRow: row.sourceRow || 1_000_000 + index,
     organizations: organizations(row.organizations),
     externalLinks: externalLinks(row.externalLinks),
     notes: row.notes,
@@ -824,7 +815,6 @@ function toCanonicalSeasonSeedRow(row: {
   section: string;
   showId: string;
   sortKey: string | null;
-  sourceRow: number;
   timing: string;
 }): CanonicalSeasonSeedRow {
   return {
@@ -844,7 +834,6 @@ function toCanonicalSeasonSeedRow(row: {
     finaleWindow: releaseWindow(row.finaleWindow),
     sortKey: row.sortKey,
     episodeCount: row.episodeCount,
-    sourceRow: row.sourceRow,
     organizations: organizations(row.organizations),
     externalLinks: externalLinks(row.externalLinks),
     notes: row.notes,
@@ -945,7 +934,6 @@ function publishedSeasonToSeedRow(
     isFinal: boolean;
     section: string;
     sortKey: string | null;
-    sourceRow: number;
     timing: string;
   },
   showId: string,
@@ -968,7 +956,6 @@ function publishedSeasonToSeedRow(
     finaleWindow: releaseWindow(row.finaleWindow),
     sortKey: row.sortKey,
     episodeCount: row.episodeCount,
-    sourceRow: row.sourceRow,
     organizations: organizations(row.organizations),
     externalLinks: externalLinks(row.externalLinks),
     notes: row.notes,

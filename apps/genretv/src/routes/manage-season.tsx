@@ -152,7 +152,7 @@ function EditableSeason({
         .from(personalSeason)
         .where(or(eq(personalSeason.id, season.id), eq(personalSeason.canonicalSeasonId, season.id))),
     [season.id],
-    { ready: canEdit },
+    { ready: canEdit && season.id !== newSeasonId },
   );
   const personalRow = personalSeasons.rows[0] ?? null;
   const personalShows = useLiveDrizzleRows(
@@ -332,7 +332,6 @@ function EditableSeason({
             personalShowId: isPersonalOnlyShow ? show.id : null,
             canonicalShowId: isPersonalOnlyShow ? null : show.id,
             canonicalSeasonId: season.id === newSeasonId ? null : season.id,
-            sourceRow: season.sourceRow,
             ...patch,
           });
         } else {
@@ -999,7 +998,6 @@ function emptyManagementSeason(show: ManagementShow): ManagementSeason {
     genreText: "",
     languages: [],
     countries: [],
-    sourceRow: 1_000_000,
     episodeCount: null,
     notes: null,
     links: [],

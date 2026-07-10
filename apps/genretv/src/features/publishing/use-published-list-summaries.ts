@@ -72,7 +72,6 @@ export function usePublishedListSummaries() {
           finaleWindow: publishedSeason.finaleWindow,
           episodeCount: publishedSeason.episodeCount,
           sortKey: publishedSeason.sortKey,
-          sourceRow: publishedSeason.sourceRow,
           organizations: publishedSeason.organizations,
           externalLinks: publishedSeason.externalLinks,
           notes: publishedSeason.notes,
