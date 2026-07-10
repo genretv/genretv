@@ -258,6 +258,7 @@ export interface ScheduleViewPreferences {
   query: string;
   languages: string[];
   countries: string[];
+  genres: string[];
   organization: string;
   ending: EndingFilter;
   sort: ScheduleSort;
@@ -279,6 +280,7 @@ export const defaultScheduleViewPreferences: ScheduleViewPreferences = {
   query: "",
   languages: [],
   countries: [],
+  genres: [],
   organization: "all",
   ending: "all",
   sort: "when",
@@ -395,6 +397,7 @@ export function filterScheduleEntries(
     if (entry.section !== preferences.section) return false;
     if (!hasAnySelected(entry.languages, preferences.languages)) return false;
     if (!hasAnySelected(entry.countries, preferences.countries)) return false;
+    if (!hasAnySelected(entry.genres, preferences.genres)) return false;
     if (preferences.organization !== "all" && !entry.organizations.includes(preferences.organization)) return false;
     if (preferences.section === "past" && preferences.ending !== "all" && entry.endingKind !== preferences.ending) {
       return false;
@@ -422,6 +425,7 @@ export function scheduleFilterOptions(entries: readonly ScheduleEntry[]) {
   return {
     languages: uniqueSorted(entries.flatMap((entry) => entry.languages)),
     countries: uniqueSorted(entries.flatMap((entry) => entry.countries)),
+    genres: uniqueSorted(entries.flatMap((entry) => entry.genres)),
     organizations: uniqueSorted(entries.flatMap((entry) => entry.organizations)),
   };
 }

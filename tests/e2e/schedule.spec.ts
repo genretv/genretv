@@ -16,12 +16,18 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   await expect(page.getByRole("tab", { name: /Finished/ })).toBeVisible();
   await expect(page.getByLabel("Search")).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Rows" })).toHaveValue("50");
+  await expect(page.getByRole("button", { name: "Genre: All" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Country:/ })).toHaveCount(0);
   await expect(page.getByRole("table")).toBeVisible();
   await expect(page.getByRole("button", { name: /Show details for/ }).first()).toBeVisible();
   await expect(page.getByRole("columnheader", { name: /Sort by When/ })).toHaveAttribute("aria-sort", "ascending");
 
   const avatar = page.getByRole("row").filter({ hasText: "Avatar: The Last Airbender" });
   await expect(avatar.getByRole("link", { name: "Netflix", exact: true })).toHaveAttribute("href", /netflix\.com/);
+  await avatar.getByRole("button", { name: "Fantasy", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Genre: 1" })).toBeVisible();
+  await expect(avatar).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "House of the Dragon" })).toHaveCount(0);
 
   const waitingTab = page.getByRole("tab", { name: /Awaiting Renewal or Cancellation/ });
   await waitingTab.click();

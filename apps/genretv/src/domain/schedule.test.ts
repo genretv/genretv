@@ -489,13 +489,14 @@ describe("schedule read model", () => {
     expect(schedule.entries).toMatchObject([{ id: "estimated-season", section: "upcoming" }]);
   });
 
-  test("filters by section, language, organization, ending, and query", () => {
+  test("filters by section, language, genre, organization, ending, and query", () => {
     const schedule = buildTestSchedule();
     const entries = filterScheduleEntries(schedule.entries, {
       ...defaultScheduleViewPreferences,
       section: "past",
       query: "super",
       languages: ["en"],
+      genres: ["Supernatural"],
       organization: "Netflix",
       ending: "canceled",
       pageSize: 50,
@@ -507,6 +508,7 @@ describe("schedule read model", () => {
     const schedule = buildTestSchedule();
     expect(scheduleFilterOptions(schedule.entries)).toEqual({
       countries: [],
+      genres: ["Fantasy", "Sci-Fi", "Supernatural"],
       languages: ["da", "en"],
       organizations: ["Apple", "Netflix"],
     });

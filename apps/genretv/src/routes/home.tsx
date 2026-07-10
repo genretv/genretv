@@ -46,13 +46,14 @@ const storageKey = "genretv.schedule.view.v1";
 
 interface SectionTableProps {
   entries: ScheduleEntry[];
+  onGenreFilter: (genre: string) => void;
   onSort: (sort: ScheduleSort) => void;
   section: ScheduleSection;
   sort: ScheduleSort;
   sortDirection: ScheduleSortDirection;
 }
 
-function SectionTable({ entries, onSort, section, sort, sortDirection }: SectionTableProps) {
+function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirection }: SectionTableProps) {
   const showStopReason = section === "waiting" || section === "past";
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
   const columnCount = showStopReason ? 8 : 7;
@@ -167,7 +168,9 @@ function SectionTable({ entries, onSort, section, sort, sortDirection }: Section
                   <Table.Td>
                     <OrganizationLinks entry={entry} />
                   </Table.Td>
-                  <Table.Td>{entry.genreText}</Table.Td>
+                  <Table.Td>
+                    <GenreLinks entry={entry} onFilter={onGenreFilter} />
+                  </Table.Td>
                 </Table.Tr>
                 {expanded && (
                   <Table.Tr>
@@ -292,6 +295,18 @@ function OrganizationLinks({ entry }: { entry: ScheduleEntry }) {
   });
 }
 
+function GenreLinks({ entry, onFilter }: { entry: ScheduleEntry; onFilter: (genre: string) => void }) {
+  if (entry.genres.length === 0) return entry.genreText;
+  return entry.genres.map((genre, index) => (
+    <Fragment key={`${entry.id}-${genre}`}>
+      {index > 0 ? ", " : ""}
+      <Anchor className="inline-link-button" component="button" type="button" onClick={() => onFilter(genre)}>
+        {genre}
+      </Anchor>
+    </Fragment>
+  ));
+}
+
 function LanguageBadges({ languages, ownerId }: { languages: readonly string[]; ownerId: string }) {
   if (languages.length === 0) return <Text>Unknown</Text>;
   return (
@@ -385,10 +400,10 @@ export function HomeRoute() {
           onChange={(languages) => updatePreferences({ languages })}
         />
         <CheckboxFilter
-          label="Country"
-          options={filterOptions.countries}
-          selected={preferences.countries}
-          onChange={(countries) => updatePreferences({ countries })}
+          label="Genre"
+          options={filterOptions.genres}
+          selected={preferences.genres}
+          onChange={(genres) => updatePreferences({ genres })}
         />
         <Select
           label="Platform"
@@ -438,6 +453,7 @@ export function HomeRoute() {
 
       <SectionTable
         entries={pageEntries}
+        onGenreFilter={(genre) => updatePreferences({ genres: [genre] })}
         section={preferences.section}
         sort={preferences.sort}
         sortDirection={preferences.sortDirection}
@@ -485,6 +501,7 @@ function readStoredPreferences(): ScheduleViewPreferences {
       query: typeof parsed.query === "string" ? parsed.query : defaultScheduleViewPreferences.query,
       languages: parseStringArray(parsed.languages, parsed.language),
       countries: parseStringArray(parsed.countries),
+      genres: parseStringArray(parsed.genres),
       organization:
         typeof parsed.organization === "string" ? parsed.organization : defaultScheduleViewPreferences.organization,
       ending: parseEnding(parsed.ending),
