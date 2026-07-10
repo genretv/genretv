@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { ManagementSeason, ManagementShow, ScheduleEpisode, ScheduleSection } from "../../domain/schedule";
+import type { ManagementSeason, ManagementShow, ScheduleEpisode, SourceScheduleSection } from "../../domain/schedule";
 
 export interface ManagementShowDraft {
   title: string;
@@ -13,7 +13,7 @@ export interface ManagementShowDraft {
 }
 
 export interface ManagementSeasonDraft {
-  section: ScheduleSection;
+  section: SourceScheduleSection;
   seasonLabel: string;
   timing: string;
   endedReason: string;

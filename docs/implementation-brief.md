@@ -68,7 +68,7 @@ Sub-Lists are filtered or ordered views of a single Personal List, not separate 
 
 Initial filters/orderings:
 
-- Schedule section: current, upcoming, recent/finished
+- Schedule section: now showing, upcoming, awaiting renewal or cancellation, finished
 - Genre Tags
 - Release Pattern
 - Organizations/platforms

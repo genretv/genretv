@@ -13,6 +13,7 @@ import {
   formatEpisodeCount,
   formatKnownSeasonCount,
   formatScheduleSeasonCount,
+  formatScheduleStatus,
   pageCountFor,
   paginateItems,
   scheduleFilterOptions,
@@ -167,7 +168,7 @@ const seed: CanonicalRegistrySeed = {
 
 describe("schedule read model", () => {
   test("builds display entries from the canonical registry seed", () => {
-    const schedule = buildScheduleFromRegistrySeed(seed);
+    const schedule = buildTestSchedule();
     expect(schedule.entries[0]?.title).toBe("A Show");
     expect(schedule.entries[0]?.originalTitle).toBeNull();
     expect(schedule.entries[0]?.seasonLabel).toBe("S2");
@@ -183,20 +184,204 @@ describe("schedule read model", () => {
   });
 
   test("builds display entries from canonical registry rows", () => {
-    const schedule = buildScheduleFromRegistryRows(seed.rows, {
-      title: "Live GenreTV",
-      sourceUrl: "https://live.example.test",
-      updatedLabel: "Live",
-      generatedAt: "2026-07-08T00:00:00.000Z",
-    });
+    const schedule = buildScheduleFromRegistryRows(
+      seed.rows,
+      {
+        title: "Live GenreTV",
+        sourceUrl: "https://live.example.test",
+        updatedLabel: "Live",
+        generatedAt: "2026-07-08T00:00:00.000Z",
+      },
+      { asOf: "2026-07-10" },
+    );
     expect(schedule.title).toBe("Live GenreTV");
     expect(schedule.sourceUrl).toBe("https://live.example.test");
-    expect(schedule.counts).toEqual({ current: 1, upcoming: 1, past: 1 });
+    expect(schedule.counts).toEqual({ current: 1, upcoming: 1, waiting: 0, past: 1 });
     expect(schedule.entries[1]?.episodes.map((episode) => episode.title)).toEqual(["Pilot", "Second Landing"]);
   });
 
+  test("derives schedule placement from release dates at the current date", () => {
+    const baseSeason = seed.rows.seasons[0]!;
+    const rows: CanonicalRegistrySeed["rows"] = {
+      shows: [{ ...seed.rows.shows[0]!, id: "dynamic-show" }],
+      seasons: [
+        {
+          ...baseSeason,
+          id: "waiting-weekly",
+          showId: "dynamic-show",
+          section: "current",
+          finaleWindow: releaseWindow("Jun.28", 6, 28),
+        },
+        {
+          ...baseSeason,
+          id: "finished-final-season",
+          showId: "dynamic-show",
+          section: "current",
+          endedReason: "Final season",
+          finaleWindow: releaseWindow("Jun.28", 6, 28),
+        },
+        {
+          ...baseSeason,
+          id: "started-upcoming",
+          showId: "dynamic-show",
+          section: "upcoming",
+          releaseWindow: releaseWindow("Jun.21", 6, 21),
+          finaleWindow: releaseWindow("Aug.9", 8, 9),
+        },
+        {
+          ...baseSeason,
+          id: "future-upcoming",
+          showId: "dynamic-show",
+          section: "upcoming",
+          releaseWindow: releaseWindow("Jul.23", 7, 23),
+          finaleWindow: null,
+        },
+        {
+          ...baseSeason,
+          id: "recent-bulk",
+          showId: "dynamic-show",
+          section: "current",
+          releasePattern: "bulk",
+          releaseWindow: null,
+          finaleWindow: null,
+        },
+      ],
+      episodes: [],
+    };
+
+    const schedule = buildScheduleFromRegistryRows(
+      rows,
+      {
+        title: "Dynamic GenreTV",
+        sourceUrl: "https://example.test",
+        updatedLabel: "Updated Jun.17, 2026:",
+        generatedAt: "2026-07-07T00:00:00.000Z",
+      },
+      { asOf: "2026-07-10" },
+    );
+
+    expect(schedule.entries.map(({ id, section }) => ({ id, section }))).toEqual([
+      { id: "waiting-weekly", section: "waiting" },
+      { id: "finished-final-season", section: "past" },
+      { id: "started-upcoming", section: "current" },
+      { id: "future-upcoming", section: "upcoming" },
+      { id: "recent-bulk", section: "current" },
+    ]);
+    expect(schedule.entries[0]?.endedReason).toBe("Unknown");
+    expect(formatScheduleStatus(schedule.entries[0]!.section, schedule.entries[0]!.endedReason)).toBe(
+      "Awaiting Renewal or Cancellation",
+    );
+    expect(schedule.counts).toEqual({ current: 2, upcoming: 1, waiting: 1, past: 1 });
+    expect(buildManagementShows(schedule.entries)[0]?.seasons[0]).toMatchObject({
+      scheduleSection: "waiting",
+      section: "current",
+    });
+  });
+
+  test("expires date-less bulk releases after the five-week current grace period", () => {
+    const schedule = buildScheduleFromRegistryRows(
+      {
+        shows: [{ ...seed.rows.shows[0]!, id: "bulk-show" }],
+        seasons: [
+          {
+            ...seed.rows.seasons[0]!,
+            id: "bulk-season",
+            showId: "bulk-show",
+            releasePattern: "bulk",
+          },
+        ],
+        episodes: [],
+      },
+      {
+        title: "Dynamic GenreTV",
+        sourceUrl: "https://example.test",
+        updatedLabel: "Updated Jun.17, 2026:",
+        generatedAt: "2026-07-07T00:00:00.000Z",
+      },
+      { asOf: "2026-07-23" },
+    );
+
+    expect(schedule.entries[0]).toMatchObject({
+      section: "waiting",
+      endedReason: "Unknown",
+    });
+  });
+
+  test("uses a complete set of episode dates as the season finale", () => {
+    const schedule = buildScheduleFromRegistryRows(
+      {
+        shows: [{ ...seed.rows.shows[0]!, id: "episodic-show" }],
+        seasons: [
+          {
+            ...seed.rows.seasons[0]!,
+            id: "episodic-season",
+            showId: "episodic-show",
+            episodeCount: 2,
+            finaleWindow: null,
+          },
+        ],
+        episodes: [
+          {
+            id: "episodic-1",
+            seasonId: "episodic-season",
+            episodeLabel: "E1",
+            title: null,
+            releaseWindow: releaseWindow("Jun.21", 6, 21),
+            sortKey: "001",
+            externalLinks: [],
+            notes: null,
+          },
+          {
+            id: "episodic-2",
+            seasonId: "episodic-season",
+            episodeLabel: "E2",
+            title: null,
+            releaseWindow: releaseWindow("Jun.28", 6, 28),
+            sortKey: "002",
+            externalLinks: [],
+            notes: null,
+          },
+        ],
+      },
+      {
+        title: "Dynamic GenreTV",
+        sourceUrl: "https://example.test",
+        updatedLabel: "Updated Jun.17, 2026:",
+        generatedAt: "2026-07-07T00:00:00.000Z",
+      },
+      { asOf: "2026-07-10" },
+    );
+
+    expect(schedule.entries[0]?.section).toBe("waiting");
+  });
+
+  test("infers the next year for yearless upcoming dates before the source update month", () => {
+    const metadata = {
+      title: "Dynamic GenreTV",
+      sourceUrl: "https://example.test",
+      updatedLabel: "Updated Jun.17, 2026:",
+      generatedAt: "2026-07-07T00:00:00.000Z",
+    };
+    const rows: CanonicalRegistrySeed["rows"] = {
+      shows: [{ ...seed.rows.shows[0]!, id: "new-year-show" }],
+      seasons: [
+        {
+          ...seed.rows.seasons[0]!,
+          id: "new-year-season",
+          showId: "new-year-show",
+          section: "upcoming",
+          releaseWindow: releaseWindow("Jan.2", 1, 2),
+        },
+      ],
+      episodes: [],
+    };
+
+    expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2026-12-31" }).entries[0]?.section).toBe("upcoming");
+    expect(buildScheduleFromRegistryRows(rows, metadata, { asOf: "2027-01-03" }).entries[0]?.section).toBe("current");
+  });
+
   test("filters by section, language, organization, ending, and query", () => {
-    const schedule = buildScheduleFromRegistrySeed(seed);
+    const schedule = buildTestSchedule();
     const entries = filterScheduleEntries(schedule.entries, {
       ...defaultScheduleViewPreferences,
       section: "past",
@@ -210,7 +395,7 @@ describe("schedule read model", () => {
   });
 
   test("returns stable filter options", () => {
-    const schedule = buildScheduleFromRegistrySeed(seed);
+    const schedule = buildTestSchedule();
     expect(scheduleFilterOptions(schedule.entries)).toEqual({
       countries: [],
       languages: ["da", "en"],
@@ -219,7 +404,7 @@ describe("schedule read model", () => {
   });
 
   test("groups schedule entries into show management rows", () => {
-    const schedule = buildScheduleFromRegistrySeed(seed);
+    const schedule = buildTestSchedule();
     const shows = buildManagementShows(schedule.entries);
     expect(shows.map((show) => show.id)).toEqual(["show-a", "show-b", "show-c"]);
     expect(findManagementShow(shows, "show-c")?.seasons).toMatchObject([
@@ -252,7 +437,7 @@ describe("schedule read model", () => {
   });
 
   test("finds a management season by show and season id", () => {
-    const schedule = buildScheduleFromRegistrySeed(seed);
+    const schedule = buildTestSchedule();
     const shows = buildManagementShows(schedule.entries);
     expect(findManagementSeason(shows, "show-b", "upcoming-b")).toMatchObject({
       show: { title: "B Show" },
@@ -273,7 +458,7 @@ describe("schedule read model", () => {
   });
 
   test("formats explicit and derived episode counts", () => {
-    const schedule = buildScheduleFromRegistrySeed(seed);
+    const schedule = buildTestSchedule();
     expect(formatEpisodeCount(null, [])).toBe("Unknown");
     expect(formatEpisodeCount(null, schedule.entries[1]?.episodes ?? [])).toBe("2");
     expect(formatEpisodeCount(10, schedule.entries[1]?.episodes ?? [])).toBe("10");
@@ -289,7 +474,7 @@ describe("schedule read model", () => {
   test("does not count standalone specials as official seasons", () => {
     const shows = buildManagementShows([
       {
-        ...buildScheduleFromRegistrySeed(seed).entries[0]!,
+        ...buildTestSchedule().entries[0]!,
         id: "special-row",
         showId: "special-show",
         seasonLabel: "Special",
@@ -302,3 +487,19 @@ describe("schedule read model", () => {
     });
   });
 });
+
+function releaseWindow(raw: string, month: number, day: number) {
+  return {
+    raw,
+    precision: "month_day",
+    confidence: "confirmed",
+    year: null,
+    month,
+    day,
+    releaseSeason: null,
+  };
+}
+
+function buildTestSchedule() {
+  return buildScheduleFromRegistrySeed(seed, { asOf: "2026-07-10" });
+}

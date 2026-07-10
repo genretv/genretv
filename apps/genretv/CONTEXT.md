@@ -97,8 +97,16 @@ An ordered zero-or-more ISO 3166-1 country-code list used for filtering Shows an
 _Avoid_: Region, market
 
 **Schedule Section**:
-A curated display grouping in the Schedule View, such as current, upcoming, or finished seasons.
+A date-sensitive display grouping in the Schedule View: now showing, upcoming, awaiting renewal or cancellation, or finished. Schedule Section describes where a Season belongs today and can change without editing that Season.
 _Avoid_: Genre, tag
+
+**Source Schedule Section**:
+A recorded current, upcoming, or past classification inherited from an import or selected by a maintainer. It supplies provenance and a fallback when Release Windows cannot determine the Schedule Section.
+_Avoid_: Effective section, fixed display section
+
+**Awaiting Renewal or Cancellation**:
+The Schedule Section for a Season whose known release has concluded while its Show does not have a terminal Lifecycle Status. It separates no-longer-airing Shows from Shows known to be finished or cancelled.
+_Avoid_: Finished, now showing
 
 **Lifecycle Status**:
 A structured status describing a Show or Season's broader production state, such as ongoing, renewed, final season, ended, cancelled, completed, or unknown. Show-level status describes the overall series; Season-level status describes that specific release. Lifecycle Status is distinct from Schedule Section.

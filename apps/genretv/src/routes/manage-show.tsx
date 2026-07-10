@@ -26,7 +26,7 @@ import {
   findManagementShow,
   formatEpisodeCount,
   formatKnownSeasonCount,
-  sectionLabels,
+  formatScheduleStatus,
   type ManagementShow,
 } from "../domain/schedule";
 import {
@@ -651,9 +651,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
                         {season.seasonLabel}
                       </Anchor>
                     </Table.Td>
-                    <Table.Td>
-                      {season.section === "past" ? season.endedReason : sectionLabels[season.section]}
-                    </Table.Td>
+                    <Table.Td>{formatScheduleStatus(season.scheduleSection, season.endedReason)}</Table.Td>
                     <Table.Td>{season.timing}</Table.Td>
                     <Table.Td>
                       <Stack gap={2}>

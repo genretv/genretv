@@ -26,6 +26,7 @@ import { assertTransactionAcked } from "../domain/mutation-acks";
 import {
   findManagementSeason,
   formatEpisodeCount,
+  formatScheduleStatus,
   sectionLabels,
   type ManagementSeason,
   type ManagementShow,
@@ -119,7 +120,7 @@ function EditableSeason({
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
   const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_show", "personal_season");
-  const status = season.section === "past" ? season.endedReason : sectionLabels[season.section];
+  const status = formatScheduleStatus(season.scheduleSection, season.endedReason);
   const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
   const personalSeasons = useLiveDrizzleRows(
     (sync) =>
@@ -909,6 +910,7 @@ function emptyManagementSeason(): ManagementSeason {
   return {
     id: newSeasonId,
     section: "upcoming",
+    scheduleSection: "upcoming",
     seasonLabel: "S?",
     timing: "",
     endedReason: "",

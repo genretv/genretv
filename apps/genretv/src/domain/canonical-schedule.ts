@@ -1,4 +1,10 @@
 import seedJson from "../../seeds/canonical-registry.seed.json";
-import { buildScheduleFromRegistrySeed, type CanonicalRegistrySeed } from "./schedule";
+import { buildScheduleFromRegistrySeed, type CanonicalRegistrySeed, type ScheduleBuildOptions } from "./schedule";
 
-export const canonicalSchedule = buildScheduleFromRegistrySeed(seedJson as unknown as CanonicalRegistrySeed);
+const seed = seedJson as unknown as CanonicalRegistrySeed;
+
+export function buildCanonicalSchedule(options: ScheduleBuildOptions = {}) {
+  return buildScheduleFromRegistrySeed(seed, options);
+}
+
+export const canonicalSchedule = buildCanonicalSchedule();

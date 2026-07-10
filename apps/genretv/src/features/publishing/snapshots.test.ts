@@ -8,13 +8,14 @@ const schedule: CanonicalSchedule = {
   sourceUrl: "https://example.test",
   updatedLabel: "Updated",
   generatedAt: "2026-07-08T00:00:00.000Z",
-  counts: { current: 1, upcoming: 1, past: 0 },
+  counts: { current: 1, upcoming: 1, waiting: 0, past: 0 },
   entries: [
     {
       id: "season-1",
       showId: "show-1",
       sourceRow: 2,
       section: "current",
+      sourceSection: "current",
       title: "Shared Show",
       originalTitle: null,
       seasonLabel: "S1",
@@ -77,6 +78,7 @@ const schedule: CanonicalSchedule = {
       showId: "show-1",
       sourceRow: 3,
       section: "upcoming",
+      sourceSection: "upcoming",
       title: "Shared Show",
       originalTitle: null,
       seasonLabel: "S2",
@@ -186,11 +188,33 @@ describe("published snapshot planning", () => {
     expect(plan.episodes.every((episode) => episode.publicationStatus === "draft")).toBe(true);
   });
 
+  test("persists the source section instead of a derived waiting section", () => {
+    const waitingSchedule: CanonicalSchedule = {
+      ...schedule,
+      counts: { current: 0, upcoming: 0, waiting: 1, past: 0 },
+      entries: [{ ...schedule.entries[0]!, section: "waiting", sourceSection: "current" }],
+    };
+    const plan = buildPublishedSnapshotPlan(
+      waitingSchedule,
+      {
+        description: null,
+        listId: "waiting-list",
+        nowUs: 1n,
+        slug: "waiting-list",
+        snapshotVersion: 1,
+        title: "Waiting list",
+      },
+      () => crypto.randomUUID(),
+    );
+
+    expect(plan.seasons[0]?.section).toBe("current");
+  });
+
   test("filters a schedule into a published sub-list", () => {
     const filtered = filteredPublishedSnapshotSchedule(schedule, "S2");
 
     expect(filtered.entries.map((entry) => entry.id)).toEqual(["season-2"]);
-    expect(filtered.counts).toEqual({ current: 0, upcoming: 1, past: 0 });
+    expect(filtered.counts).toEqual({ current: 0, upcoming: 1, waiting: 0, past: 0 });
     expect(schedule.entries).toHaveLength(2);
   });
 });

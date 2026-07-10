@@ -24,6 +24,7 @@ import {
   filterScheduleEntries,
   formatEpisodeCount,
   formatScheduleSeasonCount,
+  formatScheduleStatus,
   pageCountFor,
   paginateItems,
   pageSizeOptions,
@@ -40,7 +41,7 @@ import {
 const storageKey = "genretv.schedule.view.v1";
 
 function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section: ScheduleSection }) {
-  const showStopReason = section === "past";
+  const showStopReason = section === "waiting" || section === "past";
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
   const columnCount = showStopReason ? 8 : 7;
   const toggleExpanded = (entryId: string) => {
@@ -90,7 +91,7 @@ function SectionTable({ entries, section }: { entries: ScheduleEntry[]; section:
                   </Table.Td>
                   <Table.Td>{formatScheduleSeasonCount(entry)}</Table.Td>
                   <Table.Td>{entry.timing}</Table.Td>
-                  {showStopReason && <Table.Td>{entry.endedReason}</Table.Td>}
+                  {showStopReason && <Table.Td>{formatScheduleStatus(entry.section, entry.endedReason)}</Table.Td>}
                   <Table.Td>
                     <LanguageBadges languages={entry.languages} ownerId={entry.id} />
                   </Table.Td>
@@ -209,8 +210,8 @@ export function HomeRoute() {
         value={preferences.section}
         onChange={(value) => updatePreferences({ section: parseSection(value), ending: "all" })}
       >
-        <Tabs.List>
-          {(["current", "upcoming", "past"] as const).map((value) => (
+        <Tabs.List className="schedule-tabs">
+          {(["current", "upcoming", "waiting", "past"] as const).map((value) => (
             <Tabs.Tab key={value} value={value}>
               {sectionLabels[value]} ({schedule.counts[value]})
             </Tabs.Tab>
@@ -329,7 +330,7 @@ function readStoredPreferences(): ScheduleViewPreferences {
 }
 
 function parseSection(value: unknown): ScheduleSection {
-  return value === "current" || value === "upcoming" || value === "past"
+  return value === "current" || value === "upcoming" || value === "waiting" || value === "past"
     ? value
     : defaultScheduleViewPreferences.section;
 }

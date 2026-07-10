@@ -90,6 +90,7 @@ function managementShow(): ManagementShow {
         },
         finaleWindow: null,
         seasonLabel: "S2",
+        scheduleSection: "upcoming",
         section: "upcoming",
         sortKey: null,
         sourceRow: 1,

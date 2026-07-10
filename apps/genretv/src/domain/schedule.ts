@@ -1,4 +1,5 @@
-export type ScheduleSection = "current" | "upcoming" | "past";
+export type SourceScheduleSection = "current" | "upcoming" | "past";
+export type ScheduleSection = SourceScheduleSection | "waiting";
 export type EndingFilter = "all" | "canceled" | "finished" | "unknown";
 export type ScheduleSort = "source" | "title" | "organization";
 export type ManagementSort = "title" | "seasonCount" | "organization";
@@ -25,7 +26,7 @@ export interface ReleaseWindowSeed {
 
 export interface BlogspotEntrySeed {
   id: string;
-  section: ScheduleSection;
+  section: SourceScheduleSection;
   sourceRow: number;
   show: {
     displayTitle: string;
@@ -67,7 +68,7 @@ export interface BlogspotCanonicalSeed {
   };
   summary: {
     totalEntries: number;
-    bySection: Record<ScheduleSection, number>;
+    bySection: Record<SourceScheduleSection, number>;
   };
   entries: BlogspotEntrySeed[];
 }
@@ -86,7 +87,7 @@ export interface CanonicalShowSeedRow {
 export interface CanonicalSeasonSeedRow {
   id: string;
   showId: string;
-  section: ScheduleSection;
+  section: SourceScheduleSection;
   seasonLabel: string;
   timing: string;
   endedReason: string;
@@ -139,6 +140,7 @@ export interface ScheduleEntry {
   showId: string;
   sourceRow: number;
   section: ScheduleSection;
+  sourceSection: SourceScheduleSection;
   title: string;
   originalTitle: string | null;
   seasonLabel: string;
@@ -180,7 +182,8 @@ export interface ScheduleEpisode {
 
 export interface ManagementSeason {
   id: string;
-  section: ScheduleSection;
+  section: SourceScheduleSection;
+  scheduleSection: ScheduleSection;
   seasonLabel: string;
   timing: string;
   endedReason: string;
@@ -226,6 +229,10 @@ export interface CanonicalSchedule {
   counts: Record<ScheduleSection, number>;
 }
 
+export interface ScheduleBuildOptions {
+  asOf?: string;
+}
+
 export interface ScheduleViewPreferences {
   section: ScheduleSection;
   query: string;
@@ -269,6 +276,7 @@ export const defaultManagementViewPreferences: ManagementViewPreferences = {
 export const sectionLabels: Record<ScheduleSection, string> = {
   current: "Now Showing",
   upcoming: "Upcoming",
+  waiting: "Awaiting Renewal or Cancellation",
   past: "Finished",
 };
 
@@ -281,38 +289,60 @@ const lifecycleLabels: Record<string, string> = {
 };
 const defaultLanguage = "en";
 
-export function buildScheduleFromSeed(seed: BlogspotCanonicalSeed): CanonicalSchedule {
+export function buildScheduleFromSeed(
+  seed: BlogspotCanonicalSeed,
+  options: ScheduleBuildOptions = {},
+): CanonicalSchedule {
+  const entries = deriveSchedulePlacement(
+    seed.entries.map(toScheduleEntry),
+    seed.source.updatedLabel,
+    seed.generatedAt,
+    options,
+  );
   return {
     title: seed.source.pageTitle,
     sourceUrl: seed.source.url,
     updatedLabel: seed.source.updatedLabel,
     generatedAt: seed.generatedAt,
-    counts: seed.summary.bySection,
-    entries: seed.entries.map(toScheduleEntry),
+    counts: countBySection(entries),
+    entries,
   };
 }
 
-export function buildScheduleFromRegistrySeed(seed: CanonicalRegistrySeed): CanonicalSchedule {
-  return buildScheduleFromRegistryRows(seed.rows, {
-    title: seed.source?.pageTitle ?? "GenreTV",
-    sourceUrl: seed.source?.url ?? "",
-    updatedLabel: seed.source?.updatedLabel ?? "",
-    generatedAt: seed.generatedAt ?? "",
-  });
+export function buildScheduleFromRegistrySeed(
+  seed: CanonicalRegistrySeed,
+  options: ScheduleBuildOptions = {},
+): CanonicalSchedule {
+  return buildScheduleFromRegistryRows(
+    seed.rows,
+    {
+      title: seed.source?.pageTitle ?? "GenreTV",
+      sourceUrl: seed.source?.url ?? "",
+      updatedLabel: seed.source?.updatedLabel ?? "",
+      generatedAt: seed.generatedAt ?? "",
+    },
+    options,
+  );
 }
 
 export function buildScheduleFromRegistryRows(
   rows: CanonicalRegistrySeed["rows"],
   metadata: Pick<CanonicalSchedule, "generatedAt" | "sourceUrl" | "title" | "updatedLabel">,
+  options: ScheduleBuildOptions = {},
 ): CanonicalSchedule {
   const showsById = new Map(rows.shows.map((show) => [show.id, show]));
   const episodesBySeason = groupEpisodesBySeason(rows.episodes);
-  const entries = rows.seasons
-    .map((season) => {
-      const show = showsById.get(season.showId);
-      return show == null ? null : toRegistryScheduleEntry(show, season, episodesBySeason.get(season.id) ?? []);
-    })
-    .filter((entry): entry is ScheduleEntry => entry != null);
+  const entries = deriveSchedulePlacement(
+    rows.seasons
+      .map((season) => {
+        const show = showsById.get(season.showId);
+        return show == null ? null : toRegistryScheduleEntry(show, season, episodesBySeason.get(season.id) ?? []);
+      })
+      .filter((entry): entry is ScheduleEntry => entry != null),
+    metadata.updatedLabel,
+    metadata.generatedAt,
+    options,
+  );
 
   return {
     title: metadata.title,
@@ -393,6 +423,12 @@ export function formatScheduleSeasonCount(entry: Pick<ScheduleEntry, "seasonLabe
   return labels.join(" + ");
 }
 
+export function formatScheduleStatus(section: ScheduleSection, endedReason: string): string {
+  if (section === "waiting" && isUnknownEndingReason(endedReason)) return sectionLabels.waiting;
+  if (section === "waiting" || section === "past") return endedReason || "Unknown";
+  return sectionLabels[section];
+}
+
 export function buildManagementShows(entries: readonly ScheduleEntry[]): ManagementShow[] {
   const shows = new Map<string, ManagementShow>();
   for (const entry of entries) {
@@ -423,7 +459,8 @@ export function buildManagementShows(entries: readonly ScheduleEntry[]): Managem
     show.notes = joinNotes([show.notes, entry.notes]);
     show.seasons.push({
       id: entry.id,
-      section: entry.section,
+      section: entry.sourceSection,
+      scheduleSection: entry.section,
       seasonLabel: entry.seasonLabel,
       timing: entry.timing,
       endedReason: entry.endedReason,
@@ -510,6 +547,7 @@ function toScheduleEntry(entry: BlogspotEntrySeed): ScheduleEntry {
     showId: showIdForTitle(entry.show.displayTitle),
     sourceRow: entry.sourceRow,
     section: entry.section,
+    sourceSection: entry.section,
     title: entry.show.displayTitle,
     originalTitle: null,
     seasonLabel: seasonLabel(entry),
@@ -553,6 +591,7 @@ function toRegistryScheduleEntry(
     showId: show.id,
     sourceRow: season.sourceRow,
     section: season.section,
+    sourceSection: season.section,
     title: show.displayTitle,
     originalTitle: show.originalTitle,
     seasonLabel: season.seasonLabel,
@@ -610,8 +649,194 @@ function countBySection(entries: readonly ScheduleEntry[]): Record<ScheduleSecti
   return {
     current: entries.filter((entry) => entry.section === "current").length,
     upcoming: entries.filter((entry) => entry.section === "upcoming").length,
+    waiting: entries.filter((entry) => entry.section === "waiting").length,
     past: entries.filter((entry) => entry.section === "past").length,
   };
+}
+
+const millisecondsPerDay = 86_400_000;
+const bulkCurrentGraceDays = 35;
+const monthNumbers: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+};
+const releaseSeasonMidpoints: Record<string, { month: number; day: number }> = {
+  winter: { month: 2, day: 15 },
+  spring: { month: 4, day: 15 },
+  summer: { month: 7, day: 15 },
+  autumn: { month: 10, day: 15 },
+  fall: { month: 10, day: 15 },
+};
+
+interface CalendarDay {
+  day: number;
+  month: number;
+  serial: number;
+  year: number;
+}
+
+function deriveSchedulePlacement(
+  entries: readonly ScheduleEntry[],
+  updatedLabel: string,
+  generatedAt: string,
+  options: ScheduleBuildOptions,
+): ScheduleEntry[] {
+  const asOf = parseIsoCalendarDay(options.asOf) ?? localCalendarDayFromDate(new Date());
+  const sourceReference = parseUpdatedCalendarDay(updatedLabel) ?? parseDateCalendarDay(generatedAt) ?? asOf;
+  return entries.map((entry) => deriveEntryPlacement(entry, asOf, sourceReference));
+}
+
+function deriveEntryPlacement(entry: ScheduleEntry, asOf: CalendarDay, sourceReference: CalendarDay): ScheduleEntry {
+  if (entry.sourceSection === "past") return entry;
+
+  const sourceSection = entry.sourceSection;
+  const releaseDay = resolveWindowDay(entry.releaseWindow, sourceSection, sourceReference);
+  const episodeReleaseDays = entry.episodes
+    .map((episode) => resolveWindowDay(episode.releaseWindow, sourceSection, sourceReference, releaseDay))
+    .filter((day): day is CalendarDay => day != null);
+  const firstEpisodeDay = minCalendarDay(episodeReleaseDays);
+  const effectiveReleaseDay = minCalendarDay(
+    [releaseDay, firstEpisodeDay].filter((day): day is CalendarDay => day != null),
+  );
+  const finaleDay = resolveWindowDay(entry.finaleWindow, sourceSection, sourceReference, effectiveReleaseDay);
+  const completeEpisodeFinale =
+    entry.episodeCount != null && entry.episodeCount > 0 && episodeReleaseDays.length >= entry.episodeCount
+      ? maxCalendarDay(episodeReleaseDays)
+      : null;
+  const effectiveFinaleDay = maxCalendarDay(
+    [finaleDay, completeEpisodeFinale].filter((day): day is CalendarDay => day != null),
+  );
+
+  let section: ScheduleSection = sourceSection;
+  if (effectiveFinaleDay != null && effectiveFinaleDay.serial < asOf.serial) {
+    section = completedSectionFor(entry.endedReason);
+  } else if (effectiveReleaseDay != null && effectiveReleaseDay.serial > asOf.serial) {
+    section = "upcoming";
+  } else if (effectiveReleaseDay != null) {
+    section =
+      entry.releasePattern === "bulk" && effectiveReleaseDay.serial + bulkCurrentGraceDays < asOf.serial
+        ? completedSectionFor(entry.endedReason)
+        : "current";
+  } else if (entry.releasePattern === "bulk" && sourceSection === "current") {
+    section =
+      sourceReference.serial + bulkCurrentGraceDays < asOf.serial ? completedSectionFor(entry.endedReason) : "current";
+  }
+
+  return section === sourceSection ? entry : { ...entry, section };
+}
+
+function resolveWindowDay(
+  window: ReleaseWindowSeed | null,
+  sourceSection: SourceScheduleSection,
+  sourceReference: CalendarDay,
+  notBefore: CalendarDay | null = null,
+): CalendarDay | null {
+  const monthDay = windowMonthDay(window);
+  if (window == null || monthDay == null) return null;
+  if (window.year != null) return calendarDay(window.year, monthDay.month, monthDay.day);
+
+  if (notBefore != null) {
+    const sameYear = calendarDay(notBefore.year, monthDay.month, monthDay.day);
+    return sameYear.serial < notBefore.serial
+      ? calendarDay(notBefore.year + 1, monthDay.month, monthDay.day)
+      : sameYear;
+  }
+
+  if (sourceSection === "upcoming") {
+    const sameYear = calendarDay(sourceReference.year, monthDay.month, monthDay.day);
+    return sameYear.serial < sourceReference.serial
+      ? calendarDay(sourceReference.year + 1, monthDay.month, monthDay.day)
+      : sameYear;
+  }
+
+  return nearestCalendarDay(sourceReference, monthDay.month, monthDay.day);
+}
+
+function completedSectionFor(endedReason: string): Extract<ScheduleSection, "waiting" | "past"> {
+  const normalized = endedReason.trim().toLocaleLowerCase();
+  return /^(?:canceled|cancelled|finished|ended|completed|final season)/.test(normalized) ? "past" : "waiting";
+}
+
+function windowMonthDay(window: ReleaseWindowSeed | null): { month: number; day: number } | null {
+  if (window == null) return null;
+  if (window.month != null) return { month: window.month, day: window.day ?? 15 };
+  if (window.releaseSeason != null) return releaseSeasonMidpoints[window.releaseSeason] ?? null;
+  if (window.year != null) return { month: 7, day: 2 };
+  return null;
+}
+
+function nearestCalendarDay(reference: CalendarDay, month: number, day: number): CalendarDay {
+  return [reference.year - 1, reference.year, reference.year + 1]
+    .map((year) => calendarDay(year, month, day))
+    .sort((left, right) => Math.abs(left.serial - reference.serial) - Math.abs(right.serial - reference.serial))[0]!;
+}
+
+function minCalendarDay(days: readonly CalendarDay[]): CalendarDay | null {
+  return days.reduce<CalendarDay | null>(
+    (earliest, day) => (earliest == null || day.serial < earliest.serial ? day : earliest),
+    null,
+  );
+}
+
+function maxCalendarDay(days: readonly CalendarDay[]): CalendarDay | null {
+  return days.reduce<CalendarDay | null>(
+    (latest, day) => (latest == null || day.serial > latest.serial ? day : latest),
+    null,
+  );
+}
+
+function parseUpdatedCalendarDay(value: string): CalendarDay | null {
+  const match = /updated\s+([a-z]+)\.?\s*(\d{1,2}),?\s*(\d{4})/i.exec(value);
+  if (match?.[1] == null || match[2] == null || match[3] == null) return null;
+  const month = monthNumbers[match[1].toLocaleLowerCase()];
+  return month == null ? null : calendarDay(Number(match[3]), month, Number(match[2]));
+}
+
+function parseIsoCalendarDay(value: string | undefined): CalendarDay | null {
+  if (value == null) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match?.[1] == null || match[2] == null || match[3] == null
+    ? null
+    : calendarDay(Number(match[1]), Number(match[2]), Number(match[3]));
+}
+
+function parseDateCalendarDay(value: string): CalendarDay | null {
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? null : utcCalendarDayFromDate(date);
+}
+
+function localCalendarDayFromDate(date: Date): CalendarDay {
+  return calendarDay(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+function utcCalendarDayFromDate(date: Date): CalendarDay {
+  return calendarDay(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+}
+
+function calendarDay(year: number, month: number, day: number): CalendarDay {
+  return { year, month, day, serial: Math.floor(Date.UTC(year, month - 1, day) / millisecondsPerDay) };
 }
 
 function hasAnySelected(values: readonly string[], selected: readonly string[]): boolean {
@@ -742,6 +967,11 @@ function endingKindFor(reason: string): Exclude<EndingFilter, "all"> {
   if (normalized.startsWith("canceled")) return "canceled";
   if (normalized.startsWith("finished")) return "finished";
   return "unknown";
+}
+
+function isUnknownEndingReason(reason: string): boolean {
+  const normalized = reason.trim().toLocaleLowerCase();
+  return normalized === "" || normalized === "unknown";
 }
 
 function seasonLabel(entry: BlogspotEntrySeed): string {

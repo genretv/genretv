@@ -1,7 +1,7 @@
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
 import { inArray } from "drizzle-orm";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import {
@@ -9,7 +9,7 @@ import {
   linkedPublishedSeasonId,
   linkedPublishedShowId,
 } from "../features/publishing/linked-imports";
-import { canonicalSchedule as fallbackSchedule } from "./canonical-schedule";
+import { buildCanonicalSchedule, canonicalSchedule as fallbackSchedule } from "./canonical-schedule";
 import {
   buildScheduleFromRegistryRows,
   type CanonicalEpisodeSeedRow,
@@ -18,7 +18,7 @@ import {
   type CanonicalShowSeedRow,
   type ExternalLinkSeed,
   type ReleaseWindowSeed,
-  type ScheduleSection,
+  type SourceScheduleSection,
 } from "./schedule";
 
 const canonicalShow = genretvSyncRegistry.canonical_show.view!;
@@ -42,6 +42,7 @@ export interface LiveCanonicalSchedule {
 
 export function useCanonicalSchedule(): LiveCanonicalSchedule {
   const { session } = useAuth();
+  const asOf = useLocalDateKey();
   const personalReady = session != null;
   const shows = useLiveDrizzleRows(
     (client) =>
@@ -276,7 +277,7 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
 
   const usingFallback = shows.rows.length === 0 || seasons.rows.length === 0;
   const schedule = useMemo(() => {
-    if (usingFallback) return fallbackSchedule;
+    if (usingFallback) return buildCanonicalSchedule({ asOf });
     const canonicalRows = applyPersonalExclusions(
       {
         shows: shows.rows.map(toCanonicalShowSeedRow),
@@ -313,8 +314,10 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
         updatedLabel: fallbackSchedule.updatedLabel,
         generatedAt: fallbackSchedule.generatedAt,
       },
+      { asOf },
     );
   }, [
+    asOf,
     episodes.rows,
     personalExclusions.rows,
     personalEpisodes.rows,
@@ -361,6 +364,29 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
           publishedEpisodes.error)
         : null),
   };
+}
+
+function useLocalDateKey(): string {
+  const [dateKey, setDateKey] = useState(currentLocalDateKey);
+
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timer = window.setTimeout(
+      () => setDateKey(currentLocalDateKey()),
+      nextMidnight.valueOf() - now.valueOf() + 100,
+    );
+    return () => window.clearTimeout(timer);
+  }, [dateKey]);
+
+  return dateKey;
+}
+
+function currentLocalDateKey(): string {
+  const now = new Date();
+  return [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+    .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
+    .join("-");
 }
 
 export interface PersonalExclusionRow {
@@ -965,7 +991,7 @@ function releaseWindow(value: unknown): ReleaseWindowSeed | null {
   };
 }
 
-function scheduleSection(value: string): ScheduleSection {
+function scheduleSection(value: string): SourceScheduleSection {
   return value === "current" || value === "upcoming" || value === "past" ? value : "upcoming";
 }
 

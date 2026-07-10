@@ -212,7 +212,7 @@ function seasonDraft(
     publicationStatus,
     sourcePersonalSeasonId: null,
     canonicalSeasonId: null,
-    section: entry.section,
+    section: entry.sourceSection,
     seasonLabel: entry.seasonLabel,
     timing: entry.timing,
     endedReason: entry.endedReason,
@@ -249,6 +249,7 @@ function countBySection(entries: readonly ScheduleEntry[]): Record<ScheduleSecti
   return {
     current: entries.filter((entry) => entry.section === "current").length,
     upcoming: entries.filter((entry) => entry.section === "upcoming").length,
+    waiting: entries.filter((entry) => entry.section === "waiting").length,
     past: entries.filter((entry) => entry.section === "past").length,
   };
 }

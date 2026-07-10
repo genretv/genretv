@@ -45,6 +45,10 @@ body {
   color: #064e55;
 }
 
+.schedule-tabs {
+  flex-wrap: wrap;
+}
+
 .auth-panel {
   padding: 28px;
 }
