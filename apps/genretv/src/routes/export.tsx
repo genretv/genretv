@@ -1,13 +1,22 @@
+import { createCanonicalExportWorkerClient, type CanonicalExportSyncClient } from "@genretv/offline-data/client";
+import { useSyncClient } from "@genretv/offline-data/hooks";
 import { Alert, Button, Group, Stack, Text, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { downloadFile } from "../features/export/file-download";
 import { buildHtmlScheduleExport, downloadHtmlScheduleExport } from "../features/export/html-schedule-export";
+import { getCanonicalExportWorkerPort } from "../sync/worker-port";
 
 export function ExportRoute() {
   const { session } = useAuth();
+  const syncClient = useSyncClient();
   const { canonicalLoading, canonicalSchedule, error, personalLoading, schedule } = useCanonicalSchedule();
+  const [canonicalDatabaseLoading, setCanonicalDatabaseLoading] = useState(false);
+  const [localDatabaseLoading, setLocalDatabaseLoading] = useState(false);
+  const [databaseError, setDatabaseError] = useState<Error | null>(null);
   const date = localDateKey();
 
   const exportCanonicalHtml = () => {
@@ -15,6 +24,34 @@ export function ExportRoute() {
   };
   const exportPersonalHtml = () => {
     downloadHtmlScheduleExport(buildHtmlScheduleExport(schedule), `genretv-personal-${date}.html`);
+  };
+  const exportCanonicalDatabase = async () => {
+    setCanonicalDatabaseLoading(true);
+    setDatabaseError(null);
+    let exportClient: CanonicalExportSyncClient | null = null;
+    try {
+      exportClient = await createCanonicalExportWorkerClient(getCanonicalExportWorkerPort);
+      await exportClient.ready;
+      const { file } = await exportClient.exportData({ fileName: `genretv-canonical-${date}.sql` });
+      downloadFile(file);
+    } catch (cause) {
+      setDatabaseError(toError(cause));
+    } finally {
+      await exportClient?.stop();
+      setCanonicalDatabaseLoading(false);
+    }
+  };
+  const exportLocalDatabase = async () => {
+    setLocalDatabaseLoading(true);
+    setDatabaseError(null);
+    try {
+      const { file } = await syncClient.exportStore();
+      downloadFile(file);
+    } catch (cause) {
+      setDatabaseError(toError(cause));
+    } finally {
+      setLocalDatabaseLoading(false);
+    }
   };
 
   return (
@@ -32,6 +69,12 @@ export function ExportRoute() {
         </Alert>
       )}
 
+      {databaseError != null && (
+        <Alert color="red" title="Database export failed">
+          {databaseError.message}
+        </Alert>
+      )}
+
       <ExportSection
         title="Canonical HTML"
         description="The complete canonical schedule as four unfiltered, original-style HTML tables."
@@ -43,9 +86,11 @@ export function ExportRoute() {
 
       <ExportSection
         title="Canonical database"
-        description="Only canonical base tables, without local sync tables, views, triggers, or functions."
+        description="Portable SQL containing only the canonical Show, Season, and Episode base tables and their data."
       >
-        <Button disabled>Database export unavailable in this build</Button>
+        <Button loading={canonicalDatabaseLoading} onClick={() => void exportCanonicalDatabase()}>
+          Download canonical database
+        </Button>
       </ExportSection>
 
       {session == null ? (
@@ -70,14 +115,20 @@ export function ExportRoute() {
 
           <ExportSection
             title="Local database"
-            description="The complete PGlite database mapped to this signed-in account, including local sync state."
+            description="A complete PGlite store backup for this account, including sync metadata and unsynced local writes."
           >
-            <Button disabled>Database export unavailable in this build</Button>
+            <Button loading={localDatabaseLoading} onClick={() => void exportLocalDatabase()}>
+              Download complete local database
+            </Button>
           </ExportSection>
         </>
       )}
     </Stack>
   );
+}
+
+function toError(cause: unknown): Error {
+  return cause instanceof Error ? cause : new Error(String(cause));
 }
 
 function ExportSection({

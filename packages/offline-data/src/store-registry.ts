@@ -1,7 +1,7 @@
 export interface GenretvStoreClaim {
-  dataDir: string;
   fresh: boolean;
   storeId: string;
+  storePath: string;
 }
 
 interface StoreRegistryState {
@@ -13,21 +13,21 @@ interface StoreRegistryState {
 const storageKey = "genretv.sync.stores.v1";
 const storePrefix = "pgxsinkit-genretv-";
 
-export function dataDirForStore(storeId: string): string {
-  return `idb://${storePrefix}${storeId}`;
+export function storePathForStore(storeId: string): string {
+  return `${storePrefix}${storeId}`;
 }
 
 export function claimGenretvStore(userId: string | null): GenretvStoreClaim {
   const state = readState();
   if (userId == null) {
     writeState(state);
-    return { storeId: state.spareStoreId, dataDir: dataDirForStore(state.spareStoreId), fresh: false };
+    return { storeId: state.spareStoreId, storePath: storePathForStore(state.spareStoreId), fresh: false };
   }
 
   const existing = state.userStores[userId];
   if (existing != null) {
     writeState(state);
-    return { storeId: existing, dataDir: dataDirForStore(existing), fresh: false };
+    return { storeId: existing, storePath: storePathForStore(existing), fresh: false };
   }
 
   const claimed = state.spareStoreId;
@@ -37,7 +37,7 @@ export function claimGenretvStore(userId: string | null): GenretvStoreClaim {
     spareStoreId: nextSpare,
     userStores: { ...state.userStores, [userId]: claimed },
   });
-  return { storeId: claimed, dataDir: dataDirForStore(claimed), fresh: true };
+  return { storeId: claimed, storePath: storePathForStore(claimed), fresh: true };
 }
 
 export function bindCurrentGenretvStoreToUser(userId: string): string {

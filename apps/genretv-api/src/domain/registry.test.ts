@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { genretvSyncRegistry } from "./registry";
+import { canonicalExportSyncRegistry, genretvSyncRegistry } from "./registry";
 
 describe("genretv sync registry", () => {
   test("declares the public canonical schedule shapes", () => {
@@ -50,5 +50,16 @@ describe("genretv sync registry", () => {
     expect(genretvSyncRegistry.maintainer_notification.consistencyGroup).toBe("maintainer-workflow");
     expect(genretvSyncRegistry.canonical_episode.consistencyGroup).toBe("canonical-schedule");
     expect(genretvSyncRegistry.canonical_season.consistencyGroup).toBe("canonical-schedule");
+  });
+
+  test("projects only canonical tables into the portable export registry", () => {
+    expect(Object.keys(canonicalExportSyncRegistry)).toEqual([
+      "canonical_show",
+      "canonical_season",
+      "canonical_episode",
+    ]);
+    expect(canonicalExportSyncRegistry.canonical_show.mode).toBe("readonly");
+    expect(canonicalExportSyncRegistry.canonical_season.mode).toBe("readonly");
+    expect(canonicalExportSyncRegistry.canonical_episode.mode).toBe("readonly");
   });
 });

@@ -5,7 +5,7 @@
     "": {
       "name": "genretv",
       "devDependencies": {
-        "@pgxsinkit/server": "dev",
+        "@pgxsinkit/server": "^0.1.40-dev.1783697448.e503ef3",
         "@playwright/test": "^1.61.1",
         "@tanstack/intent": "^0.3.5",
         "@types/node": "26.1.1",
@@ -29,9 +29,9 @@
         "@genretv/offline-data": "workspace:*",
         "@mantine/core": "9.4.1",
         "@mantine/hooks": "9.4.1",
-        "@pgxsinkit/client": "dev",
-        "@pgxsinkit/contracts": "dev",
-        "@pgxsinkit/react": "dev",
+        "@pgxsinkit/client": "^0.1.40-dev.1783697448.e503ef3",
+        "@pgxsinkit/contracts": "^0.1.40-dev.1783697448.e503ef3",
+        "@pgxsinkit/react": "^0.1.40-dev.1783697448.e503ef3",
         "@supabase/supabase-js": "2.110.1",
         "@tanstack/react-router": "1.170.17",
         "react": "19.2.7",
@@ -47,8 +47,8 @@
       "name": "@genretv/genretv-api",
       "dependencies": {
         "@genretv/domain": "workspace:*",
-        "@pgxsinkit/contracts": "dev",
-        "@pgxsinkit/server": "dev",
+        "@pgxsinkit/contracts": "^0.1.40-dev.1783697448.e503ef3",
+        "@pgxsinkit/server": "^0.1.40-dev.1783697448.e503ef3",
         "drizzle-orm": "1.0.0-rc.4",
         "jose": "6.2.3",
         "postgres": "3.4.9",
@@ -58,7 +58,7 @@
     "packages/domain": {
       "name": "@genretv/domain",
       "dependencies": {
-        "@pgxsinkit/contracts": "dev",
+        "@pgxsinkit/contracts": "^0.1.40-dev.1783697448.e503ef3",
         "drizzle-orm": "1.0.0-rc.4",
       },
     },
@@ -66,9 +66,9 @@
       "name": "@genretv/offline-data",
       "dependencies": {
         "@genretv/domain": "workspace:*",
-        "@pgxsinkit/client": "dev",
-        "@pgxsinkit/contracts": "dev",
-        "@pgxsinkit/react": "dev",
+        "@pgxsinkit/client": "^0.1.40-dev.1783697448.e503ef3",
+        "@pgxsinkit/contracts": "^0.1.40-dev.1783697448.e503ef3",
+        "@pgxsinkit/react": "^0.1.40-dev.1783697448.e503ef3",
       },
     },
   },
@@ -80,6 +80,8 @@
     "@electric-sql/experimental": ["@electric-sql/experimental@6.0.24", "", { "optionalDependencies": { "@rollup/rollup-darwin-arm64": "^4.18.1" }, "peerDependencies": { "@electric-sql/client": "1.5.24" } }, "sha512-GmYKNYqChe7voJxqb4Z4ygEtZhqAPVWDRRoIRi9brmW2laA7CPKP/WB71Rs6KbAQX/jGgQe1YA+3RHtcKld+4g=="],
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.5.4", "", {}, "sha512-yYZUyyXrHU7tPlCjwZQJ6hIG9DscdCCn7Uk0mYKwC1FeHX286AbcmFveMiRBEak8e9iPupjsoVImN3yJZVed2g=="],
+
+    "@electric-sql/pglite-tools": ["@electric-sql/pglite-tools@0.4.4", "", { "peerDependencies": { "@electric-sql/pglite": "0.5.4" } }, "sha512-Vw6/o1OJqWFyiRkh1p0453VPrNX1S+CYzhOckm2iu0BdGawvBwEakYB63tN0K2lI8xUtV4QN4eXBtSsTMNr0Hw=="],
 
     "@emnapi/core": ["@emnapi/core@1.11.1", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" } }, "sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ=="],
 
@@ -257,13 +259,13 @@
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.73.0", "", { "os": "win32", "cpu": "x64" }, "sha512-WaNRvh4f6zY9CvUQk2YoA1O90ieWrIklI84+HXFr9Isjz9CSESrdqo/RtIYt4Dll/cAchqGDMehfaZd0vqEFZw=="],
 
-    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/client/0.1.37-dev.1783505135.f377d83/7888c1f675c970ab84a0d3ea27ff3f6376fddb7d", { "dependencies": { "@electric-sql/client": "^1.5.24", "@electric-sql/experimental": "^6.0.24", "@pgxsinkit/contracts": "0.1.37-dev.1783505135.f377d83" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-7+dPDzBI1K7JrU3r+S8woWhW0dKAxS5G3NSUVgtz4lFRCvunQpbI8v/kSkUduxHTSYmE8MqyaW6XyNOZhHgW+g=="],
+    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.40-dev.1783697448.e503ef3", "https://npm.pkg.github.com/download/@pgxsinkit/client/0.1.40-dev.1783697448.e503ef3/75ec75fc2bdb95ef191a6c49b46a301c72187e94", { "dependencies": { "@electric-sql/client": "^1.5.24", "@electric-sql/experimental": "^6.0.24", "@electric-sql/pglite-tools": "0.4.4", "@pgxsinkit/contracts": "0.1.40-dev.1783697448.e503ef3" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-9xIXoiPdYRMwDRYPuBWgQYCdRdoC8Dbi/GykDnmlWYLM1E52noMsk0B0zXv7nHy9fp26EqmX1NiEXUxWvyxKag=="],
 
-    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/contracts/0.1.37-dev.1783505135.f377d83/7137adc7b0c51279b272ae6e5382816e10f31d72", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-xzBYXTN1s36/BglWXuDEzPZINEtReENXTwIVuy5WvzhRSmkwEl8hHLZoQN4AscUjhTEIwgkcwH21CR0lGUKbqA=="],
+    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.40-dev.1783697448.e503ef3", "https://npm.pkg.github.com/download/@pgxsinkit/contracts/0.1.40-dev.1783697448.e503ef3/196786c571ed93ecf2ddd20fc36193cc56a5859d", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-V/xo+myvzZ/oW9ae86gDjmagetDfA1ZCIqlJ/HjmNDzJze0KjpAdLk+i9ruIFAp+NmEgReMWK1kNZtb5Gpppnw=="],
 
-    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/react/0.1.37-dev.1783505135.f377d83/7a2b817e2ec770f5759390179b94688239ffe4a9", { "dependencies": { "@pgxsinkit/client": "0.1.37-dev.1783505135.f377d83", "@pgxsinkit/contracts": "0.1.37-dev.1783505135.f377d83" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-YbJj7Vu5+oflMqvmxgrCTzjz8aoJufPlBa5Eec/9rlimrdtWU+qTgQ58+LMltsLUwS4ba8Qs6v1dL+wYY+rEJw=="],
+    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.40-dev.1783697448.e503ef3", "https://npm.pkg.github.com/download/@pgxsinkit/react/0.1.40-dev.1783697448.e503ef3/c978b21ee9f8a4bf85cfd8f239da8e87de1bc287", { "dependencies": { "@pgxsinkit/client": "0.1.40-dev.1783697448.e503ef3", "@pgxsinkit/contracts": "0.1.40-dev.1783697448.e503ef3" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-T35pPtL4LsTw2eeL70hX7CYUzRwyitfK8V/xWTkd2Rdr88OTrWzlB6+2EyYAoy9+eSR4TRYEBvy0CXgmVHTK4A=="],
 
-    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.37-dev.1783505135.f377d83", "https://npm.pkg.github.com/download/@pgxsinkit/server/0.1.37-dev.1783505135.f377d83/4a88e753168423534b0944ebee8b487579628522", { "dependencies": { "@pgxsinkit/contracts": "0.1.37-dev.1783505135.f377d83" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-NrKdwmuESqrK28c2lJ7xgqVN7gBlvIYZEI/EfHW3y6xYSdpUCcXLnzuZcUdsnmBpp7JlNLfZ46juRalhoefedw=="],
+    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.40-dev.1783697448.e503ef3", "https://npm.pkg.github.com/download/@pgxsinkit/server/0.1.40-dev.1783697448.e503ef3/fba3c0a2c67d171656cbce1773c3e48f6d31e4ba", { "dependencies": { "@pgxsinkit/contracts": "0.1.40-dev.1783697448.e503ef3" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-kElCji9ecHqsh+bwjHpVyapQNx0GCNnT/cmDujqWSf5RLBsR9u0K98knlUniwvLvEEca5obfcKBxvTwuVWTpjw=="],
 
     "@playwright/test": ["@playwright/test@1.61.1", "", { "dependencies": { "playwright": "1.61.1" }, "bin": { "playwright": "cli.js" } }, "sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig=="],
 

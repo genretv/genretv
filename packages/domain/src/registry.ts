@@ -1,6 +1,6 @@
 import type { SQL } from "drizzle-orm";
 
-import { defineSyncRegistry, type JwtClaims } from "@pgxsinkit/contracts";
+import { assertReadContractPreserved, asReadonly, defineSyncRegistry, type JwtClaims } from "@pgxsinkit/contracts";
 
 import {
   canonicalProposalSyncEntry,
@@ -51,4 +51,14 @@ export const genretvSyncRegistry = defineSyncRegistry({
   publish_application: publishApplicationSyncEntry,
   canonical_proposal: canonicalProposalSyncEntry,
   maintainer_notification: maintainerNotificationSyncEntry,
+});
+
+export const canonicalExportSyncRegistry = defineSyncRegistry({
+  canonical_show: asReadonly(genretvSyncRegistry.canonical_show),
+  canonical_season: asReadonly(genretvSyncRegistry.canonical_season),
+  canonical_episode: asReadonly(genretvSyncRegistry.canonical_episode),
+});
+
+assertReadContractPreserved(genretvSyncRegistry, canonicalExportSyncRegistry, {
+  label: "canonical export",
 });

@@ -31,6 +31,9 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["@electric-sql/pglite"],
   },
+  worker: {
+    format: "es",
+  },
   preview: {
     port: 5173,
     strictPort: true,
