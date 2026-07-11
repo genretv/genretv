@@ -37,6 +37,8 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   await expect(page.getByRole("tab", { name: /Upcoming/ })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Awaiting Renewal or Cancellation/ })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Finished/ })).toBeVisible();
+  await expect(page.getByRole("tab").first().locator(".schedule-tab-icon")).toBeVisible();
+  await expect(page.getByRole("tab").first().locator(".schedule-tab-label")).toBeVisible();
   await expect(page.getByLabel("Search")).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Rows" })).toHaveValue("50");
   await expect(page.getByRole("button", { name: "Genre: All" })).toBeVisible();
@@ -90,6 +92,14 @@ test("mobile schedule keeps title and timing visible and moves secondary columns
   const viewportWidth = 360;
   await page.setViewportSize({ width: viewportWidth, height: 800 });
   await page.goto("/");
+
+  const sectionTabs = page.getByRole("tab");
+  await expect(sectionTabs).toHaveCount(4);
+  for (let index = 0; index < 4; index += 1) {
+    await expect(sectionTabs.nth(index).locator(".schedule-tab-icon")).toBeVisible();
+    await expect(sectionTabs.nth(index).locator(".schedule-tab-label")).toBeHidden();
+    await expect(sectionTabs.nth(index).locator(".schedule-tab-count")).toBeVisible();
+  }
 
   const searchControl = page.getByRole("textbox", { name: "Search" });
   const platformControl = page.getByRole("combobox", { name: "Platform" });

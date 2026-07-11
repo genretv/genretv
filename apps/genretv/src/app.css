@@ -77,6 +77,18 @@ body {
   flex-wrap: wrap;
 }
 
+.schedule-tab-content {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.schedule-tab-icon {
+  flex: 0 0 auto;
+}
+
 .auth-panel {
   padding: 28px;
 }
@@ -319,6 +331,28 @@ body {
 @media (max-width: 47.99em) {
   .schedule-home-panel {
     gap: var(--mantine-spacing-sm);
+  }
+
+  .schedule-tabs {
+    flex-wrap: nowrap;
+  }
+
+  .schedule-tabs [role="tab"] {
+    min-width: 0;
+    padding-inline: 6px;
+    flex: 1 1 0;
+  }
+
+  .schedule-tab-content {
+    gap: 4px;
+  }
+
+  .schedule-tab-label {
+    display: none;
+  }
+
+  .schedule-tab-count {
+    font-size: 0.75rem;
   }
 
   .schedule-controls {

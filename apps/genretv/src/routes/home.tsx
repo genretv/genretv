@@ -14,7 +14,9 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from "@mantine/core";
+import { IconArchive, IconBroadcast, IconCalendarEvent, IconHelpCircle } from "@tabler/icons-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { CheckboxFilter } from "../components/checkbox-filter";
@@ -43,6 +45,12 @@ import {
 } from "../domain/schedule";
 
 const storageKey = "genretv.schedule.view.v1";
+const sectionIcons = {
+  current: IconBroadcast,
+  upcoming: IconCalendarEvent,
+  waiting: IconHelpCircle,
+  past: IconArchive,
+} as const;
 
 interface SectionTableProps {
   entries: ScheduleEntry[];
@@ -456,11 +464,21 @@ export function HomeRoute() {
         }}
       >
         <Tabs.List className="schedule-tabs">
-          {(["current", "upcoming", "waiting", "past"] as const).map((value) => (
-            <Tabs.Tab key={value} value={value}>
-              {sectionLabels[value]} ({schedule.counts[value]})
-            </Tabs.Tab>
-          ))}
+          {(["current", "upcoming", "waiting", "past"] as const).map((value) => {
+            const Icon = sectionIcons[value];
+            const label = sectionLabels[value];
+            return (
+              <Tooltip key={value} label={label} openDelay={500}>
+                <Tabs.Tab aria-label={`${label} (${schedule.counts[value]})`} value={value}>
+                  <span className="schedule-tab-content">
+                    <Icon aria-hidden="true" className="schedule-tab-icon" size={18} stroke={1.8} />
+                    <span className="schedule-tab-label">{label}</span>
+                    <span className="schedule-tab-count">({schedule.counts[value]})</span>
+                  </span>
+                </Tabs.Tab>
+              </Tooltip>
+            );
+          })}
         </Tabs.List>
       </Tabs>
 
