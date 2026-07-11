@@ -58,8 +58,8 @@ test("seeded maintainer can create a personal show in their overlay", async ({ p
   await page.getByLabel("Languages").fill("en");
   await page.getByRole("button", { name: "Save to overlay" }).click();
 
-  await expect(page.getByText("Saved to your personal overlay.")).toBeVisible();
   await expect(page).toHaveURL(/\/manage\/show\/(?!new)[0-9a-f-]+/);
+  await expect(page.getByRole("heading", { name: overlayTitle })).toBeVisible();
 
   await manageNavLink(page).click();
   await page.getByLabel("Search").fill(overlayTitle);
@@ -87,7 +87,7 @@ test("publisher can send a show proposal for maintainer merge", async ({ browser
   await page.getByLabel("Notes").fill(proposalNote);
   await page.getByRole("button", { name: "Send to canonical" }).click();
 
-  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+  await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();
 
   const maintainerContext = await browser.newContext();
   const maintainerPage = await maintainerContext.newPage();
@@ -136,11 +136,11 @@ test("publisher can send a season proposal that creates its canonical parent sho
   await page.getByLabel("Organizations").fill("E2E Streamer");
   await page.getByLabel("Notes").fill(proposalNote);
   await page.getByRole("button", { name: "Save to overlay" }).click();
-  await expect(page.getByText("Saved to your personal overlay.")).toBeVisible();
+  await expect(page.getByText("Saved locally to your personal overlay.")).toBeVisible();
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/(?!new)[0-9a-f-]+/);
 
   await page.getByRole("button", { name: "Send to canonical" }).click();
-  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+  await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();
 
   const maintainer = await approveProposalAsMaintainer(browser, proposalTitle, proposalNote);
   await expectCanonicalSeasonVisible(maintainer.page, showTitle, seasonLabel);
@@ -169,7 +169,7 @@ test("publisher can send an episode proposal that creates canonical show and sea
   await page.getByLabel("Episodes").fill("1");
   await page.getByLabel("Organizations").fill("E2E Streamer");
   await page.getByRole("button", { name: "Save to overlay" }).click();
-  await expect(page.getByText("Saved to your personal overlay.")).toBeVisible();
+  await expect(page.getByText("Saved locally to your personal overlay.")).toBeVisible();
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/(?!new)[0-9a-f-]+/);
 
   await page.getByRole("button", { name: "Add episode" }).click();
@@ -179,8 +179,8 @@ test("publisher can send an episode proposal that creates canonical show and sea
   await page.getByLabel("Release date").fill("2026-01-15");
   await page.getByLabel("Notes").fill(proposalNote);
   await page.getByRole("button", { name: "Save to overlay" }).click();
-  await expect(page.getByText("Saved to your personal overlay.")).toBeVisible();
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/[0-9a-f-]+\/episode\/(?!new)[0-9a-f-]+/);
+  await expect(page.getByRole("heading", { name: episodeLabel })).toBeVisible();
 
   await page.getByRole("button", { name: "Season" }).click();
   const episodeRow = page.getByRole("row", {
@@ -193,7 +193,7 @@ test("publisher can send an episode proposal that creates canonical show and sea
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/[0-9a-f-]+\/episode\/[0-9a-f-]+/);
 
   await page.getByRole("button", { name: "Send to canonical" }).click();
-  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+  await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();
 
   const maintainer = await approveProposalAsMaintainer(browser, proposalTitle, proposalNote);
   await expectCanonicalEpisodeVisible(maintainer.page, showTitle, seasonLabel, episodeLabel, episodeTitle);
@@ -217,7 +217,7 @@ test("publisher can send an existing canonical season update for maintainer merg
   await page.getByLabel("When").fill(updatedTiming);
   await page.getByLabel("Notes").fill(proposalNote);
   await page.getByRole("button", { name: "Send to canonical" }).click();
-  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+  await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();
 
   const maintainer = await reviewProposalAsMaintainer(browser, proposalTitle, proposalNote, "Approve + merge");
   await openCanonicalSeason(maintainer.page, existingShowTitle, existingSeasonLabel);
@@ -283,12 +283,12 @@ test("maintainer can identify duplicate open target proposals and close one", as
   await page.getByLabel("When").fill(`E2E duplicate first ${suffix}`);
   await page.getByLabel("Notes").fill(firstNote);
   await page.getByRole("button", { name: "Send to canonical" }).click();
-  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+  await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();
 
   await page.getByLabel("When").fill(`E2E duplicate second ${suffix}`);
   await page.getByLabel("Notes").fill(secondNote);
   await page.getByRole("button", { name: "Send to canonical" }).click();
-  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+  await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();
 
   const context = await browser.newContext();
   const maintainerPage = await context.newPage();
@@ -321,8 +321,8 @@ async function createPersonalShow(page: Page, showTitle: string): Promise<void> 
   await page.getByLabel("Countries").fill("US");
   await page.getByLabel("Genres").fill("science fiction");
   await page.getByRole("button", { name: "Save to overlay" }).click();
-  await expect(page.getByText("Saved to your personal overlay.")).toBeVisible();
   await expect(page).toHaveURL(/\/manage\/show\/(?!new)[0-9a-f-]+/);
+  await expect(page.getByRole("heading", { name: showTitle })).toBeVisible();
 }
 
 async function sendNewShowProposal(page: Page, showTitle: string, proposalNote: string): Promise<void> {
@@ -336,7 +336,7 @@ async function sendNewShowProposal(page: Page, showTitle: string, proposalNote: 
   await page.getByLabel("Genres").fill("science fiction");
   await page.getByLabel("Notes").fill(proposalNote);
   await page.getByRole("button", { name: "Send to canonical" }).click();
-  await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
+  await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();
 }
 
 async function approveProposalAsMaintainer(

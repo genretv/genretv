@@ -5,7 +5,6 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
-import { assertTransactionAcked } from "../domain/mutation-acks";
 import { buildExclusionSummaries } from "../features/management/exclusions";
 
 const canonicalShow = genretvSyncRegistry.canonical_show.view!;
@@ -78,10 +77,9 @@ export function ManageHiddenRoute() {
     setRestoringId(id);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.personal_list_exclusion.delete({ id });
       });
-      assertTransactionAcked(result, "Restoring hidden row");
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {

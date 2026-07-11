@@ -8,4 +8,8 @@ The canonical HTML action exports the Canonical List. The personal HTML action e
 
 Database exports use the official `@electric-sql/pglite-tools` implementation through first-class pgxsinkit client capabilities, because pgxsinkit's SharedWorker owns each active PGlite instance. The canonical database action uses `exportData` against an on-demand, read-only canonical registry containing only canonical Show, Season, and Episode tables; its portable SQL excludes views, pgxsinkit relations, functions, triggers, and personal data. The signed-in local database action uses `exportStore` against the account's existing worker and includes the complete mapped store, including sync state, overlays, and unsynced Mutation journal rows.
 
-The pg_dump implementation is an installed, pinned dependency loaded by dynamic import only after a database export action is invoked. Export assets must not be preloaded, prefetched, imported during idle time, or included in future service-worker precaching. Database export therefore cannot compete with initial application, PGlite, or sync loading.
+The pg_dump implementation is an installed, pinned dependency loaded into the running application by dynamic
+import only after a database export action is invoked. The installed PWA service worker may cache its revisioned
+export worker and WASM assets in the background after the local database and application have become usable, so
+database exports remain available offline. Service-worker installation never gates the first render or local
+database readiness; application code does not preload or execute the export implementation during startup.

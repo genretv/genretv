@@ -5,7 +5,6 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
-import { assertTransactionAcked } from "../domain/mutation-acks";
 import { formatMicrosecondTimestamp } from "../domain/time";
 import {
   defaultDisplayName,
@@ -84,7 +83,7 @@ export function ProfileRoute() {
     setSaved(false);
     setError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         if (profile == null) {
           tx.tables.user_profile.create({
             id: profileId,
@@ -94,7 +93,6 @@ export function ProfileRoute() {
           tx.tables.user_profile.update({ id: profile.id }, patch);
         }
       });
-      assertTransactionAcked(result, "Saving profile");
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -146,7 +144,7 @@ export function ProfileRoute() {
       )}
       {saved && (
         <Alert color="teal" variant="light">
-          Profile saved.
+          Profile saved locally.
         </Alert>
       )}
 

@@ -13,7 +13,9 @@ Open [Manage](/#/manage) to search the complete Show-oriented management view. U
 
 ## Personal changes
 
-You can add your own Shows, Seasons, and Episodes or override metadata inherited from the Canonical List. Changes are written through GenreTV's synchronized data system and require acknowledgement before the interface reports success.
+You can add your own Shows, Seasons, and Episodes or override metadata inherited from the Canonical List. Saves
+commit to the browser-local database first and are queued for synchronization, so editing remains available
+offline after the app and account data have been loaded once.
 
 Unknown values are valid. A Season can have no Episode rows, and its Episode Count can also be unknown.
 
@@ -21,8 +23,11 @@ Unknown values are valid. A Season can have no Episode rows, and its Episode Cou
 
 Hiding removes an inherited item from your Personal List without deleting the canonical source. Open **Hidden rows** from Manage to inspect and restore hidden items.
 
-## Local drafts
+## Local saves and drafts
 
-Editors can preserve browser-local draft values while you work. A local draft is not the same as a synchronized change; use the editor's save action and wait for its success state to publish that mutation to your overlay.
+Editors can preserve unsaved form values while you work. Select the editor's save action to commit those values
+to the local database. A local save is durable and immediately visible in your Personal List, but other devices
+and users cannot see it until synchronization completes. The header status and
+[Synchronization](/#/sync) page show that distinction.
 
 For the data hierarchy and editor flow, see [Edit Shows and Seasons](/docs/lists/edit/).

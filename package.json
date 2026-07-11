@@ -57,6 +57,7 @@
     "test:api": "cd apps/genretv-api && bun run test",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:offline": "playwright test --config playwright.offline.config.ts",
     "test:genretv": "cd apps/genretv && bun run test",
     "test:integration": "bun test tests/integration",
     "test:integration:live": "GENRETV_RUN_LOCAL_STACK_TESTS=1 bun test tests/integration",

@@ -24,9 +24,12 @@ test("publisher can publish a snapshot that anonymous visitors can inspect", asy
   await expect(page.getByText("1 season will be published as a new list.")).toBeVisible();
   await page.getByRole("button", { name: "Publish snapshot" }).click();
 
-  await expect(page.getByText("Published snapshot saved.")).toBeVisible({ timeout: 120_000 });
-  await expect(page.getByRole("region", { name: "Published lists" }).getByRole("row").filter({ hasText: slug }))
-    .toBeVisible();
+  await expect(page.getByText("Publication saved locally and queued for synchronization.")).toBeVisible({
+    timeout: 120_000,
+  });
+  await expect(
+    page.getByRole("region", { name: "Published lists" }).getByRole("row").filter({ hasText: slug }),
+  ).toBeVisible();
 
   const anonymousContext = await browser.newContext();
   const anonymousPage = await anonymousContext.newPage();

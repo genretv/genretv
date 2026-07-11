@@ -10,7 +10,7 @@ interface PackageJson {
 }
 
 describe("dependency contract", () => {
-  test("keeps all pgxsinkit packages on one dev-channel build", async () => {
+  test("keeps all installed pgxsinkit packages on one release", async () => {
     const lock = await readFile("bun.lock", "utf8");
     const versions = new Map<string, string>();
 
@@ -23,8 +23,9 @@ describe("dependency contract", () => {
     expect(new Set(versions.values()).size).toBe(1);
   });
 
-  test("keeps workspace pgxsinkit manifests pinned to the dev spec", async () => {
+  test("keeps workspace pgxsinkit manifests on one exact stable release pin", async () => {
     const packageJsonPaths = await workspacePackageJsonPaths();
+    const versions = new Set<string>();
 
     for (const path of packageJsonPaths) {
       const manifest = JSON.parse(await readFile(path, "utf8")) as PackageJson;
@@ -32,10 +33,13 @@ describe("dependency contract", () => {
 
       for (const [name, spec] of Object.entries(deps)) {
         if (name.startsWith("@pgxsinkit/")) {
-          expect(spec, `${path} ${name}`).toBe("dev");
+          expect(spec, `${path} ${name}`).toMatch(/^0\.1\.\d+$/);
+          versions.add(spec);
         }
       }
     }
+
+    expect(versions.size).toBe(1);
   });
 });
 

@@ -1,16 +1,17 @@
+import { createGenretvWorkerClient, type GenretvSyncClient } from "@genretv/offline-data/client";
+import { SyncClientProvider } from "@genretv/offline-data/hooks";
+import { bindCurrentGenretvStoreToUser, mappedGenretvStoreId } from "@genretv/offline-data/store-registry";
 import { Center, Loader, Stack, Text } from "@mantine/core";
 import type { Session } from "@supabase/supabase-js";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-import { createGenretvWorkerClient, type GenretvSyncClient } from "@genretv/offline-data/client";
-import { SyncClientProvider } from "@genretv/offline-data/hooks";
-import { bindCurrentGenretvStoreToUser } from "@genretv/offline-data/store-registry";
 import type { AuthTokenSnapshot } from "@pgxsinkit/client";
 import { syncDebug } from "@pgxsinkit/client";
 import type { SyncRuntimeStatus } from "@pgxsinkit/contracts";
 
 import { LoadingSplash } from "../components/loading-splash";
 import { supabase } from "../lib/supabase";
+import { GenretvSyncStatusProvider } from "./sync-status";
 import { getGenretvWorkerPort } from "./worker-port";
 
 export function GenretvSyncProvider({ children, session }: { children: ReactNode; session: Session | null }) {
@@ -19,7 +20,8 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
   const [error, setError] = useState<Error | null>(null);
   const [initialSyncReady, setInitialSyncReady] = useState(false);
   const userId = session?.user.id ?? null;
-  const initialUserId = useRef(userId);
+  const mappedUserId = useRef(userId);
+  const [storeSelection, setStoreSelection] = useState({ generation: 0, userId });
 
   useEffect(() => {
     let active = true;
@@ -32,16 +34,17 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
         if (typeof SharedWorker === "undefined") {
           throw new Error("This browser does not support SharedWorker, which GenreTV requires for local sync.");
         }
-        syncDebug("boot genretv worker client create start", { signedIn: initialUserId.current != null });
+        syncDebug("boot genretv worker client create start", { signedIn: storeSelection.userId != null });
         const next = await createGenretvWorkerClient({
-          userId: initialUserId.current,
+          userId: storeSelection.userId,
           getPort: getGenretvWorkerPort,
           getToken: currentTokenSnapshot,
           onStatusChange: (value) => {
             if (active) setStatus(value);
           },
         });
-        await next.ready;
+        next.setOnline(navigator.onLine);
+        await localReadiness(next);
         if (!active) {
           void next.stop();
           return;
@@ -59,12 +62,40 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
       active = false;
       if (created) void created.stop();
     };
-  }, []);
+  }, [storeSelection]);
 
   useEffect(() => {
-    if (userId != null) bindCurrentGenretvStoreToUser(userId);
+    if (client == null) return;
+    if (userId == null && mappedUserId.current != null) {
+      mappedUserId.current = null;
+      setClient(null);
+      setStoreSelection((current) => ({ generation: current.generation + 1, userId: null }));
+      return;
+    }
+    if (userId != null && mappedUserId.current !== userId) {
+      if (mappedGenretvStoreId(userId) != null) {
+        mappedUserId.current = userId;
+        setClient(null);
+        setStoreSelection((current) => ({ generation: current.generation + 1, userId }));
+        return;
+      }
+      bindCurrentGenretvStoreToUser(userId);
+      mappedUserId.current = userId;
+    }
     client?.notifyAuthChanged();
   }, [client, userId, session?.access_token, session?.expires_at]);
+
+  useEffect(() => {
+    if (client == null) return;
+    const updateConnectivity = () => client.setOnline(navigator.onLine);
+    updateConnectivity();
+    window.addEventListener("online", updateConnectivity);
+    window.addEventListener("offline", updateConnectivity);
+    return () => {
+      window.removeEventListener("online", updateConnectivity);
+      window.removeEventListener("offline", updateConnectivity);
+    };
+  }, [client]);
 
   if (error != null) {
     return (
@@ -101,7 +132,11 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
     );
   }
 
-  return <SyncClientProvider client={client}>{children}</SyncClientProvider>;
+  return (
+    <SyncClientProvider client={client}>
+      <GenretvSyncStatusProvider runtime={status ?? client.status}>{children}</GenretvSyncStatusProvider>
+    </SyncClientProvider>
+  );
 }
 
 async function currentTokenSnapshot(): Promise<AuthTokenSnapshot | null> {
@@ -109,4 +144,9 @@ async function currentTokenSnapshot(): Promise<AuthTokenSnapshot | null> {
   const session = data.session;
   if (session?.access_token == null) return null;
   return { accessToken: session.access_token, expiresAt: (session.expires_at ?? 0) * 1000 };
+}
+
+async function localReadiness(client: GenretvSyncClient): Promise<void> {
+  const localReady = (client as GenretvSyncClient & { localReady?: Promise<void> }).localReady;
+  await (localReady ?? client.ready);
 }

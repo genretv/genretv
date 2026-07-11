@@ -3,6 +3,8 @@ import { IconHelpCircle } from "@tabler/icons-react";
 import { Link, Outlet } from "@tanstack/react-router";
 
 import { useAuth } from "../auth/auth";
+import { PwaStatus } from "../components/pwa-status";
+import { SyncStatusButton } from "../components/sync-status-button";
 
 export function RootLayout() {
   const { session, signOut } = useAuth();
@@ -33,6 +35,7 @@ export function RootLayout() {
           </Group>
           {session ? (
             <Group className="app-header-actions" gap="sm">
+              <SyncStatusButton />
               <Button size="xs" component={Link} to="/export" variant="default">
                 Export
               </Button>
@@ -58,6 +61,7 @@ export function RootLayout() {
       <AppShell.Main>
         <Outlet />
       </AppShell.Main>
+      <PwaStatus />
     </AppShell>
   );
 }

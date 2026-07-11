@@ -10,4 +10,9 @@ After logout, the app returns to Anonymous Mode by switching to an available Pub
 
 Other published user overlays should use pgxsinkit's lazy persisted mode so they sync only when a visitor opens that public list, then remain available locally through PGlite. A signed-in user's Personal List overlay should also be lazy persisted as soon as they log in.
 
+Previously hydrated eager and lazy-persisted relations remain locally readable while offline. Local readiness is
+therefore independent from server freshness: returning users can enter the application from persisted data while
+Electric catch-up is unavailable or still running. A relation that has never completed its first hydration must
+be reported as unavailable offline rather than as an authoritative empty list. See ADR-0018.
+
 This keeps the public default fast while preserving the Electric + PGlite pattern: sync the data needed by shapes, persist it locally, and build display queries locally rather than server-materializing every overlay into full copied rows. If repeated query complexity justifies it later, genretv can add Drizzle-declared pgView objects, but the MVP should prefer ordinary live Drizzle queries over the synced registry tables and views.

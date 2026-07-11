@@ -57,6 +57,10 @@ export function bindCurrentGenretvStoreToUser(userId: string): string {
   return claimed;
 }
 
+export function mappedGenretvStoreId(userId: string): string | null {
+  return readState().userStores[userId] ?? null;
+}
+
 function readState(): StoreRegistryState {
   const parsed = readStoredState();
   if (parsed != null) return parsed;

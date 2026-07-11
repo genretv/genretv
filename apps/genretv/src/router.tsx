@@ -14,6 +14,7 @@ import { PublishedRoute } from "./routes/published";
 import { PublishedListRoute } from "./routes/published-list";
 import { PublishingRoute } from "./routes/publishing";
 import { RootLayout } from "./routes/root";
+import { SyncRoute } from "./routes/sync";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -95,6 +96,12 @@ const profileRoute = createRoute({
   component: ProfileRoute,
 });
 
+const syncRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sync",
+  component: SyncRoute,
+});
+
 const publicProfileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/profile/$slug",
@@ -127,6 +134,7 @@ const routeTree = rootRoute.addChildren([
   manageEpisodeRoute,
   publishingRoute,
   profileRoute,
+  syncRoute,
   publicProfileRoute,
   publishedRoute,
   publishedListRoute,

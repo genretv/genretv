@@ -14,8 +14,7 @@ const envoyPort = Number(process.env["GENRETV_ENVOY_PORT"] ?? 54331);
 const electricPort = Number(process.env["GENRETV_ELECTRIC_PORT"] ?? 54330);
 const caddyPort = Number(process.env["GENRETV_CADDY_PORT"] ?? 54343);
 const userSeedContainer = process.env["GENRETV_USER_SEED_CONTAINER"] ?? "genretv-user-seed";
-const publishableKey =
-  process.env["GENRETV_PUBLISHABLE_KEY"] ?? "sb_publishable_genretvLOCALxxxxxxxxxxx_demo0000";
+const publishableKey = process.env["GENRETV_PUBLISHABLE_KEY"] ?? "sb_publishable_genretvLOCALxxxxxxxxxxx_demo0000";
 const localUserPassword = process.env["GENRETV_LOCAL_USER_PASSWORD"] ?? "genretv-local-password";
 const DATABASE_URL =
   process.env["DATABASE_URL"] ??

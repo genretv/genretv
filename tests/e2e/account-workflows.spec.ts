@@ -21,7 +21,7 @@ test("signed-in user can save a public profile", async ({ page }) => {
   await page.getByLabel("Make this profile public").check();
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Profile saved.")).toBeVisible();
+  await expect(page.getByText("Profile saved locally.")).toBeVisible();
 
   await page.goto(`/profile/${publicSlug}`);
   await expect(page.getByRole("heading", { name: displayName })).toBeVisible();
@@ -39,7 +39,7 @@ test("non-publisher can apply and be approved to publish", async ({ browser, pag
   await page.getByLabel("Message").fill(message);
   await page.getByRole("button", { name: "Apply to publish" }).click();
 
-  await expect(page.getByText("Application sent.")).toBeVisible();
+  await expect(page.getByText("Application saved locally and queued for synchronization.")).toBeVisible();
   await expect(page.getByText(message)).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: message }).getByText("open", { exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Apply to publish" })).toBeVisible();

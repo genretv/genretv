@@ -36,4 +36,14 @@ Select **Sign in**, then **Create account**. Enter an email address and password
 
 GenreTV creates and prepares a local browser database during initial loading. After sign-in, that database is associated with your account and user-specific data begins synchronizing.
 
+## Install and use offline
+
+After the first successful load, use the application's install prompt when your browser offers it. The installed
+app and previously synchronized data can reopen without a connection. Signed-in edits save to the local database
+and synchronize when you reconnect. First use, authentication, external links, and data you have never loaded
+still require a connection.
+
+GenreTV announces application updates instead of silently reloading. Finish synchronizing local work before
+applying a waiting update.
+
 Next, learn [how the Schedule works](/docs/browse/) or [how to build your Personal List](/docs/lists/).

@@ -21,6 +21,8 @@ GenreTV stores its working data in a PGlite database inside your browser. Canoni
 
 Signing out does **not** delete that mapped local database. It may contain synchronized or not-yet-synchronized account data. Browser storage controls remain the explicit way to delete it.
 
-Previously loaded data may remain available during connectivity loss, but current saves use pessimistic synchronization and need a server acknowledgement before they succeed.
+After the application and relevant data have loaded once, previously synchronized data remains available during
+connectivity loss. Supported edits save locally and queue for automatic synchronization when the connection
+returns. Authentication actions and the first load of data you have never opened still require a connection.
 
 For portable copies, see [Export your data](/docs/account/exports/).

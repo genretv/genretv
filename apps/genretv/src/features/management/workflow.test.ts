@@ -11,7 +11,12 @@ describe("management workflow queue helpers", () => {
       { id: "open-new", status: "open", updatedAtUs: 30n },
     ];
 
-    expect(sortWorkflowReviewRows(rows).map((row) => row.id)).toEqual(["open-new", "open-old", "approved", "closed-new"]);
+    expect(sortWorkflowReviewRows(rows).map((row) => row.id)).toEqual([
+      "open-new",
+      "open-old",
+      "approved",
+      "closed-new",
+    ]);
   });
 
   test("summarizes the maintainer queue", () => {
@@ -24,9 +29,7 @@ describe("management workflow queue helpers", () => {
     expect(nextWorkflowReviewLabel({ openApplications: 1, openProposals: 4 })).toBe(
       "Review publisher applications first.",
     );
-    expect(nextWorkflowReviewLabel({ openApplications: 0, openProposals: 2 })).toBe(
-      "Review canonical proposals next.",
-    );
+    expect(nextWorkflowReviewLabel({ openApplications: 0, openProposals: 2 })).toBe("Review canonical proposals next.");
     expect(nextWorkflowReviewLabel({ openApplications: 0, openProposals: 0 })).toBeNull();
   });
 });

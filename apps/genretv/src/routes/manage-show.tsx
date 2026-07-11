@@ -21,8 +21,8 @@ import { eq, inArray, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
+import { EntitySyncBadge } from "../components/entity-sync-badge";
 import { useManagementShows } from "../domain/live-management-shows";
-import { assertTransactionAcked } from "../domain/mutation-acks";
 import {
   findImdbLink,
   findManagementShow,
@@ -48,7 +48,6 @@ import {
 } from "../features/management/editor-ui";
 import { canSendCanonicalProposal } from "../features/management/proposals";
 import { isLinkedPublishedShowId } from "../features/publishing/linked-imports";
-import { useSyncGroupsReady } from "../sync/use-sync-groups-ready";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -88,7 +87,6 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const [proposalSaving, setProposalSaving] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
-  const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_show", "personal_season");
   const personalShows = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -111,6 +109,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     { ready: canEdit && show.id !== newShowId },
   );
   const personalRow = personalShows.rows[0] ?? null;
+  const personalOverlayError = personalShows.error;
   const isPersonalOnlyShow = personalRow != null && personalRow.canonicalShowId == null;
   const personalSeasonsForShow = useLiveDrizzleRows(
     (sync) =>
@@ -210,7 +209,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
   const draftCountries = orderedTextToList(draft.countriesText);
   const draftGenres = orderedTextToList(draft.genresText);
   const draftLinks = externalLinkTextToRows(draft.linksText);
-  const canSaveOverlay = canEditDraft && personalOverlay.ready && !personalShows.loading && dirty && !savingOverlay;
+  const canSaveOverlay = canEditDraft && !personalShows.loading && dirty && !savingOverlay;
   const canSubmitProposal = canEditDraft && canPropose && !personalShows.loading && !proposalSaving;
   const canAddSeason = canEditDraft && show.id !== newShowId;
   const canDeletePersonalShow =
@@ -250,7 +249,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         externalLinks: draftLinks,
         notes: nullableText(draft.notes),
       };
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         if (personalRow == null) {
           tx.tables.personal_show.create({
             id: createdId,
@@ -260,10 +259,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         } else {
           tx.tables.personal_show.update({ id: personalRow.id }, patch);
         }
-      });
-      assertTransactionAcked(result, "Saving show overlay");
-      if (show.id === newShowId) {
-        const seasonResult = await client.transaction({ mode: "pessimistic" }, (tx) => {
+        if (show.id === newShowId) {
           tx.tables.personal_season.create({
             id: crypto.randomUUID(),
             personalShowId: createdId,
@@ -287,9 +283,8 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
             externalLinks: [],
             notes: null,
           });
-        });
-        assertTransactionAcked(seasonResult, "Creating initial season");
-      }
+        }
+      });
       setOverlaySaved(true);
       if (show.id === newShowId) {
         void navigate({ to: "/manage/show/$showId", params: { showId: createdId } });
@@ -309,7 +304,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     setProposalError(null);
     setProposalSent(false);
     try {
-      const proposalResult = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.canonical_proposal.create({
           id: proposalId,
           proposalKind: "show",
@@ -336,7 +331,6 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           },
         });
       });
-      assertTransactionAcked(proposalResult, "Sending canonical proposal");
       setProposalSent(true);
     } catch (cause) {
       setProposalError(cause instanceof Error ? cause.message : String(cause));
@@ -350,7 +344,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.personal_list_exclusion.create({
           id: crypto.randomUUID(),
           excludedKind: "show",
@@ -360,7 +354,6 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           reason: null,
         });
       });
-      assertTransactionAcked(result, "Hiding show");
       void navigate({ to: "/manage" });
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
@@ -381,7 +374,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         for (const importId of importIds) {
           tx.tables.list_import.delete({ id: importId });
         }
@@ -395,7 +388,6 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         }
         tx.tables.personal_show.delete({ id: personalRow.id });
       });
-      assertTransactionAcked(result, "Deleting personal show");
       void navigate({ to: "/manage" });
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
@@ -410,6 +402,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
         <div>
           <Title order={1}>{show.id === newShowId ? "New show" : show.title}</Title>
           <Group gap={6} mt={6}>
+            <EntitySyncBadge table="personal_show" entityId={personalRow?.id ?? null} />
             <Badge variant="light">{formatKnownSeasonCount(show)} known seasons</Badge>
             <Badge variant="outline">
               {show.listedSeasonCount} listed {show.listedSeasonCount === 1 ? "row" : "rows"}
@@ -457,9 +450,9 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
           Could not load your personal overlay for this show: {personalShows.error.message}
         </Alert>
       )}
-      {personalOverlay.error != null && (
+      {personalOverlayError != null && (
         <Alert color="red" variant="light">
-          Could not finish loading your personal overlay: {personalOverlay.error.message}
+          Could not finish loading your personal overlay: {personalOverlayError.message}
         </Alert>
       )}
       {(personalSeasonsForShow.error ??
@@ -479,7 +472,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
       )}
       {overlaySaved && (
         <Alert color="teal" variant="light">
-          Saved to your personal overlay.
+          Saved locally to your personal overlay.
         </Alert>
       )}
       {proposalError != null && (
@@ -489,7 +482,7 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
       )}
       {proposalSent && (
         <Alert color="teal" variant="light">
-          Sent to the canonical maintainers.
+          Proposal saved locally and queued for the canonical maintainers.
         </Alert>
       )}
 

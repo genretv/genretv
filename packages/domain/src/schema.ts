@@ -135,7 +135,7 @@ export const canonicalShowSyncEntry = defineSyncTable({
   policies: [publicReadPolicy("canonical_show_public_read"), ...canonicalMaintainerWritePolicies("canonical_show")],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   consistencyGroup: "canonical-schedule",
   governance: {
     managedFields: [{ column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" }],
@@ -175,7 +175,7 @@ export const canonicalSeasonSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   consistencyGroup: "canonical-schedule",
   governance: {
     managedFields: [{ column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" }],
@@ -203,7 +203,7 @@ export const canonicalEpisodeSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   consistencyGroup: "canonical-schedule",
   governance: {
     managedFields: [{ column: "updatedAtUs", applyOn: ["create", "update"], strategy: "nowMicroseconds" }],
@@ -234,7 +234,7 @@ export const personalShowSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "personal-overlay",
   shape: {
@@ -295,7 +295,7 @@ export const personalSeasonSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "personal-overlay",
   shape: {
@@ -338,7 +338,7 @@ export const personalEpisodeSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "personal-overlay",
   shape: {
@@ -374,7 +374,7 @@ export const personalListExclusionSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "personal-overlay",
   shape: {
@@ -413,7 +413,7 @@ export const userProfileSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "user-workspace",
   shape: {
@@ -453,7 +453,7 @@ export const publishedListSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "publishing",
   shape: {
@@ -503,7 +503,7 @@ export const publishedShowSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "publishing",
   shape: {
@@ -570,7 +570,7 @@ export const publishedSeasonSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "publishing",
   shape: {
@@ -620,7 +620,7 @@ export const publishedEpisodeSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "publishing",
   shape: {
@@ -664,7 +664,7 @@ export const listImportSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "publishing",
   shape: {
@@ -700,7 +700,7 @@ export const publishApplicationSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "maintainer-workflow",
   shape: {
@@ -746,7 +746,7 @@ export const canonicalProposalSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "maintainer-workflow",
   shape: {
@@ -789,7 +789,7 @@ export const maintainerNotificationSyncEntry = defineSyncTable({
   ],
   mode: "readwrite",
   conflictPolicy: "reject-if-stale",
-  writeMode: "pessimistic",
+  writeMode: "optimistic",
   subscription: "lazy",
   consistencyGroup: "maintainer-workflow",
   shape: {

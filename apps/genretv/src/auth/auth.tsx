@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "../lib/supabase";
+import { requestPersistentStorage } from "../sync/persistent-storage";
 
 interface AuthState {
   session: Session | null;
@@ -35,6 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (session == null) return;
+    void requestPersistentStorage();
+  }, [session]);
 
   const value = useMemo<AuthState>(
     () => ({

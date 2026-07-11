@@ -22,8 +22,8 @@ import { eq, or } from "drizzle-orm";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
+import { EntitySyncBadge } from "../components/entity-sync-badge";
 import { useManagementShows } from "../domain/live-management-shows";
-import { assertTransactionAcked } from "../domain/mutation-acks";
 import {
   findImdbLink,
   findManagementSeason,
@@ -55,7 +55,6 @@ import {
 } from "../features/management/editor-ui";
 import { canSendCanonicalProposal } from "../features/management/proposals";
 import { sourcePublishedSeasonIdFromLinkedId } from "../features/publishing/linked-imports";
-import { useSyncGroupsReady } from "../sync/use-sync-groups-ready";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
 const personalSeason = genretvSyncRegistry.personal_season.view!;
@@ -122,7 +121,6 @@ function EditableSeason({
   const [proposalSaving, setProposalSaving] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSent, setProposalSent] = useState(false);
-  const personalOverlay = useSyncGroupsReady(client, canEdit, "personal_show", "personal_season");
   const status = formatScheduleStatus(season.scheduleSection, show.endedReason, season.isFinal);
   const episodeCount = formatEpisodeCount(season.episodeCount, season.episodes);
   const personalSeasons = useLiveDrizzleRows(
@@ -170,6 +168,7 @@ function EditableSeason({
     { ready: canEdit },
   );
   const personalShowRow = personalShows.rows[0] ?? null;
+  const personalOverlayError = personalSeasons.error ?? personalShows.error;
   const personalSeasonSiblings = useLiveDrizzleRows(
     (sync) =>
       sync.drizzle
@@ -262,7 +261,6 @@ function EditableSeason({
     season.episodeCount === 1 ? "1 episode, no row yet" : `${episodeCount} episodes, no rows yet`;
   const canSaveOverlay =
     canEditDraft &&
-    personalOverlay.ready &&
     !personalSeasons.loading &&
     !personalShows.loading &&
     dirty &&
@@ -327,7 +325,7 @@ function EditableSeason({
         externalLinks: draftLinks,
         notes: nullableText(draft.notes),
       };
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         if (personalRow == null) {
           tx.tables.personal_season.create({
             id: createdId,
@@ -340,7 +338,6 @@ function EditableSeason({
           tx.tables.personal_season.update({ id: personalRow.id }, patch);
         }
       });
-      assertTransactionAcked(result, "Saving season overlay");
       setOverlaySaved(true);
       if (season.id === newSeasonId) {
         void navigate({
@@ -368,7 +365,7 @@ function EditableSeason({
     setProposalError(null);
     setProposalSent(false);
     try {
-      const proposalResult = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.canonical_proposal.create({
           id: proposalId,
           proposalKind: "season",
@@ -404,7 +401,6 @@ function EditableSeason({
           },
         });
       });
-      assertTransactionAcked(proposalResult, "Sending canonical proposal");
       setProposalSent(true);
     } catch (cause) {
       setProposalError(cause instanceof Error ? cause.message : String(cause));
@@ -418,7 +414,7 @@ function EditableSeason({
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.personal_list_exclusion.create({
           id: crypto.randomUUID(),
           excludedKind: "season",
@@ -428,7 +424,6 @@ function EditableSeason({
           reason: null,
         });
       });
-      assertTransactionAcked(result, "Hiding season");
       void navigate({ to: "/manage/show/$showId", params: { showId: show.id } });
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
@@ -447,7 +442,7 @@ function EditableSeason({
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         for (const importRow of importsForSeason.rows) {
           tx.tables.list_import.delete({ id: importRow.id });
         }
@@ -459,7 +454,6 @@ function EditableSeason({
           tx.tables.personal_show.delete({ id: personalShowRow.id });
         }
       });
-      assertTransactionAcked(result, "Deleting personal season");
       if (deletePersonalShow) {
         void navigate({ to: "/manage" });
       } else {
@@ -477,12 +471,11 @@ function EditableSeason({
     setOverlayError(null);
     setOverlaySaved(false);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         for (const importRow of linkedImportsForSeason.rows) {
           tx.tables.list_import.delete({ id: importRow.id });
         }
       });
-      assertTransactionAcked(result, "Removing linked import");
       void navigate({ to: "/manage" });
     } catch (cause) {
       setOverlayError(cause instanceof Error ? cause.message : String(cause));
@@ -499,6 +492,7 @@ function EditableSeason({
             {show.title} {season.id === newSeasonId ? "New season" : season.seasonLabel}
           </Title>
           <Text c="dimmed">{status}</Text>
+          <EntitySyncBadge table="personal_season" entityId={personalRow?.id ?? null} />
         </div>
         <Group>
           <Button
@@ -535,9 +529,9 @@ function EditableSeason({
           Could not load your personal overlay for this show: {personalShows.error.message}
         </Alert>
       )}
-      {personalOverlay.error != null && (
+      {personalOverlayError != null && (
         <Alert color="red" variant="light">
-          Could not finish loading your personal overlay: {personalOverlay.error.message}
+          Could not finish loading your personal overlay: {personalOverlayError.message}
         </Alert>
       )}
       {(personalEpisodesForSeason.error ??
@@ -560,7 +554,7 @@ function EditableSeason({
       )}
       {overlaySaved && (
         <Alert color="teal" variant="light">
-          Saved to your personal overlay.
+          Saved locally to your personal overlay.
         </Alert>
       )}
       {proposalError != null && (
@@ -570,7 +564,7 @@ function EditableSeason({
       )}
       {proposalSent && (
         <Alert color="teal" variant="light">
-          Sent to the canonical maintainers.
+          Proposal saved locally and queued for the canonical maintainers.
         </Alert>
       )}
 

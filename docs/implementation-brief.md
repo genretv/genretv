@@ -14,6 +14,12 @@ Published user lists are public resources with stable Public List Slugs. Publish
 
 All genretv domain data flows through pgxsinkit Sync Registry Entries. There is no plain REST path for app data. Supabase Auth handles identity only: signup, login, password recovery, session refresh.
 
+Every domain write commits optimistically to the mapped PGlite store and durable Mutation journal. GenreTV has no
+pessimistic domain-write path. Returning visitors render from locally ready persisted relations while Electric
+catch-up runs; server freshness is reported separately. The root application is an installable PWA whose service
+worker precaches the shell, workers, and PGlite runtime needed to reopen previously hydrated data offline. See
+ADR-0018.
+
 Anonymous Mode uses public pgxsinkit/Electric fixed shapes. Electric SQL Cloud handles anonymous read caching through its CDN.
 
 The Canonical List shape is front-loaded. On first page load, genretv should create a Public Spare Store in the worker path and provision it with the full genretv sync registry plus Canonical List data. Anonymous visitors read from that store immediately.

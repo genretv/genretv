@@ -11,6 +11,7 @@ Before editing files for a substantial task:
 - Use the loaded `SKILL.md` guidance while making the change.
 - Monorepos: when working across packages, run the skill check from the workspace root and prefer the local skill for the package being changed.
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
+
 <!-- intent-skills:end -->
 
 ## ⛔ NEVER USE SQL STRINGS IF YOU CAN USE DRIZZLE OBJECTS ⛔
@@ -22,7 +23,7 @@ strict hierarchy, and you must use the **highest tier that works**:
 1. **① Pure Drizzle objects (BEST — default to this):** `eq`/`and`/`or`/`inArray`/`exists`/`sql`-free
    operators, real column objects, `pgPolicy`, query-builder subqueries, the official
    `drizzle-orm/supabase` helpers (`authUid`, `authenticatedRole`, …). Rename-safe, type-checked.
-2. **② `sql\`…\`` with TYPED interpolation:** when ① can't express it, use a tagged `sql\`…\`` template
+2. **② `sql\`…\``with TYPED interpolation:** when ① can't express it, use a tagged`sql\`…\`` template
 that interpolates **column objects** (`${table.col}`), **table objects** (`${table}`), `c(col)`for
 Electric's bare-identifier`where`, and **bound params** (`${value}`). Never bake identifiers or
    values into the template text as literals when a typed interpolation exists.

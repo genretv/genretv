@@ -22,7 +22,6 @@ import type { SyncTransaction } from "@pgxsinkit/client";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
-import { assertTransactionAcked } from "../domain/mutation-acks";
 import { buildManagementShows } from "../domain/schedule";
 import { formatMicrosecondTimestamp } from "../domain/time";
 import { buildCanonicalProposalMergePlan } from "../features/management/canonical-merge";
@@ -252,13 +251,12 @@ export function PublishingRoute() {
     setActionError(null);
     setSaved(false);
     try {
-      const applicationResult = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.publish_application.create({
           id: applicationId,
           message: nullableText(message),
         });
       });
-      assertTransactionAcked(applicationResult, "Submitting publisher application");
       setSaved(true);
       setMessage("");
     } catch (cause) {
@@ -288,8 +286,7 @@ export function PublishingRoute() {
     let completedMutations = 0;
     const runStep = async (label: string, mutationCount: number, enqueue: (tx: SyncWriteTransaction) => void) => {
       setPublishProgress({ label, completed: completedMutations, total: totalMutations });
-      const result = await client.transaction({ mode: "pessimistic" }, enqueue);
-      assertTransactionAcked(result, label);
+      await client.transaction({ mode: "optimistic" }, enqueue);
       completedMutations += mutationCount;
       setPublishProgress({ label, completed: completedMutations, total: totalMutations });
     };
@@ -324,31 +321,31 @@ export function PublishingRoute() {
       }
       await runStep(`Publishing ${plan.shows.length} shows`, plan.shows.length, (tx) => {
         for (const show of plan.shows) {
-          tx.tables.published_show.updateBlind({ id: show.id }, { publicationStatus: "published" });
+          tx.tables.published_show.update({ id: show.id }, { publicationStatus: "published" });
         }
       });
       await runStep(`Publishing ${plan.seasons.length} seasons`, plan.seasons.length, (tx) => {
         for (const season of plan.seasons) {
-          tx.tables.published_season.updateBlind({ id: season.id }, { publicationStatus: "published" });
+          tx.tables.published_season.update({ id: season.id }, { publicationStatus: "published" });
         }
       });
       if (plan.episodes.length > 0) {
         await runStep(`Publishing ${plan.episodes.length} episodes`, plan.episodes.length, (tx) => {
           for (const episode of plan.episodes) {
-            tx.tables.published_episode.updateBlind({ id: episode.id }, { publicationStatus: "published" });
+            tx.tables.published_episode.update({ id: episode.id }, { publicationStatus: "published" });
           }
         });
       }
       await runStep("Publishing list snapshot", 1, (tx) => {
         if (ownMatchingPublishedList == null) {
-          tx.tables.published_list.updateBlind(
+          tx.tables.published_list.update(
             { id: listId },
             {
               publicationStatus: "published",
             },
           );
         } else {
-          tx.tables.published_list.updateBlind(
+          tx.tables.published_list.update(
             { id: listId },
             {
               title: plan.list.title,
@@ -373,13 +370,12 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.publish_application.update({ id }, { status, reviewerNote: nullableText(note) });
         for (const notificationId of notificationIds) {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
-      assertTransactionAcked(result, "Updating publisher application");
       setApplicationReviewNotes((notes) => withoutKey(notes, id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -393,13 +389,12 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.canonical_proposal.update({ id }, { status, reviewerNote: nullableText(note) });
         for (const notificationId of notificationIds) {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
-      assertTransactionAcked(result, "Updating canonical proposal");
       setProposalReviewNotes((notes) => withoutKey(notes, id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -425,7 +420,7 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         if (plan.showCreate != null) tx.tables.canonical_show.create(plan.showCreate);
         if (plan.showUpdate != null) tx.tables.canonical_show.update({ id: plan.showUpdate.id }, plan.showUpdate.patch);
         if (plan.seasonCreate != null) tx.tables.canonical_season.create(plan.seasonCreate);
@@ -444,7 +439,6 @@ export function PublishingRoute() {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
-      assertTransactionAcked(result, "Approving canonical proposal");
       setProposalReviewNotes((notes) => withoutKey(notes, proposal.id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
@@ -457,10 +451,9 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.maintainer_notification.update({ id }, { status: "read" });
       });
-      assertTransactionAcked(result, "Marking notification read");
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -476,12 +469,11 @@ export function PublishingRoute() {
     setSaving(true);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         for (const id of notificationIds) {
           tx.tables.maintainer_notification.update({ id }, { status: "read" });
         }
       });
-      assertTransactionAcked(result, "Marking notifications read");
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -553,19 +545,19 @@ export function PublishingRoute() {
       )}
       {saved && (
         <Alert color="teal" variant="light">
-          Application sent.
+          Application saved locally and queued for synchronization.
         </Alert>
       )}
       {publishedSaved && (
         <Alert color="teal" variant="light">
-          Published snapshot saved.
+          Publication saved locally and queued for synchronization.
         </Alert>
       )}
       {publishProgress != null && (
         <Alert color="blue" variant="light">
           <Stack gap={6}>
             <Text size="sm">
-              {publishProgress.label}: {publishProgress.completed} of {publishProgress.total} writes acknowledged.
+              {publishProgress.label}: {publishProgress.completed} of {publishProgress.total} writes saved locally.
             </Text>
             <Progress
               value={publishProgress.total === 0 ? 100 : (publishProgress.completed / publishProgress.total) * 100}

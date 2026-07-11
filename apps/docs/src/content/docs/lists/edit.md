@@ -31,4 +31,10 @@ Episodes are optional. Do not create placeholder Episode rows merely to satisfy 
 
 ## Save feedback
 
-GenreTV currently uses pessimistic writes: the save waits for the server to acknowledge the mutation. If the save fails, your synchronized overlay has not been updated; keep or restore the local draft and retry after connectivity returns.
+Saving commits the change to your browser-local database and durable synchronization queue immediately. It works
+without a network connection and the editor reports that the change was saved locally. The header's
+**Synchronization** status shows whether the work has reached the server.
+
+Queued changes survive reloads. When connectivity returns, GenreTV resumes synchronization automatically. Open
+the [Synchronization](/#/sync) page to inspect pending work, retry failed entries, or explicitly discard a
+conflicted or quarantined change.

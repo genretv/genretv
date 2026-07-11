@@ -5,11 +5,26 @@ description: Resolve common loading, account, synchronization, and export proble
 
 ## The schedule is still loading
 
-Initial use prepares a browser-local database and loads the Canonical List. Leave the page open while the loading panel is visible. If it never completes, check connectivity and reload once. Persistent failures may indicate that browser storage is unavailable or the synchronization service cannot be reached.
+Initial use prepares a browser-local database and loads the Canonical List, so it requires a connection. Leave
+the page open while the loading panel is visible. Returning visitors can open previously loaded data offline. If
+initial loading never completes, check connectivity and reload once. Persistent failures may indicate that
+browser storage is unavailable or the synchronization service cannot be reached.
 
-## A save did not complete
+## A change has not synchronized
 
-GenreTV currently waits for server acknowledgement before reporting a save as successful. Check the editor's error message and your connection, retain the local draft, then retry. Do not assume the synchronized overlay changed when no success state appeared.
+A successful editor save means the change is durable locally. It may still be pending, delayed, conflicted, or
+quarantined before the server accepts it. Select the **Synchronization** status in the header to inspect the
+queue. Reconnection retries ordinary queued work automatically; the Synchronization page offers manual retry and
+explicit discard actions for terminal problems.
+
+Do not clear site storage to repair synchronization unless you intend to delete the local database and any
+unsynchronized changes.
+
+## An application update is waiting
+
+GenreTV does not silently replace a running application. Use the update prompt when it appears. If local changes
+are still pending, the update action remains disabled; inspect Synchronization and let the queue settle before
+reloading into the new version.
 
 ## My filters came back
 

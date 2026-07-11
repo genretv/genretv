@@ -1,7 +1,6 @@
 import { useSyncClient } from "@genretv/offline-data/hooks";
 import { useState } from "react";
 
-import { assertTransactionAcked } from "../../domain/mutation-acks";
 import type { PublishedSeasonSummary } from "./imports";
 
 export type ImportMode = "linked" | "detached";
@@ -21,7 +20,7 @@ export function useImportPublishedSeason() {
     setSavingKey(`${season.id}:${importMode}`);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         if (importMode === "linked") {
           for (const release of releases.filter((candidate) => candidate.importMode == null)) {
             tx.tables.list_import.create({
@@ -123,7 +122,6 @@ export function useImportPublishedSeason() {
           });
         }
       });
-      assertTransactionAcked(result, "Importing published season");
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -137,10 +135,9 @@ export function useImportPublishedSeason() {
     setSavingKey(`${season.id}:remove-linked`);
     setActionError(null);
     try {
-      const result = await client.transaction({ mode: "pessimistic" }, (tx) => {
+      await client.transaction({ mode: "optimistic" }, (tx) => {
         tx.tables.list_import.delete({ id: importId });
       });
-      assertTransactionAcked(result, "Removing linked import");
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
