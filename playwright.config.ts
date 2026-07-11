@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const port = Number(process.env["GENRETV_E2E_PORT"] ?? 5174);
 const host = process.env["GENRETV_E2E_HOST"] ?? "127.0.0.1";
 const baseURL = process.env["PLAYWRIGHT_BASE_URL"] ?? `http://${host}:${port}`;
+const workers = Number(process.env["GENRETV_E2E_WORKERS"] ?? 1);
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -15,7 +16,7 @@ export default defineConfig({
     timeout: 90_000,
   },
   fullyParallel: false,
-  workers: 1,
+  workers,
   reporter: process.env["CI"] ? [["dot"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,

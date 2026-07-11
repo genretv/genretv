@@ -17,6 +17,14 @@ come from `infra/compose/genretv/seed-users.sh`; the maintainer login is `mainta
 with password `genretv-local-password`.
 
 For debugging, `GENRETV_E2E_KEEP_STACK=1 bun run test:e2e` leaves the disposable E2E stack running.
+
+The suite defaults to one worker. Each browser worker boots and synchronizes its own PGlite database, so local
+parallelism contends heavily for the PGlite WASM thread and the shared Electric/Postgres stack; four workers were
+measured to make individual tests roughly three to four times slower while substantially increasing host load.
+`GENRETV_E2E_WORKERS=<n> bun run test:e2e` remains available for CI runners where measured sharding is beneficial.
+The production offline suite is always single-worker because its cases deliberately change browser connectivity,
+service-worker state, and persistent local storage.
+
 Clean it manually with:
 
 ```sh

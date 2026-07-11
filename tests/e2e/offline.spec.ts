@@ -2,27 +2,30 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { expectE2eStackAvailable, localUser } from "./local-stack";
 
+const scheduleHeading = /Fantasy\/Sci-Fi TV Show Start Dates/;
+const existingShowTitle = "Alien: Earth";
+
 test.beforeAll(async () => {
   await expectE2eStackAvailable();
 });
 
 test("installed application reloads the canonical schedule offline", async ({ context, page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "GenreTV Sci-Fi/Fantasy" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: scheduleHeading })).toBeVisible();
   await waitForOfflineInstallation(page);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "GenreTV Sci-Fi/Fantasy" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: scheduleHeading })).toBeVisible();
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
 
-  await expect(page.getByRole("heading", { name: "GenreTV Sci-Fi/Fantasy" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: scheduleHeading })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Now Showing/ })).toBeVisible();
 });
 
 test("visited documentation remains documentation when reopened offline", async ({ context, page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "GenreTV Sci-Fi/Fantasy" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: scheduleHeading })).toBeVisible();
   await waitForOfflineInstallation(page);
 
   await page.goto("/docs/getting-started/");
@@ -31,7 +34,7 @@ test("visited documentation remains documentation when reopened offline", async 
   await page.reload({ waitUntil: "domcontentloaded" });
 
   await expect(page.getByRole("heading", { name: "Welcome to GenreTV" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "GenreTV Sci-Fi/Fantasy" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: scheduleHeading })).toHaveCount(0);
 });
 
 test("authenticated optimistic change survives an offline reload and synchronizes on reconnect", async ({
@@ -41,11 +44,11 @@ test("authenticated optimistic change survives an offline reload and synchronize
   await signInForInstalledApp(page);
   await waitForOfflineInstallation(page);
   await page.getByRole("banner").getByRole("link", { name: "Manage" }).click();
-  await page.getByRole("button", { name: "Add show" }).click();
+  await page.getByLabel("Search").fill(existingShowTitle);
+  await page.getByRole("button", { name: `Edit ${existingShowTitle}` }).click();
 
-  const title = `Offline E2E Show ${Date.now().toString(36)}`;
+  const title = `${existingShowTitle} Offline ${Date.now().toString(36)}`;
   await page.getByLabel("Display title").fill(title);
-  await page.getByLabel("Languages").fill("en");
   await context.setOffline(true);
   await page.getByRole("button", { name: "Save to overlay" }).click();
 
