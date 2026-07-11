@@ -9,7 +9,9 @@ describe("managed cloud deployment contract", () => {
     expect(config).toContain('entrypoint = "./functions-dist/genretv-write/index.js"');
     expect(config).toContain('entrypoint = "./functions-dist/genretv-sync/index.js"');
     expect(cloudScript).toContain('run("bun", ["run", "edge:build"])');
-    expect(cloudScript).toContain('run(supabaseBin, ["functions", "deploy", "genretv-write", "genretv-sync"])');
+    expect(cloudScript).toContain("run(supabaseBin, supabaseFunctionsArgs(env), supabaseCliEnv(env))");
+    expect(cloudScript).toContain('"--project-ref"');
+    expect(cloudScript).toContain("SUPABASE_ACCESS_TOKEN");
   });
 
   test("keeps canonical seeding explicit and outside repeatable deploy", async () => {

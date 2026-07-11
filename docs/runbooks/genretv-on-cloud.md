@@ -4,13 +4,15 @@
 
 Use this path to run GenreTV against managed Supabase and Electric Cloud instead of the local Podman Compose stack. The same React application, pgxsinkit registry, Drizzle migrations, and bundled Deno Edge Functions are used in both environments.
 
-This runbook owns the repeatable deployment work. Creating the cloud projects and linking the Supabase CLI are one-time account-level actions that remain manual.
+This runbook owns the repeatable deployment work. Creating the cloud projects remains a one-time account-level action.
 
 ## Prerequisites
 
 - A Supabase Cloud project using Postgres 17 or newer.
 - An Electric Cloud source connected to the Supabase project's direct Postgres endpoint.
-- The Supabase CLI installed and authenticated with `supabase login`.
+- The Supabase CLI installed.
+- A personal access token created while signed into the GenreTV Supabase account. The account must be
+  an Owner or Administrator to create Edge Function secrets.
 - Workspace dependencies installed with `bun install`.
 
 No secret or service-role key is exposed to the browser. GenreTV's frontend receives only the Supabase project URL, publishable key, and optional function region.
@@ -21,7 +23,8 @@ No secret or service-role key is exposed to the browser. GenreTV's frontend rece
 
 From the Supabase dashboard, collect:
 
-- the project URL;
+- the 20-character project ref and project URL;
+- a personal access token from the GenreTV account's account-token page;
 - its `sb_publishable_...` key;
 - the direct database connection string on port 5432; and
 - the database region, normally visible in the transaction-pooler hostname.
@@ -38,23 +41,25 @@ https://api.electric-sql.cloud/v1/shape?source_id=SOURCE_ID&secret=SOURCE_SECRET
 
 The URL remains server-side. `genretv-sync` receives it through the `ELECTRIC_SHAPE_URL` function secret and proxies registry-controlled shapes to the browser.
 
-### 3. Link the Supabase CLI
-
-From the repository root:
-
-```sh
-supabase link --project-ref YOUR_PROJECT_REF
-```
-
-The `cloud:*` commands deploy to this linked project. Set `SUPABASE_BIN` when the CLI executable is not available as plain `supabase` in non-interactive shells.
-
-### 4. Create the cloud env file
+### 3. Create the cloud env file
 
 ```sh
 cp genretv.cloud.env.example genretv.cloud.env
 ```
 
 Fill in every required value. `genretv.cloud.env` is gitignored and must never be committed.
+
+`GENRETV_SUPABASE_PROJECT_REF` is the authoritative deployment target. The scripts pass it to every
+Supabase CLI mutation with `--project-ref`; a project linked by some other checkout is ignored. The
+standard `GENRETV_SUPABASE_URL` is derived from the ref when omitted. When both are present, the
+scripts reject a standard Supabase URL whose hostname belongs to a different ref before making any
+changes. Set `SUPABASE_BIN` when the CLI executable is not available as plain `supabase` in
+non-interactive shells.
+
+`GENRETV_SUPABASE_ACCESS_TOKEN` is the authoritative CLI identity. It is passed as
+`SUPABASE_ACCESS_TOKEN` only to the `secrets` and `functions` subprocesses, so broken or unrelated
+global CLI profile state cannot leak into GenreTV deployment. The token never reaches Vite or the
+browser and is not placed in command arguments.
 
 ## Deploy
 
