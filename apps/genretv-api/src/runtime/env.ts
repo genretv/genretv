@@ -1,4 +1,9 @@
-export const defaultAllowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+export const defaultAllowedOrigins = [
+  "http://localhost:5660",
+  "http://127.0.0.1:5660",
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
 
 export function parseAllowedOrigins(value: string | undefined): string[] {
   const origins = (value ?? defaultAllowedOrigins.join(","))

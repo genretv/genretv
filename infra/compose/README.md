@@ -13,7 +13,7 @@ bun --env-file=infra/compose/genretv.env run dev:genretv
 
 Local URLs:
 
-- App: `http://localhost:5173`
+- App: `http://localhost:5660`
 - Supabase-compatible gateway: `https://localhost:54343`
 - Plain gateway, useful for curl: `http://localhost:54331`
 - Studio: `http://localhost:54333`
