@@ -8,7 +8,7 @@
     "./schema": "./src/schema.ts"
   },
   "dependencies": {
-    "@pgxsinkit/contracts": "dev",
+    "@pgxsinkit/contracts": "0.1.40",
     "drizzle-orm": "1.0.0-rc.4"
   }
 }
