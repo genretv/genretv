@@ -33,6 +33,7 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /Fantasy\/Sci-Fi TV Show Start Dates/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Help" })).toHaveAttribute("href", "/docs/");
   await expect(page.getByRole("tab", { name: /Now Showing/ })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Upcoming/ })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Awaiting Renewal or Cancellation/ })).toBeVisible();

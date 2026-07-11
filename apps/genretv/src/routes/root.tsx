@@ -1,4 +1,5 @@
 import { Anchor, AppShell, Button, Group, Text } from "@mantine/core";
+import { IconHelpCircle } from "@tabler/icons-react";
 import { Link, Outlet } from "@tanstack/react-router";
 
 import { useAuth } from "../auth/auth";
@@ -24,6 +25,10 @@ export function RootLayout() {
             </Anchor>
             <Anchor component={Link} to="/publishing" size="sm">
               Publishing
+            </Anchor>
+            <Anchor className="app-help-link" href="/docs/" size="sm" aria-label="Help">
+              <IconHelpCircle aria-hidden="true" size={17} stroke={1.8} />
+              <span className="app-help-label">Help</span>
             </Anchor>
           </Group>
           {session ? (

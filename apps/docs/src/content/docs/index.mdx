@@ -1,0 +1,35 @@
+---
+title: GenreTV Help
+description: Find genre television, shape your own list, and contribute better schedule data.
+template: splash
+hero:
+  tagline: Help for browsing the schedule, managing your list, publishing, and contributing to GenreTV.
+  actions:
+    - text: Get started
+      link: /docs/getting-started/
+      icon: right-arrow
+    - text: Open GenreTV
+      link: /
+      variant: minimal
+      icon: external
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+<CardGrid>
+  <Card title="Find something to watch" icon="magnifier">
+    Understand Now Showing, Upcoming, Awaiting Renewal or Cancellation, and Finished, then narrow each section with
+    search and filters.
+  </Card>
+  <Card title="Build your list" icon="pencil">
+    Sign in to add, edit, or hide Shows and Seasons while keeping GenreTV's Canonical List as your baseline.
+  </Card>
+  <Card title="Publish and import" icon="rocket">
+    Apply to publish a snapshot of your list, or bring Seasons from another published list into your own.
+  </Card>
+  <Card title="Improve the canonical schedule" icon="approve-check">
+    Publishers can send proposals; maintainers can inspect differences and selectively merge trusted changes.
+  </Card>
+</CardGrid>
+
+GenreTV keeps its working database in your browser. Start with [Welcome to GenreTV](/docs/getting-started/) or go directly to [the schedule](/).

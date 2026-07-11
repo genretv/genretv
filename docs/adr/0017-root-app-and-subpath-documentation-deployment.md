@@ -1,0 +1,9 @@
+# Root App and Subpath Documentation Deployment
+
+GenreTV's source remains in `genretv/genretv`, while the built public site is deployed to the separate `genretv/genretv.github.io` repository. GitHub Pages serves the application at `https://genretv.github.io/` and the end-user documentation at `https://genretv.github.io/docs/`.
+
+The React application and Astro/Starlight documentation are built into one deployment artifact. The application occupies the artifact root and the documentation build occupies its `docs` directory. A single workflow publishes that complete artifact atomically so separate deployments cannot overwrite or race with each other. The workflow follows pgxsinkit's external Pages-repository model, using a narrowly scoped deploy key or equivalent least-privilege credential.
+
+The existing contents and Git history of `genretv/genretv.github.io` are intentionally not preserved. The first GenreTV deployment, and subsequent deployments, publish an orphaned deployment branch using `force_orphan` or equivalent behavior. The Pages repository is therefore treated as generated output rather than a second source repository. Replacing the existing site and deleting its deployment history is an explicit, maintainer-approved migration.
+
+Astro with Starlight is used for the end-user documentation, matching pgxsinkit's documentation technology while presenting product help rather than library or developer reference material. `/docs` is one public help system for every product role: anonymous visitors, signed-in users, publishers, and maintainers. Role-gated workflows remain publicly documented and clearly identify the permission they require; they are not hidden or moved into a separate documentation site. A future custom domain may replace the public hostname without changing the application-at-root and documentation-at-`/docs` topology.
