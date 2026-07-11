@@ -466,7 +466,8 @@ export function HomeRoute() {
 
       <Group className="schedule-controls" align="flex-end" gap="sm">
         <TextInput
-          className="schedule-search"
+          className="schedule-search schedule-inline-control schedule-search-control"
+          classNames={{ label: "schedule-inline-control-label", wrapper: "schedule-inline-control-input" }}
           label="Search"
           value={preferences.query}
           onChange={(event) => updatePreferences({ query: event.currentTarget.value })}
@@ -484,6 +485,12 @@ export function HomeRoute() {
           onChange={(genres) => updatePreferences({ genres })}
         />
         <Select
+          className="schedule-inline-control schedule-platform-control"
+          classNames={{
+            dropdown: "schedule-platform-dropdown",
+            label: "schedule-inline-control-label",
+            wrapper: "schedule-inline-control-input",
+          }}
           label="Platform"
           value={preferences.organization}
           searchable
@@ -494,6 +501,12 @@ export function HomeRoute() {
           onChange={(value) => updatePreferences({ organization: value ?? "all" })}
         />
         <Select
+          className="schedule-inline-control schedule-sort-control"
+          classNames={{
+            dropdown: "schedule-sort-dropdown",
+            label: "schedule-inline-control-label",
+            wrapper: "schedule-inline-control-input",
+          }}
           label="Sort"
           value={preferences.sort}
           data={[

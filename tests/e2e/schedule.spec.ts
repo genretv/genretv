@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import {
   buildScheduleFromRegistrySeed,
@@ -91,6 +91,15 @@ test("mobile schedule keeps title and timing visible and moves secondary columns
   await page.setViewportSize({ width: viewportWidth, height: 800 });
   await page.goto("/");
 
+  const searchControl = page.getByRole("textbox", { name: "Search" });
+  const platformControl = page.getByRole("combobox", { name: "Platform" });
+  const sortControl = page.getByRole("combobox", { name: "Sort" });
+  await expectInlineMobileControl(page, "Search", searchControl);
+  await expectInlineMobileControl(page, "Platform", platformControl);
+  await expectInlineMobileControl(page, "Sort", sortControl);
+  await expectDropdownWiderThanControl(page, platformControl);
+  await expectDropdownWiderThanControl(page, sortControl);
+
   const row = page.locator("tr.schedule-entry-row").first();
   const title = row.locator(".schedule-col-title");
   const timing = row.locator(".schedule-col-when");
@@ -115,6 +124,27 @@ test("mobile schedule keeps title and timing visible and moves secondary columns
     await expect(details.getByText(label, { exact: true })).toBeVisible();
   }
 });
+
+async function expectInlineMobileControl(page: Page, label: string, control: Locator): Promise<void> {
+  const labelElement = page.locator("label").filter({ hasText: new RegExp(`^${label}$`) });
+  const labelBox = await labelElement.boundingBox();
+  const controlBox = await control.boundingBox();
+  if (labelBox == null || controlBox == null) throw new Error(`Expected mobile ${label} control layout boxes`);
+  expect(controlBox.x).toBeGreaterThan(labelBox.x + labelBox.width);
+  expect(Math.abs(controlBox.y + controlBox.height / 2 - (labelBox.y + labelBox.height / 2))).toBeLessThanOrEqual(2);
+}
+
+async function expectDropdownWiderThanControl(page: Page, control: Locator): Promise<void> {
+  const controlBox = await control.boundingBox();
+  if (controlBox == null) throw new Error("Expected select control layout box");
+  await control.click();
+  const listbox = page.getByRole("listbox");
+  await expect(listbox).toBeVisible();
+  const listboxBox = await listbox.boundingBox();
+  if (listboxBox == null) throw new Error("Expected select dropdown layout box");
+  expect(listboxBox.width).toBeGreaterThan(controlBox.width);
+  await page.keyboard.press("Escape");
+}
 
 test("anonymous schedule preferences stay browser-local", async ({ page }) => {
   await page.goto("/");

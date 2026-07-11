@@ -321,6 +321,66 @@ body {
     gap: var(--mantine-spacing-sm);
   }
 
+  .schedule-controls {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 8px;
+    align-items: center;
+  }
+
+  .schedule-controls > .checkbox-filter-button {
+    width: 100%;
+    padding-inline: 8px;
+  }
+
+  .schedule-inline-control {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    flex: none;
+  }
+
+  .schedule-inline-control-label {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .schedule-inline-control-input {
+    min-width: 0;
+  }
+
+  .schedule-search-control {
+    width: 100%;
+  }
+
+  .schedule-platform-control {
+    width: 220px;
+    max-width: 100%;
+    grid-template-columns: 64px minmax(0, 148px);
+  }
+
+  .schedule-sort-control {
+    width: 192px;
+    max-width: 100%;
+    grid-template-columns: 64px minmax(0, 120px);
+  }
+
+  .schedule-platform-dropdown {
+    min-width: min(240px, calc(100vw - 16px));
+  }
+
+  .schedule-sort-dropdown {
+    min-width: min(180px, calc(100vw - 16px));
+  }
+
+  .schedule-controls > .ending-filter {
+    grid-column: 1 / -1;
+  }
+
   .schedule-list-scroll,
   .schedule-list-table,
   .schedule-list-table tbody {
