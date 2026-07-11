@@ -287,6 +287,15 @@ body {
   background: rgba(218, 236, 228, 0.98);
 }
 
+.management-edit-row {
+  cursor: pointer;
+}
+
+.management-edit-row:focus-visible {
+  outline: 2px solid #075b64;
+  outline-offset: -2px;
+}
+
 .schedule-table a {
   color: #075b64;
 }

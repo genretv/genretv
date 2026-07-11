@@ -1,5 +1,41 @@
-import { Anchor, Badge, Box, Group, Stack, Text, type MantineSpacing } from "@mantine/core";
-import type { ReactNode } from "react";
+import { Anchor, Badge, Box, Group, Stack, Table, Text, type MantineSpacing } from "@mantine/core";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+
+export function ManagementEditRow({
+  children,
+  editLabel,
+  onEdit,
+}: {
+  children: ReactNode;
+  editLabel: string;
+  onEdit: () => void;
+}) {
+  const handleClick = (event: MouseEvent<HTMLTableRowElement>) => {
+    if (isExcludedEditTarget(event.target)) return;
+    onEdit();
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
+    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    onEdit();
+  };
+
+  return (
+    <Table.Tr
+      aria-label={editLabel}
+      className="management-edit-row"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+    >
+      {children}
+    </Table.Tr>
+  );
+}
+
+function isExcludedEditTarget(target: EventTarget): boolean {
+  return target instanceof Element && target.closest("a, button, [data-management-row-title]") != null;
+}
 
 export function ManagementEditorSection({
   children,

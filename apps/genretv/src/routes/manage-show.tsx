@@ -24,6 +24,7 @@ import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
 import { assertTransactionAcked } from "../domain/mutation-acks";
 import {
+  findImdbLink,
   findManagementShow,
   formatEpisodeCount,
   formatKnownSeasonCount,
@@ -40,6 +41,7 @@ import {
 } from "../features/management/drafts";
 import {
   ManagementActionBar,
+  ManagementEditRow,
   ManagementEditorSection,
   ParsedLinksPreview,
   ParsedListPreview,
@@ -683,77 +685,94 @@ function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; can
                 <Table.Th>Source</Table.Th>
                 <Table.Th>Genre</Table.Th>
                 <Table.Th w={120}>Episodes</Table.Th>
+                <Table.Th w={90}>Action</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {show.seasons.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={9}>
+                  <Table.Td colSpan={10}>
                     <Text c="dimmed">No listed season rows yet.</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                show.seasons.map((season) => (
-                  <Table.Tr key={season.id}>
-                    <Table.Td>
-                      <Anchor
-                        className="inline-link-button"
-                        component="button"
-                        type="button"
-                        onClick={() =>
-                          void navigate({
-                            to: "/manage/show/$showId/season/$seasonId",
-                            params: { showId: show.id, seasonId: season.id },
-                          })
-                        }
-                      >
-                        {season.seasonLabel}
-                      </Anchor>
-                    </Table.Td>
-                    <Table.Td>
-                      {formatScheduleStatus(season.scheduleSection, show.endedReason, season.isFinal)}
-                    </Table.Td>
-                    <Table.Td>{season.timing}</Table.Td>
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Text size="sm">{releaseWindowSummary(season.releaseWindow) || "Unknown"}</Text>
-                        {season.finaleWindow != null && (
-                          <Text size="xs" c="dimmed">
-                            Finale: {releaseWindowSummary(season.finaleWindow)}
-                          </Text>
+                show.seasons.map((season) => {
+                  const imdbLink = findImdbLink(season.links);
+                  const editSeason = () =>
+                    void navigate({
+                      to: "/manage/show/$showId/season/$seasonId",
+                      params: { showId: show.id, seasonId: season.id },
+                    });
+                  return (
+                    <ManagementEditRow
+                      key={season.id}
+                      editLabel={`Edit ${show.title} ${season.seasonLabel}`}
+                      onEdit={editSeason}
+                    >
+                      <Table.Td data-management-row-title>
+                        {imdbLink == null ? (
+                          <Text>{season.seasonLabel}</Text>
+                        ) : (
+                          <Anchor href={imdbLink.url} target="_blank" rel="noopener noreferrer">
+                            {season.seasonLabel}
+                          </Anchor>
                         )}
-                        {season.sortKey != null && (
-                          <Text size="xs" c="dimmed">
-                            Sort: {season.sortKey}
-                          </Text>
-                        )}
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap={4}>
-                        {season.languages.length === 0 && <Text>Unknown</Text>}
-                        {season.languages.map((language) => (
-                          <Badge key={`${season.id}-${language}`} size="xs" variant="light">
-                            {language}
-                          </Badge>
-                        ))}
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap={4}>
-                        {season.countries.length === 0 && <Text>Unknown</Text>}
-                        {season.countries.map((country) => (
-                          <Badge key={`${season.id}-${country}`} size="xs" variant="outline">
-                            {country}
-                          </Badge>
-                        ))}
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>{season.organizationText}</Table.Td>
-                    <Table.Td>{season.genreText}</Table.Td>
-                    <Table.Td>{formatEpisodeCount(season.episodeCount, season.episodes)}</Table.Td>
-                  </Table.Tr>
-                ))
+                      </Table.Td>
+                      <Table.Td>
+                        {formatScheduleStatus(season.scheduleSection, show.endedReason, season.isFinal)}
+                      </Table.Td>
+                      <Table.Td>{season.timing}</Table.Td>
+                      <Table.Td>
+                        <Stack gap={2}>
+                          <Text size="sm">{releaseWindowSummary(season.releaseWindow) || "Unknown"}</Text>
+                          {season.finaleWindow != null && (
+                            <Text size="xs" c="dimmed">
+                              Finale: {releaseWindowSummary(season.finaleWindow)}
+                            </Text>
+                          )}
+                          {season.sortKey != null && (
+                            <Text size="xs" c="dimmed">
+                              Sort: {season.sortKey}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          {season.languages.length === 0 && <Text>Unknown</Text>}
+                          {season.languages.map((language) => (
+                            <Badge key={`${season.id}-${language}`} size="xs" variant="light">
+                              {language}
+                            </Badge>
+                          ))}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          {season.countries.length === 0 && <Text>Unknown</Text>}
+                          {season.countries.map((country) => (
+                            <Badge key={`${season.id}-${country}`} size="xs" variant="outline">
+                              {country}
+                            </Badge>
+                          ))}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>{season.organizationText}</Table.Td>
+                      <Table.Td>{season.genreText}</Table.Td>
+                      <Table.Td>{formatEpisodeCount(season.episodeCount, season.episodes)}</Table.Td>
+                      <Table.Td>
+                        <Button
+                          aria-label={`Edit ${show.title} ${season.seasonLabel}`}
+                          size="xs"
+                          variant="default"
+                          onClick={editSeason}
+                        >
+                          Edit
+                        </Button>
+                      </Table.Td>
+                    </ManagementEditRow>
+                  );
+                })
               )}
             </Table.Tbody>
           </Table>

@@ -25,6 +25,7 @@ import { useAuth } from "../auth/auth";
 import { useManagementShows } from "../domain/live-management-shows";
 import { assertTransactionAcked } from "../domain/mutation-acks";
 import {
+  findImdbLink,
   findManagementSeason,
   formatEpisodeCount,
   formatScheduleStatus,
@@ -47,6 +48,7 @@ import {
 } from "../features/management/drafts";
 import {
   ManagementActionBar,
+  ManagementEditRow,
   ManagementEditorSection,
   ParsedLinksPreview,
   ParsedListPreview,
@@ -887,35 +889,53 @@ function EditableSeason({
                 <Table.Th>Title</Table.Th>
                 <Table.Th w={180}>Air date</Table.Th>
                 <Table.Th>Notes</Table.Th>
+                <Table.Th w={90}>Action</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {season.episodes.length > 0 ? (
-                season.episodes.map((episode) => (
-                  <Table.Tr key={episode.id}>
-                    <Table.Td>
-                      <Anchor
-                        className="inline-link-button"
-                        component="button"
-                        type="button"
-                        onClick={() =>
-                          void navigate({
-                            to: "/manage/show/$showId/season/$seasonId/episode/$episodeId",
-                            params: { showId: show.id, seasonId: season.id, episodeId: episode.id },
-                          })
-                        }
-                      >
-                        {episode.episodeLabel || "Unknown"}
-                      </Anchor>
-                    </Table.Td>
-                    <Table.Td>{episode.title || "Unknown"}</Table.Td>
-                    <Table.Td>{episode.releaseDate || "Unknown"}</Table.Td>
-                    <Table.Td>{episode.notes ?? ""}</Table.Td>
-                  </Table.Tr>
-                ))
+                season.episodes.map((episode) => {
+                  const imdbLink = findImdbLink(episode.links);
+                  const episodeName = episode.title || episode.episodeLabel || "Unknown";
+                  const editEpisode = () =>
+                    void navigate({
+                      to: "/manage/show/$showId/season/$seasonId/episode/$episodeId",
+                      params: { showId: show.id, seasonId: season.id, episodeId: episode.id },
+                    });
+                  return (
+                    <ManagementEditRow
+                      key={episode.id}
+                      editLabel={`Edit ${show.title} ${season.seasonLabel} ${episode.episodeLabel || episodeName}`}
+                      onEdit={editEpisode}
+                    >
+                      <Table.Td>{episode.episodeLabel || "Unknown"}</Table.Td>
+                      <Table.Td data-management-row-title>
+                        {imdbLink == null ? (
+                          <Text>{episodeName}</Text>
+                        ) : (
+                          <Anchor href={imdbLink.url} target="_blank" rel="noopener noreferrer">
+                            {episodeName}
+                          </Anchor>
+                        )}
+                      </Table.Td>
+                      <Table.Td>{episode.releaseDate || "Unknown"}</Table.Td>
+                      <Table.Td>{episode.notes ?? ""}</Table.Td>
+                      <Table.Td>
+                        <Button
+                          aria-label={`Edit ${show.title} ${season.seasonLabel} ${episode.episodeLabel || episodeName}`}
+                          size="xs"
+                          variant="default"
+                          onClick={editEpisode}
+                        >
+                          Edit
+                        </Button>
+                      </Table.Td>
+                    </ManagementEditRow>
+                  );
+                })
               ) : (
                 <Table.Tr>
-                  <Table.Td colSpan={4}>
+                  <Table.Td colSpan={5}>
                     <Text c="dimmed">{season.episodeCount == null ? "Episode count unknown" : emptyEpisodeText}</Text>
                   </Table.Td>
                 </Table.Tr>

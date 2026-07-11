@@ -21,6 +21,7 @@ import {
   defaultPageSize,
   defaultManagementViewPreferences,
   filterManagementShows,
+  findImdbLink,
   formatKnownSeasonCount,
   pageCountFor,
   paginateItems,
@@ -30,6 +31,7 @@ import {
   type ManagementViewPreferences,
   type PageSize,
 } from "../domain/schedule";
+import { ManagementEditRow } from "../features/management/editor-ui";
 
 const storageKey = "genretv.management.view.v1";
 
@@ -40,14 +42,8 @@ export function ManageRoute() {
   const [preferences, setPreferences] = useStoredManagementViewPreferences();
   const [page, setPage] = useState(1);
   const visibleShows = useMemo(() => filterManagementShows(shows, preferences), [preferences, shows]);
-  const knownSeasonTotal = useMemo(
-    () => shows.reduce((total, show) => total + show.knownSeasonCount, 0),
-    [shows],
-  );
-  const listedSeasonTotal = useMemo(
-    () => shows.reduce((total, show) => total + show.listedSeasonCount, 0),
-    [shows],
-  );
+  const knownSeasonTotal = useMemo(() => shows.reduce((total, show) => total + show.knownSeasonCount, 0), [shows]);
+  const listedSeasonTotal = useMemo(() => shows.reduce((total, show) => total + show.listedSeasonCount, 0), [shows]);
   const totalPages = pageCountFor(visibleShows.length, preferences.pageSize);
   const pageShows = useMemo(
     () => paginateItems(visibleShows, page, preferences.pageSize),
@@ -137,43 +133,51 @@ export function ManageRoute() {
               <Table.Th>Sources</Table.Th>
               <Table.Th>Genre</Table.Th>
               <Table.Th>Lang</Table.Th>
+              <Table.Th w={90}>Action</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {pageShows.map((show) => (
-              <Table.Tr key={show.id}>
-                <Table.Td>
-                  <Anchor
-                    className="inline-link-button"
-                    component="button"
-                    type="button"
-                    fw={700}
-                    onClick={() => void navigate({ to: "/manage/show/$showId", params: { showId: show.id } })}
-                  >
-                    {show.title}
-                  </Anchor>
-                </Table.Td>
-                <Table.Td>
-                  <Text fw={700}>{formatKnownSeasonCount(show)}</Text>
-                  {show.knownSeasonCount > show.listedSeasonCount && (
-                    <Text size="xs" c="dimmed">
-                      {show.listedSeasonCount} listed {show.listedSeasonCount === 1 ? "row" : "rows"}
-                    </Text>
-                  )}
-                </Table.Td>
-                <Table.Td>{show.organizations.join(", ")}</Table.Td>
-                <Table.Td>{show.genres.join(", ")}</Table.Td>
-                <Table.Td>
-                  <Group gap={4}>
-                    {show.languages.map((language) => (
-                      <Badge key={`${show.id}-${language}`} size="xs" variant="light">
-                        {language}
-                      </Badge>
-                    ))}
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
+            {pageShows.map((show) => {
+              const imdbLink = findImdbLink(show.links);
+              const editShow = () => void navigate({ to: "/manage/show/$showId", params: { showId: show.id } });
+              return (
+                <ManagementEditRow key={show.id} editLabel={`Edit ${show.title}`} onEdit={editShow}>
+                  <Table.Td data-management-row-title>
+                    {imdbLink == null ? (
+                      <Text fw={700}>{show.title}</Text>
+                    ) : (
+                      <Anchor fw={700} href={imdbLink.url} target="_blank" rel="noopener noreferrer">
+                        {show.title}
+                      </Anchor>
+                    )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fw={700}>{formatKnownSeasonCount(show)}</Text>
+                    {show.knownSeasonCount > show.listedSeasonCount && (
+                      <Text size="xs" c="dimmed">
+                        {show.listedSeasonCount} listed {show.listedSeasonCount === 1 ? "row" : "rows"}
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td>{show.organizations.join(", ")}</Table.Td>
+                  <Table.Td>{show.genres.join(", ")}</Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
+                      {show.languages.map((language) => (
+                        <Badge key={`${show.id}-${language}`} size="xs" variant="light">
+                          {language}
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Button aria-label={`Edit ${show.title}`} size="xs" variant="default" onClick={editShow}>
+                      Edit
+                    </Button>
+                  </Table.Td>
+                </ManagementEditRow>
+              );
+            })}
           </Table.Tbody>
         </Table>
       </ScrollArea>

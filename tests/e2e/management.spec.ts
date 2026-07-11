@@ -3,7 +3,7 @@ import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 
 import { expectE2eStackAvailable, localPublisher, signIn } from "./local-stack";
 
-const showsNavLink = (page: Page) => page.getByRole("banner").getByRole("link", { name: "Shows" });
+const manageNavLink = (page: Page) => page.getByRole("banner").getByRole("link", { name: "Manage" });
 const existingShowTitle = "Alien: Earth";
 const existingSeasonLabel = "S2";
 
@@ -14,27 +14,39 @@ test.beforeAll(async () => {
 test("seeded maintainer can sign in and open show management", async ({ page }) => {
   await signIn(page);
 
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
 
   await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add show" })).toBeVisible();
   await expect(page.getByLabel("Search")).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
 
-  const firstShow = page.locator("tbody").getByRole("button").first();
-  const firstShowTitle = await firstShow.innerText();
-  await firstShow.click();
+  await page.getByLabel("Search").fill(existingShowTitle);
+  const firstShowRow = page.getByRole("row", { name: `Edit ${existingShowTitle}` });
+  const firstShowTitle = firstShowRow.getByRole("link", { name: existingShowTitle });
+  await expect(firstShowTitle).toHaveAttribute("href", /imdb\.com\/title\//);
+  await expect(firstShowTitle).toHaveAttribute("target", "_blank");
+  await expect(firstShowRow.getByRole("button", { name: `Edit ${existingShowTitle}` })).toBeVisible();
+  await firstShowRow.locator("td").nth(1).click();
 
   await expect(page).toHaveURL(/\/manage\/show\//);
-  await expect(page.getByRole("heading", { name: firstShowTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: existingShowTitle })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Seasons" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
+
+  const seasonRow = page.getByRole("row", { name: `Edit ${existingShowTitle} ${existingSeasonLabel}` });
+  await expect(
+    seasonRow.getByRole("button", { name: `Edit ${existingShowTitle} ${existingSeasonLabel}` }),
+  ).toBeVisible();
+  await seasonRow.locator("td").nth(1).click();
+  await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/[0-9a-f-]+/);
+  await expect(page.getByRole("heading", { name: `${existingShowTitle} ${existingSeasonLabel}` })).toBeVisible();
 });
 
 test("seeded maintainer can create a personal show in their overlay", async ({ page }) => {
   await signIn(page);
 
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
   await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add show" }).click();
@@ -49,10 +61,10 @@ test("seeded maintainer can create a personal show in their overlay", async ({ p
   await expect(page.getByText("Saved to your personal overlay.")).toBeVisible();
   await expect(page).toHaveURL(/\/manage\/show\/(?!new)[0-9a-f-]+/);
 
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
   await page.getByLabel("Search").fill(overlayTitle);
 
-  await expect(page.locator("tbody").getByRole("button", { name: overlayTitle })).toBeVisible();
+  await expect(page.locator("tbody").getByRole("button", { name: `Edit ${overlayTitle}` })).toBeVisible();
 });
 
 test("publisher can send a show proposal for maintainer merge", async ({ browser, page }, testInfo) => {
@@ -60,7 +72,7 @@ test("publisher can send a show proposal for maintainer merge", async ({ browser
 
   await signIn(page, localPublisher);
 
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
   await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add show" }).click();
@@ -170,6 +182,16 @@ test("publisher can send an episode proposal that creates canonical show and sea
   await expect(page.getByText("Saved to your personal overlay.")).toBeVisible();
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/[0-9a-f-]+\/episode\/(?!new)[0-9a-f-]+/);
 
+  await page.getByRole("button", { name: "Season" }).click();
+  const episodeRow = page.getByRole("row", {
+    name: `Edit ${showTitle} ${seasonLabel} ${episodeLabel}`,
+  });
+  await expect(
+    episodeRow.getByRole("button", { name: `Edit ${showTitle} ${seasonLabel} ${episodeLabel}` }),
+  ).toBeVisible();
+  await episodeRow.locator("td").nth(2).click();
+  await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/[0-9a-f-]+\/episode\/[0-9a-f-]+/);
+
   await page.getByRole("button", { name: "Send to canonical" }).click();
   await expect(page.getByText("Sent to the canonical maintainers.")).toBeVisible();
 
@@ -239,11 +261,11 @@ test("maintainer can reject and close canonical proposals without merging", asyn
   await expectProposalStatus(closed.page, closedTitle, closedNote, "closed");
   await expect(closed.page.getByText(`Reviewer note: Closed during E2E ${suffix}`)).toBeVisible();
 
-  await showsNavLink(closed.page).click();
+  await manageNavLink(closed.page).click();
   await closed.page.getByLabel("Search").fill(rejectedTitle);
-  await expect(closed.page.locator("tbody").getByRole("button", { name: rejectedTitle })).toHaveCount(0);
+  await expect(closed.page.locator("tbody").getByRole("button", { name: `Edit ${rejectedTitle}` })).toHaveCount(0);
   await closed.page.getByLabel("Search").fill(closedTitle);
-  await expect(closed.page.locator("tbody").getByRole("button", { name: closedTitle })).toHaveCount(0);
+  await expect(closed.page.locator("tbody").getByRole("button", { name: `Edit ${closedTitle}` })).toHaveCount(0);
   await closed.context.close();
 });
 
@@ -290,7 +312,7 @@ test("maintainer can identify duplicate open target proposals and close one", as
 });
 
 async function createPersonalShow(page: Page, showTitle: string): Promise<void> {
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
   await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
   await page.getByRole("button", { name: "Add show" }).click();
   await expect(page).toHaveURL(/\/manage\/show\/new/);
@@ -304,7 +326,7 @@ async function createPersonalShow(page: Page, showTitle: string): Promise<void> 
 }
 
 async function sendNewShowProposal(page: Page, showTitle: string, proposalNote: string): Promise<void> {
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
   await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
   await page.getByRole("button", { name: "Add show" }).click();
   await expect(page).toHaveURL(/\/manage\/show\/new/);
@@ -396,26 +418,32 @@ function proposalStatusForAction(action: "Approve + merge" | "Reject" | "Close")
 }
 
 async function openInitialPersonalSeason(page: Page, showTitle: string, seasonLabel: string): Promise<void> {
-  await page.getByRole("button", { name: seasonLabel }).click();
+  await page.getByRole("button", { name: `Edit ${showTitle} ${seasonLabel}` }).click();
   await expect(page).toHaveURL(/\/manage\/show\/[0-9a-f-]+\/season\/[0-9a-f-]+/);
   await expect(page.getByRole("heading", { name: `${showTitle} ${seasonLabel}` })).toBeVisible();
 }
 
 async function openCanonicalSeason(page: Page, showTitle: string, seasonLabel: string): Promise<void> {
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
   await page.getByLabel("Search").fill(showTitle);
-  await page.locator("tbody").getByRole("button", { name: showTitle }).click();
+  await page
+    .locator("tbody")
+    .getByRole("button", { name: `Edit ${showTitle}` })
+    .click();
   await expect(page.getByRole("heading", { name: showTitle })).toBeVisible();
-  await page.getByRole("button", { name: seasonLabel }).click();
+  await page.getByRole("button", { name: `Edit ${showTitle} ${seasonLabel}` }).click();
   await expect(page.getByRole("heading", { name: `${showTitle} ${seasonLabel}` })).toBeVisible();
 }
 
 async function expectCanonicalSeasonVisible(page: Page, showTitle: string, seasonLabel: string): Promise<void> {
-  await showsNavLink(page).click();
+  await manageNavLink(page).click();
   await page.getByLabel("Search").fill(showTitle);
-  await page.locator("tbody").getByRole("button", { name: showTitle }).click();
+  await page
+    .locator("tbody")
+    .getByRole("button", { name: `Edit ${showTitle}` })
+    .click();
   await expect(page.getByRole("heading", { name: showTitle })).toBeVisible();
-  await expect(page.getByRole("cell", { name: seasonLabel })).toBeVisible();
+  await expect(page.getByRole("cell", { name: seasonLabel, exact: true })).toBeVisible();
 }
 
 async function expectCanonicalEpisodeVisible(
@@ -426,8 +454,8 @@ async function expectCanonicalEpisodeVisible(
   episodeTitle: string,
 ): Promise<void> {
   await expectCanonicalSeasonVisible(page, showTitle, seasonLabel);
-  await page.getByRole("button", { name: seasonLabel }).click();
+  await page.getByRole("button", { name: `Edit ${showTitle} ${seasonLabel}` }).click();
   await expect(page.getByRole("heading", { name: `${showTitle} ${seasonLabel}` })).toBeVisible();
-  await expect(page.getByRole("cell", { name: episodeLabel })).toBeVisible();
-  await expect(page.getByRole("cell", { name: episodeTitle })).toBeVisible();
+  await expect(page.getByRole("cell", { name: episodeLabel, exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: episodeTitle, exact: true })).toBeVisible();
 }

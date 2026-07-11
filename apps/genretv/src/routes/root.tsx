@@ -17,7 +17,7 @@ export function RootLayout() {
               Schedule
             </Anchor>
             <Anchor component={Link} to="/manage" size="sm">
-              Shows
+              Manage
             </Anchor>
             <Anchor component={Link} to="/published" size="sm">
               Published
