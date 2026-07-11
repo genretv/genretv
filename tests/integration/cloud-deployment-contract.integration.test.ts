@@ -21,5 +21,6 @@ describe("managed cloud deployment contract", () => {
     expect(scripts["cloud:deploy"]).toBe("bun scripts/genretv-cloud.ts deploy");
     expect(scripts["cloud:seed"]).toBe("bun scripts/genretv-cloud.ts seed");
     expect(scripts["cloud:dev"]).toBe("bun scripts/genretv-cloud.ts dev");
+    expect(scripts["cloud:preview"]).toBe("bun scripts/genretv-cloud.ts preview");
   });
 });

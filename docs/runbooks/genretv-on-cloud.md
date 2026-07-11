@@ -113,6 +113,15 @@ Only these `VITE_` values reach the browser. Reads go from the browser to the cl
 
 The function region is applied only to DB-bound writes. The read proxy remains unpinned so Electric Cloud's CDN can serve it near the caller.
 
+To reproduce the production GitHub Pages build locally against the same cloud backend, run:
+
+```sh
+bun run cloud:preview
+```
+
+This builds the combined, hash-routed site artifact and serves it through Vite preview at
+`http://localhost:5660`.
+
 ## CORS
 
 `GENRETV_ALLOWED_ORIGINS` is a comma-separated list of exact origins. Include:
@@ -127,6 +136,7 @@ Run `bun run cloud:secrets` after changing the allow-list. A URL path such as `/
 | Command                   | Purpose                                        |
 | ------------------------- | ---------------------------------------------- |
 | `bun run cloud:dev`       | Run local Vite against the cloud backend       |
+| `bun run cloud:preview`   | Preview the production site against the cloud  |
 | `bun run cloud:migrate`   | Apply committed migrations to cloud Postgres   |
 | `bun run cloud:secrets`   | Install Electric and CORS function secrets     |
 | `bun run cloud:functions` | Build and deploy both Edge Functions           |

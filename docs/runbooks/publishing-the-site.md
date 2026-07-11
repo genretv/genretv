@@ -177,9 +177,15 @@ and then select `main` and `/ (root)`.
 
 From the source repository:
 
+To build the exact production artifact with the cloud browser configuration from
+`genretv.cloud.env` and serve it locally through Vite preview:
+
 ```sh
-bun run build:site
+bun run cloud:preview
 ```
+
+Open `http://localhost:5660`. The command runs `build:site` before previewing, so it uses the same
+hash routing and combined application/documentation output as the GitHub Actions deployment.
 
 The combined artifact is `apps/docs/dist/`:
 

@@ -40,6 +40,7 @@ describe("GenreTV cloud orchestration", () => {
   test("keeps canonical seeding out of normal deploys", () => {
     expect(deploymentSteps).toEqual(["migrate", "secrets", "functions"]);
     expect(stepsFor("deploy")).toEqual(["migrate", "secrets", "functions"]);
+    expect(stepsFor("preview")).toEqual([]);
     expect(stepsFor("seed")).toEqual(["seed"]);
   });
 
@@ -106,6 +107,7 @@ describe("GenreTV cloud orchestration", () => {
   test("validates only the credentials needed by each operation", () => {
     expect(() => validateCloudEnv(validEnv, "deploy")).not.toThrow();
     expect(() => validateCloudEnv(validEnv, "dev")).not.toThrow();
+    expect(() => validateCloudEnv(validEnv, "preview")).not.toThrow();
     expect(() =>
       validateCloudEnv(
         {
@@ -146,6 +148,18 @@ describe("GenreTV cloud orchestration", () => {
           GENRETV_ALLOWED_ORIGINS: "https://genretv.github.io,http://localhost:5173",
         },
         "dev",
+      ),
+    ).toThrow("must include http://localhost:5660");
+  });
+
+  test("uses the cloud dev origin for production previews", () => {
+    expect(() =>
+      validateCloudEnv(
+        {
+          ...validEnv,
+          GENRETV_ALLOWED_ORIGINS: "https://genretv.github.io,http://localhost:5173",
+        },
+        "preview",
       ),
     ).toThrow("must include http://localhost:5660");
   });

@@ -5,6 +5,7 @@
 //   bun run cloud:deploy     # migrate -> secrets -> functions
 //   bun run cloud:seed       # explicit canonical bootstrap/upsert; never part of deploy
 //   bun run cloud:dev        # local Vite client -> cloud backend
+//   bun run cloud:preview    # production site build -> local Vite preview -> cloud backend
 //
 // Project creation and Electric source creation remain one-time manual steps. Supabase CLI commands
 // always receive the explicit project ref and never depend on mutable `supabase link` state.
@@ -18,7 +19,7 @@ const supabaseBin = process.env["SUPABASE_BIN"] ?? "supabase";
 const placeholderMarkers = ["YOUR_", "xxxxxxxx", "<id>", "<secret>", "<ref>"];
 
 export type CloudStep = "migrate" | "secrets" | "functions" | "seed";
-export type CloudCommand = "deploy" | "dev" | CloudStep;
+export type CloudCommand = "deploy" | "dev" | "preview" | CloudStep;
 
 export const deploymentSteps = ["migrate", "secrets", "functions"] as const satisfies readonly CloudStep[];
 
@@ -44,7 +45,7 @@ export function parseCloudEnv(contents: string): Record<string, string> {
 
 export function stepsFor(command: CloudCommand): readonly CloudStep[] {
   if (command === "deploy") return deploymentSteps;
-  if (command === "dev") return [];
+  if (command === "dev" || command === "preview") return [];
   return [command];
 }
 
@@ -112,7 +113,7 @@ export function frontendCloudEnv(env: Record<string, string>): Record<string, st
 export function validateCloudEnv(env: Record<string, string>, command: CloudCommand): void {
   supabaseProject(env);
 
-  if (command === "dev") {
+  if (command === "dev" || command === "preview") {
     frontendCloudEnv(env);
     const configuredOrigins = env["GENRETV_ALLOWED_ORIGINS"];
     if (
@@ -123,7 +124,7 @@ export function validateCloudEnv(env: Record<string, string>, command: CloudComm
         .includes("http://localhost:5660")
     ) {
       throw new Error(
-        `${cloudEnvFile} GENRETV_ALLOWED_ORIGINS must include http://localhost:5660 for cloud:dev. ` +
+        `${cloudEnvFile} GENRETV_ALLOWED_ORIGINS must include http://localhost:5660 for cloud:${command}. ` +
           "Update it, run `bun run cloud:secrets`, then retry.",
       );
     }
@@ -245,11 +246,28 @@ function dev(env: Record<string, string>): void {
   run("bun", ["run", "dev:genretv"], browserEnv);
 }
 
+function preview(env: Record<string, string>): void {
+  const browserEnv = frontendCloudEnv(env);
+  const region = browserEnv["VITE_GENRETV_FUNCTIONS_REGION"];
+  console.log(
+    `\nBuilding the GitHub Pages artifact against ${browserEnv["VITE_GENRETV_SUPABASE_URL"]}` +
+      `${region ? `; write function pinned to ${region}` : ""}.`,
+  );
+  run("bun", ["run", "build:site"], browserEnv);
+  console.log("\nServing the production artifact at http://localhost:5660.");
+  run(
+    "bun",
+    ["run", "--cwd", "apps/genretv", "preview", "--", "--outDir", "../docs/dist", "--port", "5660"],
+    browserEnv,
+  );
+}
+
 function parseCommand(value: string | undefined): CloudCommand {
   const command = value ?? "deploy";
   if (
     command === "deploy" ||
     command === "dev" ||
+    command === "preview" ||
     command === "migrate" ||
     command === "secrets" ||
     command === "functions" ||
@@ -257,7 +275,9 @@ function parseCommand(value: string | undefined): CloudCommand {
   ) {
     return command;
   }
-  throw new Error(`Unknown cloud command \`${command}\`. Use deploy, dev, migrate, secrets, functions, or seed.`);
+  throw new Error(
+    `Unknown cloud command \`${command}\`. Use deploy, dev, preview, migrate, secrets, functions, or seed.`,
+  );
 }
 
 function main(): void {
@@ -267,6 +287,10 @@ function main(): void {
 
   if (command === "dev") {
     dev(env);
+    return;
+  }
+  if (command === "preview") {
+    preview(env);
     return;
   }
 

@@ -17,6 +17,7 @@
     "cloud:dev": "bun scripts/genretv-cloud.ts dev",
     "cloud:functions": "bun scripts/genretv-cloud.ts functions",
     "cloud:migrate": "bun scripts/genretv-cloud.ts migrate",
+    "cloud:preview": "bun scripts/genretv-cloud.ts preview",
     "cloud:secrets": "bun scripts/genretv-cloud.ts secrets",
     "cloud:seed": "bun scripts/genretv-cloud.ts seed",
     "db:generate": "drizzle-kit generate --config=infra/drizzle.config.ts",
