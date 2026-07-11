@@ -86,6 +86,36 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   await expect(page.getByRole("columnheader", { name: /Sort by Show/ })).toHaveAttribute("aria-sort", "descending");
 });
 
+test("mobile schedule keeps title and timing visible and moves secondary columns into details", async ({ page }) => {
+  const viewportWidth = 360;
+  await page.setViewportSize({ width: viewportWidth, height: 800 });
+  await page.goto("/");
+
+  const row = page.locator("tr.schedule-entry-row").first();
+  const title = row.locator(".schedule-col-title");
+  const timing = row.locator(".schedule-col-when");
+  await expect(row).toBeVisible();
+  await expect(title).toBeVisible();
+  await expect(timing).toBeVisible();
+  await expect(timing).toHaveCSS("white-space", "normal");
+  await expect(row.locator(".schedule-col-secondary").first()).toBeHidden();
+
+  const titleBox = await title.boundingBox();
+  const timingBox = await timing.boundingBox();
+  if (titleBox == null || timingBox == null) throw new Error("Expected mobile title and timing layout boxes");
+  expect(timingBox.y).toBeGreaterThan(titleBox.y);
+  expect(timingBox.x).toBe(titleBox.x);
+  expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(viewportWidth);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);
+
+  await row.getByRole("button", { name: /Show details for/ }).click();
+  const details = page.locator("tr.schedule-details-row").first();
+  await expect(details).toBeVisible();
+  for (const label of ["Seasons", "Language", "Where", "Genre"]) {
+    await expect(details.getByText(label, { exact: true })).toBeVisible();
+  }
+});
+
 test("anonymous schedule preferences stay browser-local", async ({ page }) => {
   await page.goto("/");
 

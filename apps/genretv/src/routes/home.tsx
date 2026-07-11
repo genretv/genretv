@@ -69,12 +69,19 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
     });
   };
   return (
-    <ScrollArea>
-      <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={showStopReason ? 1100 : 980}>
+    <ScrollArea className="schedule-list-scroll">
+      <Table
+        className="schedule-table schedule-list-table"
+        striped
+        highlightOnHover
+        verticalSpacing="sm"
+        miw={{ base: 0, sm: showStopReason ? 1100 : 980 }}
+      >
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={44}></Table.Th>
+            <Table.Th className="schedule-col-toggle" w={44}></Table.Th>
             <SortableTableHeader
+              className="schedule-col-title"
               label="Show"
               value="title"
               activeSort={sort}
@@ -82,6 +89,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
               onSort={onSort}
             />
             <SortableTableHeader
+              className="schedule-col-secondary"
               label="Seasons"
               value="seasons"
               activeSort={sort}
@@ -90,6 +98,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
               width={120}
             />
             <SortableTableHeader
+              className="schedule-col-when"
               label="When"
               value="when"
               activeSort={sort}
@@ -98,6 +107,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
             />
             {showStopReason && (
               <SortableTableHeader
+                className="schedule-col-secondary"
                 label="Ended"
                 value="ending"
                 activeSort={sort}
@@ -107,6 +117,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
               />
             )}
             <SortableTableHeader
+              className="schedule-col-secondary"
               label="Lang"
               value="language"
               activeSort={sort}
@@ -115,6 +126,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
               width={140}
             />
             <SortableTableHeader
+              className="schedule-col-secondary"
               label="Where"
               value="organization"
               activeSort={sort}
@@ -122,6 +134,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
               onSort={onSort}
             />
             <SortableTableHeader
+              className="schedule-col-secondary"
               label="Genre"
               value="genre"
               activeSort={sort}
@@ -136,8 +149,8 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
             const imdbLink = findImdbLink(entry.showLinks);
             return (
               <Fragment key={entry.id}>
-                <Table.Tr>
-                  <Table.Td>
+                <Table.Tr className="schedule-entry-row">
+                  <Table.Td className="schedule-col-toggle">
                     <ActionIcon
                       aria-label={`${expanded ? "Hide" : "Show"} details for ${entry.title}`}
                       className="schedule-details-toggle"
@@ -148,7 +161,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
                       {expanded ? "-" : "+"}
                     </ActionIcon>
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td className="schedule-col-title">
                     {imdbLink == null ? (
                       <Text fw={600}>{entry.title}</Text>
                     ) : (
@@ -157,26 +170,28 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
                       </Anchor>
                     )}
                   </Table.Td>
-                  <Table.Td>{formatScheduleSeasonCount(entry)}</Table.Td>
-                  <Table.Td>{entry.timing}</Table.Td>
+                  <Table.Td className="schedule-col-secondary">{formatScheduleSeasonCount(entry)}</Table.Td>
+                  <Table.Td className="schedule-col-when">{entry.timing}</Table.Td>
                   {showStopReason && (
-                    <Table.Td>{formatScheduleStatus(entry.section, entry.endedReason, entry.isFinal)}</Table.Td>
+                    <Table.Td className="schedule-col-secondary">
+                      {formatScheduleStatus(entry.section, entry.endedReason, entry.isFinal)}
+                    </Table.Td>
                   )}
-                  <Table.Td>
+                  <Table.Td className="schedule-col-secondary">
                     <LanguageBadges languages={entry.languages} ownerId={entry.id} />
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td className="schedule-col-secondary">
                     <OrganizationLinks entry={entry} />
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td className="schedule-col-secondary">
                     <GenreLinks entry={entry} onFilter={onGenreFilter} />
                   </Table.Td>
                 </Table.Tr>
                 {expanded && (
-                  <Table.Tr>
-                    <Table.Td></Table.Td>
-                    <Table.Td colSpan={columnCount - 1}>
-                      <ScheduleEntryDetails entry={entry} />
+                  <Table.Tr className="schedule-details-row">
+                    <Table.Td className="schedule-col-toggle"></Table.Td>
+                    <Table.Td className="schedule-details-cell" colSpan={columnCount - 1}>
+                      <ScheduleEntryDetails entry={entry} onGenreFilter={onGenreFilter} />
                     </Table.Td>
                   </Table.Tr>
                 )}
@@ -191,6 +206,7 @@ function SectionTable({ entries, onGenreFilter, onSort, section, sort, sortDirec
 
 function SortableTableHeader({
   activeSort,
+  className,
   direction,
   label,
   onSort,
@@ -198,6 +214,7 @@ function SortableTableHeader({
   width,
 }: {
   activeSort: ScheduleSort;
+  className?: string;
   direction: ScheduleSortDirection;
   label: string;
   onSort: (sort: ScheduleSort) => void;
@@ -206,7 +223,7 @@ function SortableTableHeader({
 }) {
   const active = activeSort === value;
   return (
-    <Table.Th aria-sort={active ? direction : "none"} w={width}>
+    <Table.Th aria-sort={active ? direction : "none"} className={className} w={width}>
       <button
         aria-label={`Sort by ${label}${active ? `, currently ${direction}` : ""}`}
         className="schedule-sort-button"
@@ -225,7 +242,13 @@ function SortableTableHeader({
   );
 }
 
-function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
+function ScheduleEntryDetails({
+  entry,
+  onGenreFilter,
+}: {
+  entry: ScheduleEntry;
+  onGenreFilter: (genre: string) => void;
+}) {
   const imdbLink = findImdbLink(entry.showLinks);
   const primaryLinkUrls = new Set(
     entry.organizations
@@ -237,6 +260,7 @@ function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
   return (
     <Box py="xs">
       <Stack gap={8}>
+        <MobileScheduleMetadata entry={entry} onGenreFilter={onGenreFilter} />
         {detailLinks.length > 0 && (
           <Group gap={8}>
             {detailLinks.map((link) => (
@@ -272,6 +296,48 @@ function ScheduleEntryDetails({ entry }: { entry: ScheduleEntry }) {
           </Group>
         ))}
       </Stack>
+    </Box>
+  );
+}
+
+function MobileScheduleMetadata({
+  entry,
+  onGenreFilter,
+}: {
+  entry: ScheduleEntry;
+  onGenreFilter: (genre: string) => void;
+}) {
+  const showStopReason = entry.section === "waiting" || entry.section === "past";
+  return (
+    <Box className="schedule-mobile-details" component="dl">
+      <div>
+        <Text component="dt">Seasons</Text>
+        <Box component="dd">{formatScheduleSeasonCount(entry)}</Box>
+      </div>
+      {showStopReason && (
+        <div>
+          <Text component="dt">Ended</Text>
+          <Box component="dd">{formatScheduleStatus(entry.section, entry.endedReason, entry.isFinal)}</Box>
+        </div>
+      )}
+      <div>
+        <Text component="dt">Language</Text>
+        <Box component="dd">
+          <LanguageBadges languages={entry.languages} ownerId={`${entry.id}-mobile`} />
+        </Box>
+      </div>
+      <div>
+        <Text component="dt">Where</Text>
+        <Box component="dd">
+          <OrganizationLinks entry={entry} />
+        </Box>
+      </div>
+      <div>
+        <Text component="dt">Genre</Text>
+        <Box component="dd">
+          <GenreLinks entry={entry} onFilter={onGenreFilter} />
+        </Box>
+      </div>
     </Box>
   );
 }
@@ -359,7 +425,7 @@ export function HomeRoute() {
   }, [totalPages]);
 
   return (
-    <Stack className="schedule-panel" gap="lg" maw={1220} mx="auto" p={{ base: "md", sm: "xl" }}>
+    <Stack className="schedule-panel schedule-home-panel" gap="lg" maw={1220} mx="auto" p={{ base: "xs", sm: "xl" }}>
       <Group justify="space-between" align="flex-end">
         <div>
           <Title order={1}>{schedule.title}</Title>
