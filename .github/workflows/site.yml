@@ -40,6 +40,19 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
+      - name: Check required public site configuration
+        env:
+          GENRETV_SUPABASE_URL: ${{ vars.GENRETV_SUPABASE_URL }}
+          GENRETV_PUBLISHABLE_KEY: ${{ vars.GENRETV_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$GENRETV_SUPABASE_URL" ]; then
+            echo "::error::Missing repository variable GENRETV_SUPABASE_URL"
+            exit 1
+          fi
+          if [ -z "$GENRETV_PUBLISHABLE_KEY" ]; then
+            echo "::error::Missing repository variable GENRETV_PUBLISHABLE_KEY"
+            exit 1
+          fi
       - name: Build app and end-user documentation
         run: bun run build:site
         env:
