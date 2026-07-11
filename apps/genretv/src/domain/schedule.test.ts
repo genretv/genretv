@@ -552,6 +552,57 @@ describe("schedule read model", () => {
     ).toEqual(["show-c", "show-a", "show-b"]);
   });
 
+  test("orders management seasons by descending season number regardless of known dates", () => {
+    const baseSeason = seed.rows.seasons[0]!;
+    const schedule = buildScheduleFromRegistryRows(
+      {
+        shows: [{ ...seed.rows.shows[0]!, id: "reverse-season-show" }],
+        seasons: [
+          {
+            ...baseSeason,
+            id: "season-1-unknown",
+            showId: "reverse-season-show",
+            seasonNumber: 1,
+            seasonLabel: "S1",
+            releaseWindow: null,
+            finaleWindow: null,
+            sortKey: null,
+          },
+          {
+            ...baseSeason,
+            id: "season-2-dated",
+            showId: "reverse-season-show",
+            seasonNumber: 2,
+            seasonLabel: "S2",
+            sortKey: "2026-06-30",
+          },
+          {
+            ...baseSeason,
+            id: "season-3-dated",
+            showId: "reverse-season-show",
+            seasonNumber: 3,
+            seasonLabel: "S3",
+            sortKey: "2027-06-30",
+          },
+        ],
+        episodes: [],
+      },
+      {
+        title: "Reverse season test",
+        sourceUrl: "https://example.test",
+        updatedLabel: "Updated today",
+        generatedAt: "2026-07-10T00:00:00.000Z",
+      },
+      { asOf: "2026-07-10" },
+    );
+
+    expect(buildManagementShows(schedule.allEntries)[0]?.seasons.map((season) => season.seasonLabel)).toEqual([
+      "S3",
+      "S2",
+      "S1",
+    ]);
+  });
+
   test("finds a management season by show and season id", () => {
     const schedule = buildTestSchedule();
     const shows = buildManagementShows(schedule.allEntries);

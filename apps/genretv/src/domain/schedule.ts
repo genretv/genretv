@@ -1189,9 +1189,11 @@ function compareReleaseIdentity(
 
 function compareManagementSeasons(left: ManagementSeason, right: ManagementSeason): number {
   return (
-    compareNullableStrings(scheduleSortKey(left), scheduleSortKey(right)) ||
-    compareReleaseIdentity(left, right) ||
-    left.seasonLabel.localeCompare(right.seasonLabel)
+    compareNullableNumbersInDirection(left.seasonNumber, right.seasonNumber, "descending") ||
+    compareNullableStringsDescending(scheduleSortKey(left), scheduleSortKey(right)) ||
+    left.releaseKind.localeCompare(right.releaseKind) ||
+    left.seasonLabel.localeCompare(right.seasonLabel) ||
+    left.id.localeCompare(right.id)
   );
 }
 
