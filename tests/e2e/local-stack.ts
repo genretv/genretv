@@ -38,3 +38,16 @@ export async function signIn(page: Page, user = localMaintainer): Promise<void> 
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByText(user.email)).toBeVisible();
 }
+
+export async function expectSynchronizationSettled(page: Page, timeout = 120_000): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+  await expect(page.getByRole("link", { name: /Synchronization:/ })).toHaveAccessibleName(
+    "Synchronization: Synchronized",
+    { timeout },
+  );
+}

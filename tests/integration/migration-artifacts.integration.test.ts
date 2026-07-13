@@ -6,19 +6,27 @@ import { join } from "node:path";
 const drizzleDir = "infra/drizzle";
 
 describe("database artifact contract", () => {
-  test("commits one fresh Drizzle baseline plus required custom migrations", async () => {
+  test("preserves the released migration lineage and appends forward migrations", async () => {
     const folders = (await readdir(drizzleDir, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
 
-    expect(folders).toHaveLength(6);
-    expect(folders.some((folder) => folder.endsWith("_pgxsinkit_utilities"))).toBe(true);
-    expect(folders.some((folder) => folder.endsWith("_baseline"))).toBe(true);
-    expect(folders.some((folder) => folder.endsWith("_canonical_public_grants"))).toBe(true);
-    expect(folders.some((folder) => folder.endsWith("_workflow_review_policies"))).toBe(true);
-    expect(folders.some((folder) => folder.endsWith("_workflow_notification_fanout"))).toBe(true);
-    expect(folders.some((folder) => folder.endsWith("_sync_artifact"))).toBe(true);
+    for (const releasedFolder of [
+      "20260708000000_pgxsinkit_utilities",
+      "20260710034337_baseline",
+      "20260710034338_canonical_public_grants",
+      "20260710034339_workflow_review_policies",
+      "20260710034341_workflow_notification_fanout",
+      "20260710034342_sync_artifact",
+      "20260713025147_canonical_proposal_review_provenance",
+      "20260713025203_sync_artifact",
+      "20260713070706_sync_artifact",
+    ]) {
+      expect(folders).toContain(releasedFolder);
+    }
+    expect(folders.some((folder) => folder.endsWith("_canonical_proposal_review_provenance"))).toBe(true);
+    expect(folders.filter((folder) => folder.endsWith("_sync_artifact"))).toHaveLength(3);
 
     for (const folder of folders) {
       expect(existsSync(join(drizzleDir, folder, "migration.sql"))).toBe(true);
@@ -110,14 +118,36 @@ describe("database artifact contract", () => {
     }
   });
 
-  test("documents and automates migration regeneration", async () => {
-    const packageJson = await readFile("package.json", "utf8");
-    const script = await readFile("scripts/regenerate-drizzle-migrations.ts", "utf8");
+  test("adds proposal review provenance through a forward migration", async () => {
+    const folders = (await readdir(drizzleDir, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    const migrationFolder = folders.find((folder) => folder.endsWith("_canonical_proposal_review_provenance"));
 
-    expect(existsSync("docs/runbooks/regenerating-drizzle-migrations.md")).toBe(true);
-    expect(packageJson).toContain('"db:migrations:regenerate"');
-    expect(script).toContain('"canonical_public_grants"');
-    expect(script).toContain('"workflow_review_policies"');
-    expect(script).toContain('"workflow_notification_fanout"');
+    expect(migrationFolder).toBeString();
+    const migration = await readFile(join(drizzleDir, migrationFolder!, "migration.sql"), "utf8");
+    for (const field of [
+      "reviewed_payload",
+      "source_kind",
+      "source_url",
+      "source_fingerprint",
+      "source_observed_at_us",
+    ]) {
+      expect(migration).toContain(`ADD COLUMN "${field}"`);
+    }
+    expect(migration).toContain('CREATE UNIQUE INDEX "canonical_proposal_source_fingerprint_unique"');
+    expect(migration).not.toContain("DROP TABLE");
+    expect(migration).not.toContain("DROP COLUMN");
+  });
+
+  test("enforces immutable, additive-only migration guidance", async () => {
+    const packageJson = await readFile("package.json", "utf8");
+    const agentGuide = await readFile("AGENTS.md", "utf8");
+
+    expect(existsSync("docs/runbooks/adding-drizzle-migrations.md")).toBe(true);
+    expect(existsSync("scripts/regenerate-drizzle-migrations.ts")).toBe(false);
+    expect(packageJson).not.toContain("db:migrations:regenerate");
+    expect(agentGuide).toContain("RELEASED DATABASE LINEAGE — ADDITIVE MIGRATIONS ONLY");
+    expect(agentGuide).toContain("The pgxsinkit board demo has a deliberately disposable database lifecycle");
   });
 });

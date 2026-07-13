@@ -4,6 +4,7 @@ export interface CanonicalProposalMergeInput {
   canonicalShowId: string | null;
   proposalKind: string;
   proposedPayload: unknown;
+  reviewedPayload?: unknown;
   title: string;
 }
 
@@ -20,7 +21,7 @@ export interface CanonicalShowCreate {
   originalTitle: string | null;
 }
 
-export type CanonicalShowPatch = Omit<CanonicalShowCreate, "id">;
+export type CanonicalShowPatch = Partial<Omit<CanonicalShowCreate, "id">>;
 
 export interface CanonicalSeasonCreate {
   dateConfidence: string;
@@ -44,7 +45,7 @@ export interface CanonicalSeasonCreate {
   timing: string;
 }
 
-export type CanonicalSeasonPatch = Omit<CanonicalSeasonCreate, "id">;
+export type CanonicalSeasonPatch = Partial<Omit<CanonicalSeasonCreate, "id">>;
 
 export interface CanonicalEpisodeCreate {
   episodeLabel: string | null;
@@ -57,7 +58,7 @@ export interface CanonicalEpisodeCreate {
   title: string | null;
 }
 
-export type CanonicalEpisodePatch = Omit<CanonicalEpisodeCreate, "id">;
+export type CanonicalEpisodePatch = Partial<Omit<CanonicalEpisodeCreate, "id">>;
 
 export interface CanonicalProposalMergePlan {
   episodeCreate: CanonicalEpisodeCreate | null;
@@ -79,8 +80,12 @@ export function buildCanonicalProposalMergePlan(
 }
 
 function showMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => string): CanonicalProposalMergePlan {
-  const payload = record(proposal.proposedPayload);
-  const patch: CanonicalShowPatch = {
+  const payload = mergePayload(proposal);
+  const submittedPayload = record(proposal.proposedPayload);
+  if (proposal.canonicalShowId != null) {
+    return { ...emptyPlan(), showUpdate: { id: proposal.canonicalShowId, patch: showUpdatePatch(payload) } };
+  }
+  const patch: Omit<CanonicalShowCreate, "id"> = {
     displayTitle: text(payload["displayTitle"]) ?? proposal.title,
     originalTitle: nullableText(payload["originalTitle"]),
     lifecycleStatus: lifecycleStatus(payload["lifecycleStatus"]),
@@ -91,22 +96,25 @@ function showMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => stri
     externalLinks: arrayValue(payload["externalLinks"]),
     notes: nullableText(payload["notes"]),
   };
-  if (proposal.canonicalShowId != null) {
-    return { ...emptyPlan(), showUpdate: { id: proposal.canonicalShowId, patch } };
-  }
   const showId = makeId();
   return {
     ...emptyPlan(),
     showCreate: { id: showId, ...patch },
-    seasonCreate: initialSeasonCreate(showId, makeId()),
+    seasonCreate: submittedPayload["createInitialSeason"] === false ? null : initialSeasonCreate(showId, makeId()),
   };
 }
 
 function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => string): CanonicalProposalMergePlan {
-  const payload = record(proposal.proposedPayload);
+  const payload = mergePayload(proposal);
   const showId = proposal.canonicalShowId ?? makeId();
   const showTitle = text(payload["showTitle"]) ?? proposal.title;
-  const seasonPatch: CanonicalSeasonPatch = {
+  if (proposal.canonicalSeasonId != null) {
+    return {
+      ...emptyPlan(),
+      seasonUpdate: { id: proposal.canonicalSeasonId, patch: seasonUpdatePatch(payload) },
+    };
+  }
+  const seasonPatch: Omit<CanonicalSeasonCreate, "id"> = {
     showId,
     section: scheduleSection(text(payload["section"])),
     seasonNumber: integerOrNull(payload["seasonNumber"]),
@@ -141,9 +149,6 @@ function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => st
           notes: null,
         }
       : null;
-  if (proposal.canonicalSeasonId != null) {
-    return { ...emptyPlan(), showCreate, seasonUpdate: { id: proposal.canonicalSeasonId, patch: seasonPatch } };
-  }
   return {
     ...emptyPlan(),
     showCreate,
@@ -155,10 +160,16 @@ function seasonMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => st
 }
 
 function episodeMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => string): CanonicalProposalMergePlan {
-  const payload = record(proposal.proposedPayload);
+  const payload = mergePayload(proposal);
   const showId = proposal.canonicalShowId ?? makeId();
   const seasonId = proposal.canonicalSeasonId ?? makeId();
-  const episodePatch: CanonicalEpisodePatch = {
+  if (proposal.canonicalEpisodeId != null) {
+    return {
+      ...emptyPlan(),
+      episodeUpdate: { id: proposal.canonicalEpisodeId, patch: episodeUpdatePatch(payload) },
+    };
+  }
+  const episodePatch: Omit<CanonicalEpisodeCreate, "id"> = {
     seasonId,
     episodeLabel: nullableText(payload["episodeLabel"]),
     title: nullableText(payload["title"]),
@@ -171,13 +182,6 @@ function episodeMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => s
     proposal.canonicalSeasonId == null
       ? parentRowsForEpisodeProposal(proposal, payload, showId, seasonId)
       : { showCreate: null, seasonCreate: null };
-  if (proposal.canonicalEpisodeId != null) {
-    return {
-      ...emptyPlan(),
-      ...parentPlan,
-      episodeUpdate: { id: proposal.canonicalEpisodeId, patch: episodePatch },
-    };
-  }
   return {
     ...emptyPlan(),
     ...parentPlan,
@@ -186,6 +190,68 @@ function episodeMergePlan(proposal: CanonicalProposalMergeInput, makeId: () => s
       ...episodePatch,
     },
   };
+}
+
+function mergePayload(proposal: CanonicalProposalMergeInput): Record<string, unknown> {
+  return record(proposal.reviewedPayload ?? proposal.proposedPayload);
+}
+
+function showUpdatePatch(payload: Record<string, unknown>): CanonicalShowPatch {
+  return pickPresent(payload, {
+    displayTitle: (value) => text(value) ?? "",
+    originalTitle: nullableText,
+    lifecycleStatus,
+    endedReason: nullableText,
+    languages: stringArray,
+    countries: stringArray,
+    genreTags: stringArray,
+    externalLinks: arrayValue,
+    notes: nullableText,
+  });
+}
+
+function seasonUpdatePatch(payload: Record<string, unknown>): CanonicalSeasonPatch {
+  return pickPresent(payload, {
+    section: (value) => scheduleSection(text(value)),
+    seasonNumber: integerOrNull,
+    seasonLabel: nullableText,
+    title: nullableText,
+    releaseKind,
+    isFinal: booleanValue,
+    timing: (value) => text(value) ?? "",
+    releasePattern: nullableText,
+    releasePrecision: (value) => text(value) ?? "unknown",
+    dateConfidence: (value) => text(value) ?? "unknown",
+    releaseWindow: (value) => value ?? null,
+    finaleWindow: (value) => value ?? null,
+    sortKey: nullableText,
+    episodeCount: integerOrNull,
+    organizations: arrayValue,
+    externalLinks: arrayValue,
+    notes: nullableText,
+  });
+}
+
+function episodeUpdatePatch(payload: Record<string, unknown>): CanonicalEpisodePatch {
+  return pickPresent(payload, {
+    episodeLabel: nullableText,
+    title: nullableText,
+    releaseWindow: (value) => value ?? null,
+    sortKey: nullableText,
+    externalLinks: arrayValue,
+    notes: nullableText,
+  });
+}
+
+function pickPresent<TResult extends Record<string, unknown>>(
+  payload: Record<string, unknown>,
+  converters: { [TKey in keyof TResult]: (value: unknown) => TResult[TKey] },
+): TResult {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(converters) as Array<keyof TResult>) {
+    if (Object.hasOwn(payload, key)) result[String(key)] = converters[key](payload[String(key)]);
+  }
+  return result as TResult;
 }
 
 function parentRowsForEpisodeProposal(

@@ -26,6 +26,7 @@ From the Supabase dashboard, collect:
 - the 20-character project ref and project URL;
 - a personal access token from the GenreTV account's account-token page;
 - its `sb_publishable_...` key;
+- an `sb_secret_...` project secret for trusted Auth Admin commands;
 - the direct database connection string on port 5432; and
 - the database region, normally visible in the transaction-pooler hostname.
 
@@ -83,7 +84,10 @@ bun run cloud:secrets
 bun run cloud:functions
 ```
 
-The deployment does not purge data, rewrite migration history, or replay the canonical seed. GenreTV's cloud database contains durable user and maintainer data, unlike pgxsinkit's intentionally disposable board demo.
+The deployment does not purge data, rewrite migration history, or replay the canonical seed. GenreTV's cloud
+database contains durable user and maintainer data, unlike pgxsinkit's intentionally disposable board demo.
+The committed migration lineage is released and immutable; follow
+[Adding Drizzle Migrations](adding-drizzle-migrations.md) for every database change.
 
 ## Bootstrap Canonical Data
 
@@ -95,7 +99,27 @@ bun run cloud:seed
 
 The command uses the typed Drizzle table objects and the committed canonical registry seed. It upserts canonical Shows, Seasons, and Episodes. Because an upsert can replace canonical metadata that maintainers subsequently edited, seeding is explicit and is never part of `cloud:deploy`.
 
-Create the first maintainer through the normal GenreTV signup flow or the Supabase dashboard, then assign its trusted `canonical_maintainer` and `publisher` roles in server-controlled app metadata. The cloud seed deliberately does not create the local development identities or passwords.
+Create the first maintainer with the trusted interactive Auth Admin command:
+
+```sh
+bun run cloud:user:add maintainer@example.com canonical_maintainer
+Password:
+Confirm password:
+```
+
+The command targets the explicit project in `genretv.cloud.env`, confirms the email immediately, and stores
+the authorization roles in server-controlled `app_metadata`. The `canonical_maintainer` profile grants both
+`canonical_maintainer` and `publisher`, matching GenreTV's trusted maintainer identity. To create the dedicated
+canonical-source importer instead, use the least-privileged profile:
+
+```sh
+bun run cloud:user:add canonical-import@example.com publisher
+```
+
+`cloud:user:add` creates new users only. It fails rather than replacing an existing account's password or roles.
+It requires `GENRETV_SECRET_KEY`, but that key remains local to this trusted operation and must never be exposed
+to Vite, the deployed site, or the daily canonical-import workflow. The cloud seed deliberately does not create
+local development identities or passwords.
 
 ## Run Local Vite Against Cloud
 
@@ -141,4 +165,5 @@ Run `bun run cloud:secrets` after changing the allow-list. A URL path such as `/
 | `bun run cloud:secrets`   | Install Electric and CORS function secrets     |
 | `bun run cloud:functions` | Build and deploy both Edge Functions           |
 | `bun run cloud:seed`      | Explicitly bootstrap or refresh canonical rows |
+| `bun run cloud:user:add`  | Create a confirmed trusted user with a role    |
 | `bun run cloud:deploy`    | Migrate, set secrets, and deploy functions     |

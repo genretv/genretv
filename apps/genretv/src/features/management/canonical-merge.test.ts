@@ -42,6 +42,24 @@ describe("canonical proposal merge planning", () => {
     });
   });
 
+  test("does not invent a first season for an imported show", () => {
+    const plan = buildCanonicalProposalMergePlan(
+      {
+        proposalKind: "show",
+        canonicalEpisodeId: null,
+        canonicalShowId: null,
+        canonicalSeasonId: null,
+        title: "Imported Show",
+        proposedPayload: { displayTitle: "Imported Show", createInitialSeason: false },
+        reviewedPayload: { displayTitle: "Reviewed Imported Show" },
+      },
+      idSequence("show-new"),
+    );
+
+    expect(plan.showCreate?.displayTitle).toBe("Reviewed Imported Show");
+    expect(plan.seasonCreate).toBeNull();
+  });
+
   test("updates an existing canonical show from a show proposal", () => {
     const plan = buildCanonicalProposalMergePlan(
       {
@@ -58,15 +76,35 @@ describe("canonical proposal merge planning", () => {
     expect(plan.showCreate).toBeNull();
     expect(plan.showUpdate).toEqual({
       id: "show-1",
+      patch: { displayTitle: "Better Title" },
+    });
+  });
+
+  test("uses only the maintainer-reviewed fields for an existing row", () => {
+    const plan = buildCanonicalProposalMergePlan(
+      {
+        proposalKind: "show",
+        canonicalEpisodeId: null,
+        canonicalShowId: "show-1",
+        canonicalSeasonId: null,
+        title: "Original title",
+        proposedPayload: {
+          displayTitle: "Scraped title",
+          lifecycleStatus: "cancelled",
+          notes: "Scraped note",
+        },
+        reviewedPayload: {
+          displayTitle: "Maintainer title",
+          notes: null,
+        },
+      },
+      () => "unused",
+    );
+
+    expect(plan.showUpdate).toEqual({
+      id: "show-1",
       patch: {
-        displayTitle: "Better Title",
-        originalTitle: null,
-        lifecycleStatus: "open",
-        endedReason: null,
-        languages: [],
-        countries: [],
-        genreTags: [],
-        externalLinks: [],
+        displayTitle: "Maintainer title",
         notes: null,
       },
     });
@@ -135,7 +173,6 @@ describe("canonical proposal merge planning", () => {
     expect(plan.seasonUpdate).toMatchObject({
       id: "season-1",
       patch: {
-        showId: "show-1",
         section: "past",
         seasonLabel: "Season 2",
         seasonNumber: 2,
@@ -176,12 +213,10 @@ describe("canonical proposal merge planning", () => {
     expect(plan.episodeUpdate).toEqual({
       id: "episode-1",
       patch: {
-        seasonId: "season-1",
         episodeLabel: "2",
         title: "Better Episode",
         releaseWindow: { date: "2026-07-08" },
         sortKey: "002",
-        externalLinks: [],
         notes: "Corrected title",
       },
     });

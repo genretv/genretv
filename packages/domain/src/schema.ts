@@ -732,12 +732,18 @@ export const canonicalProposalSyncEntry = defineSyncTable({
     canonicalSeasonId: uuid("canonical_season_id").references(() => canonicalSeasonSyncEntry.table.id),
     canonicalEpisodeId: uuid("canonical_episode_id").references(() => canonicalEpisodeSyncEntry.table.id),
     proposedPayload: jsonb("proposed_payload").notNull().default({}),
+    reviewedPayload: jsonb("reviewed_payload"),
+    sourceKind: varchar("source_kind", { length: 64 }),
+    sourceUrl: varchar("source_url", { length: 1000 }),
+    sourceFingerprint: varchar("source_fingerprint", { length: 128 }),
+    sourceObservedAtUs: bigint("source_observed_at_us", { mode: "bigint" }),
     reviewerId: uuid("reviewer_id"),
     reviewerNote: varchar("reviewer_note", { length: 4000 }),
     createdAtUs: bigint("created_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
     updatedAtUs: bigint("updated_at_us", { mode: "bigint" }).notNull().default(clockMicrosecondsSql),
   }),
   extras: (self) => [
+    uniqueIndex("canonical_proposal_source_fingerprint_unique").on(self.sourceFingerprint),
     ...buildSupabaseOwnerOrAdminNativePolicies({
       ownerColumn: self.ownerId,
       role: authenticatedRole,

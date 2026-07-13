@@ -22,6 +22,12 @@ Filter proposals by status and kind, then inspect the structured differences. Fo
 3. add a reviewer note when useful; and
 4. choose **Approve + merge**.
 
+Canonical proposals may come from publishers or from the canonical Blogspot importer. Imported proposals
+show their source and observation time, but follow the same review rules as any other proposal. Expand
+**Review accepted fields**, leave checked only the fields that should enter the canonical list, and edit a
+value when the source needs correction. Approval stores those reviewed values separately from the original
+submission.
+
 Use **Reject** when the contribution should not enter the Canonical List. Use **Close** for duplicates or requests resolved another way. Duplicate and conflict warnings require judgment; GenreTV does not silently merge records by title alone.
 
 ## Notifications and history

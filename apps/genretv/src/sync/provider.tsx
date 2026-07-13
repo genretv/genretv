@@ -11,6 +11,7 @@ import type { SyncRuntimeStatus } from "@pgxsinkit/contracts";
 
 import { LoadingSplash } from "../components/loading-splash";
 import { supabase } from "../lib/supabase";
+import { AuthenticatedWorkflowSync } from "./authenticated-workflow-sync";
 import { GenretvSyncStatusProvider } from "./sync-status";
 import { getGenretvWorkerPort } from "./worker-port";
 
@@ -134,6 +135,7 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
 
   return (
     <SyncClientProvider client={client}>
+      <AuthenticatedWorkflowSync active={session != null} />
       <GenretvSyncStatusProvider runtime={status ?? client.status}>{children}</GenretvSyncStatusProvider>
     </SyncClientProvider>
   );

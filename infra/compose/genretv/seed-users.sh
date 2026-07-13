@@ -27,6 +27,7 @@ create_user() {
 
 create_user "maintainer@genretv.local" "[\"canonical_maintainer\",\"publisher\"]"
 create_user "publisher@genretv.local" "[\"publisher\"]"
+create_user "import-bot@genretv.local" "[\"publisher\"]"
 create_user "user@genretv.local" "[]"
 
 echo "Local user password: ${password}"

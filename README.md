@@ -249,8 +249,9 @@ semantics.
 
 Never hand-create migration filenames or place independent SQL scripts beside the migration system.
 Drizzle-generated schema changes and the few sanctioned custom SQL migrations form one ordered chain.
-During the pre-release migration-rewrite period, follow
-[docs/runbooks/regenerating-drizzle-migrations.md](docs/runbooks/regenerating-drizzle-migrations.md).
+GenreTV's database lineage is released: existing migrations are immutable and all changes use additive,
+forward-only migrations. Follow
+[docs/runbooks/adding-drizzle-migrations.md](docs/runbooks/adding-drizzle-migrations.md).
 
 ## Testing and Quality Gates
 

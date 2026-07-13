@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@genretv/domain": "workspace:*",
-    "@pgxsinkit/contracts": "0.1.41",
-    "@pgxsinkit/server": "0.1.41",
+    "@pgxsinkit/contracts": "0.1.46",
+    "@pgxsinkit/server": "0.1.46",
     "drizzle-orm": "1.0.0-rc.4",
     "jose": "6.2.3",
     "postgres": "3.4.9",

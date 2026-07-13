@@ -32,7 +32,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       VITE_E2E: "1",
-      VITE_GENRETV_SUPABASE_URL: process.env["VITE_GENRETV_SUPABASE_URL"] ?? "http://localhost:55431",
+      VITE_GENRETV_SUPABASE_URL: process.env["VITE_GENRETV_SUPABASE_URL"] ?? "https://localhost:55445",
       VITE_GENRETV_PUBLISHABLE_KEY:
         process.env["VITE_GENRETV_PUBLISHABLE_KEY"] ?? "sb_publishable_genretvE2Exxxxxxxxxxxx_demo0000",
       VITE_GENRETV_FUNCTIONS_REGION: process.env["VITE_GENRETV_FUNCTIONS_REGION"] ?? "",

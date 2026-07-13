@@ -29,6 +29,11 @@ import {
   unreadNotificationIdsForCanonicalProposal,
   unreadNotificationIdsForPublishApplication,
 } from "../features/management/notifications";
+import {
+  payloadRecord,
+  ProposalPayloadReview,
+  type ProposalPayloadReviewValue,
+} from "../features/management/proposal-payload-review";
 import { proposalReviewDiffRows, type ProposalReviewDiffRow } from "../features/management/proposal-review-diff";
 import {
   canReviewWorkflowStatus,
@@ -83,6 +88,7 @@ export function PublishingRoute() {
   const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null);
   const [applicationReviewNotes, setApplicationReviewNotes] = useState<Record<string, string>>({});
   const [proposalReviewNotes, setProposalReviewNotes] = useState<Record<string, string>>({});
+  const [proposalReviewPayloads, setProposalReviewPayloads] = useState<Record<string, ProposalPayloadReviewValue>>({});
   const [applicationStatusFilter, setApplicationStatusFilter] = useState("all");
   const [proposalStatusFilter, setProposalStatusFilter] = useState("all");
   const [proposalKindFilter, setProposalKindFilter] = useState("all");
@@ -142,6 +148,10 @@ export function PublishingRoute() {
           personalSeasonId: canonicalProposal.personalSeasonId,
           personalEpisodeId: canonicalProposal.personalEpisodeId,
           proposedPayload: canonicalProposal.proposedPayload,
+          reviewedPayload: canonicalProposal.reviewedPayload,
+          sourceKind: canonicalProposal.sourceKind,
+          sourceUrl: canonicalProposal.sourceUrl,
+          sourceObservedAtUs: canonicalProposal.sourceObservedAtUs,
           createdAtUs: canonicalProposal.createdAtUs,
           updatedAtUs: canonicalProposal.updatedAtUs,
         })
@@ -411,12 +421,14 @@ export function PublishingRoute() {
       id: string;
       proposalKind: string;
       proposedPayload: unknown;
+      reviewedPayload: unknown;
       title: string;
     },
     note: string,
+    reviewedPayload: Record<string, unknown>,
   ) => {
     const notificationIds = unreadNotificationIdsForCanonicalProposal(notifications.rows, proposal.id);
-    const plan = buildCanonicalProposalMergePlan(proposal, () => crypto.randomUUID());
+    const plan = buildCanonicalProposalMergePlan({ ...proposal, reviewedPayload }, () => crypto.randomUUID());
     setSaving(true);
     setActionError(null);
     try {
@@ -433,13 +445,14 @@ export function PublishingRoute() {
         }
         tx.tables.canonical_proposal.update(
           { id: proposal.id },
-          { status: "approved", reviewerNote: nullableText(note) },
+          { status: "approved", reviewerNote: nullableText(note), reviewedPayload },
         );
         for (const notificationId of notificationIds) {
           tx.tables.maintainer_notification.update({ id: notificationId }, { status: "read" });
         }
       });
       setProposalReviewNotes((notes) => withoutKey(notes, proposal.id));
+      setProposalReviewPayloads((payloads) => withoutKey(payloads, proposal.id));
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -668,8 +681,8 @@ export function PublishingRoute() {
           <Group justify="space-between" align="center">
             <Text size="sm" c="dimmed">
               {ownMatchingPublishedList == null
-                ? `${seasonRowsLabel(snapshotSchedule.entries.length)} will be published as a new list.`
-                : `${seasonRowsLabel(snapshotSchedule.entries.length)} will become snapshot v${
+                ? `${seasonRowsLabel(snapshotSchedule.allEntries.length)} will be published as a new list.`
+                : `${seasonRowsLabel(snapshotSchedule.allEntries.length)} will become snapshot v${
                     ownMatchingPublishedList.snapshotVersion + 1
                   } for ${ownMatchingPublishedList.slug}.`}
             </Text>
@@ -917,6 +930,10 @@ export function PublishingRoute() {
               ) : (
                 visibleProposals.map((proposal) => {
                   const reviewNote = proposalReviewNotes[proposal.id] ?? proposal.reviewerNote ?? "";
+                  const reviewPayload = proposalReviewPayloads[proposal.id] ?? {
+                    payload: payloadRecord(proposal.proposedPayload),
+                    valid: Object.keys(payloadRecord(proposal.proposedPayload)).length > 0,
+                  };
                   const payloadDetails = proposalPayloadDetails(proposal.proposedPayload);
                   const canReviewProposal = canReviewWorkflowStatus(proposal.status);
                   const proposalTargetKey = proposalReviewTargetKey(proposal);
@@ -953,6 +970,30 @@ export function PublishingRoute() {
                             shows={managementShows}
                             fallbackDetails={payloadDetails}
                           />
+                          {proposal.sourceKind != null && (
+                            <Text size="xs" c="dimmed">
+                              Source: {proposal.sourceUrl ?? proposal.sourceKind}
+                              {proposal.sourceObservedAtUs == null
+                                ? ""
+                                : ` · observed ${formatMicroseconds(proposal.sourceObservedAtUs)}`}
+                            </Text>
+                          )}
+                          {isMaintainer && canReviewProposal && (
+                            <details>
+                              <summary>Review accepted fields</summary>
+                              <ProposalPayloadReview
+                                proposedPayload={proposal.proposedPayload}
+                                onChange={(value) =>
+                                  setProposalReviewPayloads((payloads) => ({ ...payloads, [proposal.id]: value }))
+                                }
+                              />
+                            </details>
+                          )}
+                          {proposal.status === "approved" && proposal.reviewedPayload != null && (
+                            <Text size="xs" c="dimmed">
+                              Accepted fields: {Object.keys(payloadRecord(proposal.reviewedPayload)).join(", ")}
+                            </Text>
+                          )}
                           {proposal.reviewerNote != null && (
                             <Text size="xs" c="dimmed">
                               Reviewer note: {proposal.reviewerNote}
@@ -983,8 +1024,10 @@ export function PublishingRoute() {
                               <Button
                                 size="xs"
                                 variant="light"
-                                disabled={saving || !canReviewProposal}
-                                onClick={() => void approveCanonicalProposal(proposal, reviewNote)}
+                                disabled={saving || !canReviewProposal || !reviewPayload.valid}
+                                onClick={() =>
+                                  void approveCanonicalProposal(proposal, reviewNote, reviewPayload.payload)
+                                }
                               >
                                 Approve + merge
                               </Button>

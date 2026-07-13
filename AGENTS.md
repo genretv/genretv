@@ -39,6 +39,21 @@ requires _bare_ columns, so `c(col)` (not `eq`, which qualifies) is the ceiling 
 Before writing any SQL-bearing string, stop and ask: _can this be a Drizzle object, or a typed
 `sql\`\``?_ If yes, it MUST be. Reviewers will reject tier ③ that had a tier ①/② form.
 
+## ⛔ RELEASED DATABASE LINEAGE — ADDITIVE MIGRATIONS ONLY ⛔
+
+GenreTV's migration chain is released and may contain durable production, local, and offline-linked data.
+Every existing directory under `infra/drizzle/` is immutable history.
+
+- NEVER regenerate, squash, replace, rename, reorder, edit, or delete an existing migration or snapshot.
+- NEVER reset, drop, or recreate a database as the normal way to deliver a schema change.
+- After changing the Drizzle schema, generate a new named forward migration with `bun run db:generate -- --name <name>` and inspect its SQL.
+- If the pgxsinkit registry contract changed, generate a new sync artifact after the schema migration with `bun run db:sync-function:generate`.
+- Custom SQL that Drizzle cannot express belongs in a new sanctioned custom Drizzle migration, never in an old migration and never in an independent SQL file.
+- Verify both upgrade-in-place from the released chain and fresh-database installation. A disposable E2E database may be recreated for test isolation, but that does not make migration history replaceable.
+- The pgxsinkit board demo has a deliberately disposable database lifecycle. Its migration-reset practices do NOT apply to GenreTV.
+
+See [docs/runbooks/adding-drizzle-migrations.md](docs/runbooks/adding-drizzle-migrations.md).
+
 ## Release & tooling standard
 
 genretv follows the **Cross-repo TypeScript release & versioning standard** (defined in the global

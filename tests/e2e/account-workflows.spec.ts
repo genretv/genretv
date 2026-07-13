@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { expectE2eStackAvailable, localUser, signIn } from "./local-stack";
+import { expectE2eStackAvailable, expectSynchronizationSettled, localUser, signIn } from "./local-stack";
 
 test.beforeAll(async () => {
   await expectE2eStackAvailable();
@@ -43,6 +43,7 @@ test("non-publisher can apply and be approved to publish", async ({ browser, pag
   await expect(page.getByText(message)).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: message }).getByText("open", { exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Apply to publish" })).toBeVisible();
+  await expectSynchronizationSettled(page);
 
   const maintainerContext = await browser.newContext();
   const maintainerPage = await maintainerContext.newPage();
@@ -67,6 +68,7 @@ test("non-publisher can apply and be approved to publish", async ({ browser, pag
       .filter({ hasText: message })
       .getByText("approved", { exact: true }),
   ).toBeVisible();
+  await expectSynchronizationSettled(maintainerPage);
 
   await expect(page.getByRole("region", { name: "Publish snapshot" })).toBeVisible();
   await expect(page.getByText("Your publish application has been approved.")).toBeVisible();

@@ -34,7 +34,7 @@ describe("local Supabase and Electric stack contract", () => {
     expect(e2eEnv).toContain("GENRETV_ENVOY_PORT=55431");
     expect(playwright).toContain("globalSetup");
     expect(playwright).toContain("genretv-e2e.env");
-    expect(playwright).toContain("http://localhost:55431");
+    expect(playwright).toContain("https://localhost:55445");
     expect(compose).not.toContain("postgrest");
     expect(stackUpScript).toContain('"--force-recreate"');
     expect(stackUpScript).toContain('"functions"');
@@ -48,6 +48,7 @@ describe("local Supabase and Electric stack contract", () => {
       'create_user "maintainer@genretv.local" "[\\"canonical_maintainer\\",\\"publisher\\"]"',
     );
     expect(seedScript).toContain('create_user "publisher@genretv.local" "[\\"publisher\\"]"');
+    expect(seedScript).toContain('create_user "import-bot@genretv.local" "[\\"publisher\\"]"');
     expect(seedScript).toContain('create_user "user@genretv.local" "[]"');
   });
 });
