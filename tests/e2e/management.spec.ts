@@ -14,12 +14,30 @@ test.beforeAll(async () => {
 test("seeded maintainer can sign in and open show management", async ({ page }) => {
   await signIn(page);
 
+  await page.evaluate(() => {
+    const inspectedWindow = window as typeof window & { __genretvFalseEmptyManagement?: boolean };
+    inspectedWindow.__genretvFalseEmptyManagement = false;
+    const inspect = () => {
+      const showsHeading = Array.from(document.querySelectorAll("h1")).some(
+        (heading) => heading.textContent?.trim() === "Shows",
+      );
+      const falseZero = document.body?.innerText.includes("0 of 0") ?? false;
+      if (showsHeading && falseZero) inspectedWindow.__genretvFalseEmptyManagement = true;
+    };
+    new MutationObserver(inspect).observe(document, { childList: true, subtree: true });
+  });
+
   await manageNavLink(page).click();
 
   await expect(page.getByRole("heading", { name: "Shows" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add show" })).toBeVisible();
   await expect(page.getByLabel("Search")).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as typeof window & { __genretvFalseEmptyManagement?: boolean }).__genretvFalseEmptyManagement,
+    ),
+  ).toBe(false);
 
   await page.getByLabel("Search").fill(existingShowTitle);
   const firstShowRow = page.getByRole("row", { name: `Edit ${existingShowTitle}` });
@@ -84,7 +102,7 @@ test("publisher can send a show proposal for maintainer merge", async ({ browser
   await page.getByLabel("Display title").fill(proposalTitle);
   await page.getByLabel("Languages").fill("en");
   await page.getByLabel("Countries").fill("US");
-  await page.getByLabel("Genres").fill("science fiction");
+  await page.getByLabel("Genres").fill("Sci-Fi");
   await page.getByLabel("Notes").fill(proposalNote);
   await page.getByRole("button", { name: "Send to canonical" }).click();
 
@@ -340,7 +358,7 @@ async function createPersonalShow(page: Page, showTitle: string): Promise<void> 
   await page.getByLabel("Display title").fill(showTitle);
   await page.getByLabel("Languages").fill("en");
   await page.getByLabel("Countries").fill("US");
-  await page.getByLabel("Genres").fill("science fiction");
+  await page.getByLabel("Genres").fill("Sci-Fi");
   await page.getByRole("button", { name: "Save to overlay" }).click();
   await expect(page).toHaveURL(/\/manage\/show\/(?!new)[0-9a-f-]+/);
   await expect(page.getByRole("heading", { name: showTitle })).toBeVisible();
@@ -355,7 +373,7 @@ async function sendNewShowProposal(page: Page, showTitle: string, proposalNote: 
   await page.getByLabel("Display title").fill(showTitle);
   await page.getByLabel("Languages").fill("en");
   await page.getByLabel("Countries").fill("US");
-  await page.getByLabel("Genres").fill("science fiction");
+  await page.getByLabel("Genres").fill("Sci-Fi");
   await page.getByLabel("Notes").fill(proposalNote);
   await page.getByRole("button", { name: "Send to canonical" }).click();
   await expect(page.getByText("Proposal saved locally and queued for the canonical maintainers.")).toBeVisible();

@@ -45,7 +45,6 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
           },
         });
         next.setOnline(navigator.onLine);
-        await localReadiness(next);
         if (!active) {
           void next.stop();
           return;
@@ -146,9 +145,4 @@ async function currentTokenSnapshot(): Promise<AuthTokenSnapshot | null> {
   const session = data.session;
   if (session?.access_token == null) return null;
   return { accessToken: session.access_token, expiresAt: (session.expires_at ?? 0) * 1000 };
-}
-
-async function localReadiness(client: GenretvSyncClient): Promise<void> {
-  const localReady = (client as GenretvSyncClient & { localReady?: Promise<void> }).localReady;
-  await (localReady ?? client.ready);
 }

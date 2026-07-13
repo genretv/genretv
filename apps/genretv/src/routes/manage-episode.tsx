@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "../auth/auth";
 import { EntitySyncBadge } from "../components/entity-sync-badge";
 import { useManagementShows } from "../domain/live-management-shows";
+import { liveAggregateState } from "../domain/live-query-readiness";
 import {
   findManagementSeason,
   type ManagementSeason,
@@ -43,8 +44,30 @@ export function ManageEpisodeRoute() {
   });
   const { roles, session } = useAuth();
   const navigate = useNavigate();
-  const { shows } = useManagementShows();
+  const { error, loading, shows } = useManagementShows();
   const result = findManagementSeason(shows, showId, seasonId);
+
+  if (loading && result == null) {
+    return (
+      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Loading episode</Title>
+        <Alert color="blue" variant="light">
+          Waiting for synchronized management data...
+        </Alert>
+      </Stack>
+    );
+  }
+
+  if (error != null && result == null) {
+    return (
+      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Could not load episode</Title>
+        <Alert color="red" variant="light">
+          {error.message}
+        </Alert>
+      </Stack>
+    );
+  }
 
   if (result == null) {
     return (
@@ -165,8 +188,9 @@ function EditableEpisode({
     { ready: canEdit && episodeId !== newEpisodeId },
   );
   const existingEpisodeExclusion = episodeExclusions.rows[0] ?? null;
+  const personalEpisodeState = liveAggregateState([personalEpisodes], personalRow != null);
   const episodeMissing =
-    episodeId !== newEpisodeId && episode == null && !personalEpisodes.loading && personalRow == null;
+    episodeId !== newEpisodeId && episode == null && !personalEpisodeState.loading && personalRow == null;
 
   const initialDraft = useMemo(
     () =>

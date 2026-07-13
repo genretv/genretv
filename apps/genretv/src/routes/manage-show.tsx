@@ -59,8 +59,16 @@ const newShowId = "new";
 export function ManageShowRoute() {
   const { showId } = useParams({ from: "/manage/show/$showId" });
   const { roles, session } = useAuth();
-  const { shows } = useManagementShows();
+  const { error, loading, shows } = useManagementShows();
   const show = showId === newShowId ? emptyManagementShow() : findManagementShow(shows, showId);
+
+  if (loading && show == null) {
+    return <ManagementEntityLoading label="show" />;
+  }
+
+  if (error != null && show == null) {
+    return <ManagementEntityLoadError label="show" error={error} />;
+  }
 
   if (show == null) {
     return (
@@ -74,6 +82,31 @@ export function ManageShowRoute() {
   }
 
   return <EditableShow show={show} canEdit={session != null} canPropose={canSendCanonicalProposal(roles)} />;
+}
+
+function ManagementEntityLoading({ label }: { label: string }) {
+  return (
+    <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+      <Title order={1}>Loading {label}</Title>
+      <Alert color="blue" variant="light">
+        Waiting for synchronized management data...
+      </Alert>
+    </Stack>
+  );
+}
+
+function ManagementEntityLoadError({ error, label }: { error: Error; label: string }) {
+  return (
+    <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+      <Title order={1}>Could not load {label}</Title>
+      <Alert color="red" variant="light">
+        {error.message}
+      </Alert>
+      <Button component={Link} to="/manage" variant="default">
+        Back to shows
+      </Button>
+    </Stack>
+  );
 }
 
 function EditableShow({ show, canEdit, canPropose }: { show: ManagementShow; canEdit: boolean; canPropose: boolean }) {

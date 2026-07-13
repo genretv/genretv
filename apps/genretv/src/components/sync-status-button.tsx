@@ -5,12 +5,13 @@ import { Link } from "@tanstack/react-router";
 import { useGenretvSyncStatus } from "../sync/sync-status";
 
 export function SyncStatusButton() {
-  const { online, runtime, summary } = useGenretvSyncStatus();
+  const { loading, online, runtime, summary } = useGenretvSyncStatus();
   const terminal = summary.conflicted + summary.quarantined + summary.rejected;
   const delayed = summary.failed;
   const unsettled = summary.pending + summary.sending + summary.acked;
-  const status =
-    terminal > 0
+  const status = loading
+    ? { color: "blue", icon: IconCloudUp, label: "Loading sync status" }
+    : terminal > 0
       ? { color: "red", icon: IconAlertTriangle, label: `${terminal} sync ${terminal === 1 ? "issue" : "issues"}` }
       : delayed > 0
         ? { color: "yellow", icon: IconAlertTriangle, label: "Sync delayed" }

@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
+import { liveAggregateState } from "../domain/live-query-readiness";
 import { formatMicrosecondTimestamp } from "../domain/time";
 import {
   defaultDisplayName,
@@ -44,6 +45,7 @@ export function ProfileRoute() {
     { ready: session != null },
   );
   const profile = profiles.rows[0] ?? null;
+  const profileState = liveAggregateState([profiles], profile != null);
   const profileDisplayName = profile?.displayName ?? null;
   const profilePublicSlug = profile?.publicSlug ?? null;
   const profileBio = profile?.bio ?? null;
@@ -52,7 +54,7 @@ export function ProfileRoute() {
   const normalizedSlug = normalizeProfileSlug(draft.publicSlug);
   const patch = useMemo(() => profilePatchFromDraft(draft, fallbackDisplayName), [draft, fallbackDisplayName]);
   const userId = session?.user.id ?? null;
-  const canSave = session != null && !profiles.loading && !saving && patch.displayName.trim() !== "";
+  const canSave = session != null && !profileState.loading && !saving && patch.displayName.trim() !== "";
   const syncedDraft = useMemo<ProfileDraft>(
     () =>
       !profileExists
@@ -116,6 +118,23 @@ export function ProfileRoute() {
             Schedule
           </Button>
         </Group>
+      </Stack>
+    );
+  }
+
+  if (profileState.loading) {
+    return (
+      <Stack className="schedule-panel" gap="lg" maw={860} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Profile</Title>
+        {profiles.error == null ? (
+          <Alert color="blue" variant="light">
+            Loading your profile...
+          </Alert>
+        ) : (
+          <Alert color="red" variant="light">
+            Could not load your profile: {profiles.error.message}
+          </Alert>
+        )}
       </Stack>
     );
   }

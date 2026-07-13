@@ -3,6 +3,7 @@ import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
 import { useMemo } from "react";
 
 import { useAuth } from "../../auth/auth";
+import { liveAggregateState } from "../../domain/live-query-readiness";
 import { buildPublishedListSummaries } from "./imports";
 
 const publishedList = genretvSyncRegistry.published_list.view!;
@@ -126,13 +127,11 @@ export function usePublishedListSummaries() {
     () => buildPublishedListSummaries(lists.rows, shows.rows, seasons.rows, episodes.rows, imports.rows, profiles.rows),
     [episodes.rows, imports.rows, lists.rows, profiles.rows, seasons.rows, shows.rows],
   );
-  const loading =
-    lists.loading ||
-    shows.loading ||
-    seasons.loading ||
-    episodes.loading ||
-    profiles.loading ||
-    (session != null && imports.loading);
+  const queries = [lists, shows, seasons, episodes, profiles, ...(session == null ? [] : [imports])];
+  const { loading } = liveAggregateState(
+    queries,
+    summaries.length > 0 && lists.rows.length > 0 && shows.rows.length > 0 && seasons.rows.length > 0,
+  );
   const error = lists.error ?? shows.error ?? seasons.error ?? episodes.error ?? profiles.error ?? imports.error;
 
   return { error, loading, session, summaries };

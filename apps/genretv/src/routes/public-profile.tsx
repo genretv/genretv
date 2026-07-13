@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } fr
 import { Link, useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
+import { liveAggregateState } from "../domain/live-query-readiness";
 import { formatMicrosecondTimestamp } from "../domain/time";
 
 const publishedList = genretvSyncRegistry.published_list.view!;
@@ -53,7 +54,26 @@ export function PublicProfileRoute() {
             .sort((left, right) => left.title.localeCompare(right.title)),
     [profile, publishedLists.rows],
   );
-  const loading = profiles.loading || publishedLists.loading;
+  const profileState = liveAggregateState([profiles], profile != null);
+  const listsState = liveAggregateState([publishedLists], profileLists.length > 0);
+  const loading = profileState.loading || (profile != null && listsState.loading && profileLists.length === 0);
+
+  if (loading) {
+    return (
+      <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Public Profile</Title>
+        {(profiles.error ?? publishedLists.error) == null ? (
+          <Alert color="blue" variant="light">
+            Loading public profile...
+          </Alert>
+        ) : (
+          <Alert color="red" variant="light">
+            Could not load this public profile.
+          </Alert>
+        )}
+      </Stack>
+    );
+  }
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1040} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -72,12 +92,7 @@ export function PublicProfileRoute() {
           Could not load this public profile.
         </Alert>
       )}
-      {loading && (
-        <Alert color="blue" variant="light">
-          Loading public profile...
-        </Alert>
-      )}
-      {!loading && profile == null && (
+      {profileState.empty && profile == null && (
         <Alert color="yellow" variant="light">
           No public profile exists for this slug.
         </Alert>

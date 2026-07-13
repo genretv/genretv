@@ -1,4 +1,5 @@
 import {
+  Alert,
   Anchor,
   Badge,
   Button,
@@ -37,7 +38,7 @@ const storageKey = "genretv.management.view.v1";
 
 export function ManageRoute() {
   const navigate = useNavigate();
-  const { schedule, shows } = useManagementShows();
+  const { error, loading, schedule, shows } = useManagementShows();
   const filterOptions = useMemo(() => scheduleFilterOptions(schedule.entries), [schedule.entries]);
   const [preferences, setPreferences] = useStoredManagementViewPreferences();
   const [page, setPage] = useState(1);
@@ -58,6 +59,23 @@ export function ManageRoute() {
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
   }, [totalPages]);
+
+  if (loading) {
+    return (
+      <Stack className="schedule-panel" gap="lg" maw={1220} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Shows</Title>
+        {error == null ? (
+          <Alert color="blue" variant="light">
+            Loading show management...
+          </Alert>
+        ) : (
+          <Alert color="red" variant="light">
+            Could not load show management: {error.message}
+          </Alert>
+        )}
+      </Stack>
+    );
+  }
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1220} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -83,6 +101,11 @@ export function ManageRoute() {
         </Group>
       </Group>
 
+      {error != null && (
+        <Alert color="red" variant="light">
+          Could not load show management: {error.message}
+        </Alert>
+      )}
       <Group className="schedule-controls" align="flex-end" gap="sm">
         <TextInput
           className="schedule-search"

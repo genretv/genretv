@@ -433,6 +433,28 @@ export function HomeRoute() {
     setPage((current) => Math.min(current, totalPages));
   }, [totalPages]);
 
+  if (canonicalLoading) {
+    return (
+      <Stack className="schedule-panel schedule-home-panel" gap="lg" maw={1220} mx="auto" p={{ base: "xs", sm: "xl" }}>
+        <div>
+          <Title order={1}>{schedule.title}</Title>
+          <Text size="sm" c="dimmed">
+            Canonical seed scraped from {schedule.sourceUrl}. {schedule.updatedLabel}
+          </Text>
+        </div>
+        {error == null ? (
+          <Alert color="blue" title="Synchronizing canonical schedule">
+            Waiting for the canonical Shows and Seasons.
+          </Alert>
+        ) : (
+          <Alert color="red" title="Canonical schedule could not be synchronized">
+            {error.message}
+          </Alert>
+        )}
+      </Stack>
+    );
+  }
+
   return (
     <Stack className="schedule-panel schedule-home-panel" gap="lg" maw={1220} mx="auto" p={{ base: "xs", sm: "xl" }}>
       <Group justify="space-between" align="flex-end">
@@ -453,12 +475,6 @@ export function HomeRoute() {
       {canonicalEmpty && error == null && (
         <Alert color="yellow" title="Canonical schedule is empty">
           No canonical Shows or Seasons were received from the synchronized database.
-        </Alert>
-      )}
-
-      {canonicalLoading && schedule.entries.length === 0 && (
-        <Alert color="blue" title="Synchronizing canonical schedule">
-          Waiting for the canonical Shows and Seasons.
         </Alert>
       )}
 

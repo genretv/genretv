@@ -34,6 +34,7 @@ interface SyncSummary {
 }
 
 interface SyncStatusValue {
+  loading: boolean;
   mutations: readonly LocalMutationState[];
   online: boolean;
   runtime: SyncRuntimeStatus;
@@ -74,46 +75,67 @@ export function GenretvSyncStatusProvider({ children, runtime }: { children: Rea
   const mutations = useMemo(
     () =>
       [
-        canonicalShow,
-        canonicalSeason,
-        canonicalEpisode,
-        personalShow,
-        personalSeason,
-        personalEpisode,
-        personalExclusion,
-        userProfile,
-        publishedList,
-        publishedShow,
-        publishedSeason,
-        publishedEpisode,
-        listImport,
-        publishApplication,
-        canonicalProposal,
-        maintainerNotification,
+        canonicalShow.rows,
+        canonicalSeason.rows,
+        canonicalEpisode.rows,
+        personalShow.rows,
+        personalSeason.rows,
+        personalEpisode.rows,
+        personalExclusion.rows,
+        userProfile.rows,
+        publishedList.rows,
+        publishedShow.rows,
+        publishedSeason.rows,
+        publishedEpisode.rows,
+        listImport.rows,
+        publishApplication.rows,
+        canonicalProposal.rows,
+        maintainerNotification.rows,
       ]
         .flat()
         .sort((left, right) => compareMicroseconds(right.enqueuedAtUs, left.enqueuedAtUs)),
     [
-      canonicalEpisode,
-      canonicalProposal,
-      canonicalSeason,
-      canonicalShow,
-      listImport,
-      maintainerNotification,
-      personalEpisode,
-      personalExclusion,
-      personalSeason,
-      personalShow,
-      publishApplication,
-      publishedEpisode,
-      publishedList,
-      publishedSeason,
-      publishedShow,
-      userProfile,
+      canonicalEpisode.rows,
+      canonicalProposal.rows,
+      canonicalSeason.rows,
+      canonicalShow.rows,
+      listImport.rows,
+      maintainerNotification.rows,
+      personalEpisode.rows,
+      personalExclusion.rows,
+      personalSeason.rows,
+      personalShow.rows,
+      publishApplication.rows,
+      publishedEpisode.rows,
+      publishedList.rows,
+      publishedSeason.rows,
+      publishedShow.rows,
+      userProfile.rows,
     ],
   );
+  const loading = [
+    canonicalShow,
+    canonicalSeason,
+    canonicalEpisode,
+    personalShow,
+    personalSeason,
+    personalEpisode,
+    personalExclusion,
+    userProfile,
+    publishedList,
+    publishedShow,
+    publishedSeason,
+    publishedEpisode,
+    listImport,
+    publishApplication,
+    canonicalProposal,
+    maintainerNotification,
+  ].some((query) => query.loading);
   const summary = useMemo(() => summarizeMutations(mutations), [mutations]);
-  const value = useMemo(() => ({ mutations, online, runtime, summary }), [mutations, online, runtime, summary]);
+  const value = useMemo(
+    () => ({ loading, mutations, online, runtime, summary }),
+    [loading, mutations, online, runtime, summary],
+  );
 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>;
 }
@@ -124,7 +146,7 @@ export function useGenretvSyncStatus(): SyncStatusValue {
   return value;
 }
 
-function useJournalRows(table: GenretvSyncTable): LocalMutationState[] {
+function useJournalRows(table: GenretvSyncTable): { loading: boolean; rows: LocalMutationState[] } {
   const journal = getJournalTable(genretvSyncRegistry, table);
   const query = useLiveDrizzleRows(
     (sync) =>
@@ -146,20 +168,23 @@ function useJournalRows(table: GenretvSyncTable): LocalMutationState[] {
     [journal],
   );
 
-  return query.rows.map((row) => ({
-    attemptCount: row.attemptCount,
-    conflictReason: row.conflictReason,
-    enqueuedAtUs: row.enqueuedAtUs,
-    entityKey: parseEntityKey(row.entityKeyJson),
-    lastError: row.lastError,
-    lastHttpStatus: row.lastHttpStatus,
-    mutationId: row.mutationId,
-    mutationKind: row.mutationKind,
-    mutationSeq: row.mutationSeq,
-    nextRetryAtUs: row.nextRetryAtUs,
-    status: row.status,
-    table,
-  }));
+  return {
+    loading: query.loading,
+    rows: query.rows.map((row) => ({
+      attemptCount: row.attemptCount,
+      conflictReason: row.conflictReason,
+      enqueuedAtUs: row.enqueuedAtUs,
+      entityKey: parseEntityKey(row.entityKeyJson),
+      lastError: row.lastError,
+      lastHttpStatus: row.lastHttpStatus,
+      mutationId: row.mutationId,
+      mutationKind: row.mutationKind,
+      mutationSeq: row.mutationSeq,
+      nextRetryAtUs: row.nextRetryAtUs,
+      status: row.status,
+      table,
+    })),
+  };
 }
 
 export function parseEntityKey(value: string): Record<string, string> {

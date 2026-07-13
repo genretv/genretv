@@ -5,8 +5,47 @@ import {
   applyPersonalEpisodes,
   applyPersonalExclusions,
   applyPersonalSeasons,
+  canonicalScheduleLoadState,
 } from "./live-canonical-schedule";
 import type { CanonicalEpisodeSeedRow, CanonicalSeasonSeedRow, CanonicalShowSeedRow } from "./schedule";
+
+describe("canonical schedule readiness", () => {
+  test("keeps a fresh local store loading until canonical hydration delivers rows", () => {
+    expect(
+      canonicalScheduleLoadState(readiness([], false, true), readiness([], false, true), readiness([], false, true)),
+    ).toEqual({ canonicalEmpty: false, canonicalLoading: true });
+  });
+
+  test("waits for every local query snapshot before presenting cached data", () => {
+    expect(
+      canonicalScheduleLoadState(
+        readiness(["show"], false, true),
+        readiness(["season"], false, true),
+        readiness([], true, true),
+      ),
+    ).toEqual({ canonicalEmpty: false, canonicalLoading: true });
+  });
+
+  test("presents coherent cached data while the eager group catches up", () => {
+    expect(
+      canonicalScheduleLoadState(
+        readiness(["show"], false, true),
+        readiness(["season"], false, true),
+        readiness([], false, true),
+      ),
+    ).toEqual({ canonicalEmpty: false, canonicalLoading: false });
+  });
+
+  test("declares an empty canonical schedule only after hydration settles", () => {
+    expect(
+      canonicalScheduleLoadState(readiness([], false, false), readiness([], false, false), readiness([], false, false)),
+    ).toEqual({ canonicalEmpty: true, canonicalLoading: false });
+  });
+});
+
+function readiness(rows: readonly unknown[], loading: boolean, hydrating: boolean) {
+  return { hydrating, loading, rows };
+}
 
 describe("live canonical personal overlay rows", () => {
   test("removes excluded canonical seasons and their episodes", () => {

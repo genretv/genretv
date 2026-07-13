@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
+import { liveAggregateState } from "../domain/live-query-readiness";
 import { buildExclusionSummaries } from "../features/management/exclusions";
 
 const canonicalShow = genretvSyncRegistry.canonical_show.view!;
@@ -71,7 +72,7 @@ export function ManageHiddenRoute() {
     () => buildExclusionSummaries(exclusions.rows, shows.rows, seasons.rows, episodes.rows),
     [episodes.rows, exclusions.rows, seasons.rows, shows.rows],
   );
-  const loading = shows.loading || seasons.loading || episodes.loading || (session != null && exclusions.loading);
+  const hiddenState = liveAggregateState([shows, seasons, episodes, exclusions], summaries.length > 0);
 
   const restore = async (id: string) => {
     setRestoringId(id);
@@ -123,12 +124,12 @@ export function ManageHiddenRoute() {
           Could not load hidden rows.
         </Alert>
       )}
-      {loading && (
+      {hiddenState.loading && (
         <Alert color="blue" variant="light">
           Loading hidden rows...
         </Alert>
       )}
-      {!loading && summaries.length === 0 && (
+      {hiddenState.empty && summaries.length === 0 && (
         <Alert color="teal" variant="light">
           You have not hidden any canonical rows.
         </Alert>

@@ -12,17 +12,23 @@ are outside the product boundary.
 
 Local readiness and server freshness are separate properties:
 
-- GenreTV renders after pgxsinkit's `localReady` contract resolves. At that point PGlite, local schema,
-  recovered Mutation journal, and locally readable relations are available.
+- GenreTV renders after the worker client attaches. A successful `attachSyncClient` call means PGlite, the
+  local schema, recovered Mutation journal, and locally readable relations are available; it does not await
+  `client.ready`.
 - pgxsinkit's existing `ready` contract continues to represent initial synchronization with the server.
 - Returning users may therefore read stale persisted data while offline or while catch-up is running.
+- Reactive Drizzle reads use `hydrating` to distinguish synchronization from a genuine empty result. Cached
+  rows render immediately while hydration continues; an empty state is authoritative only after both the
+  local query snapshot and hydration settle.
+- This rule applies to every user-visible count, empty state, and not-found state, including management,
+  publishing, profiles, and hidden rows. Local Mutation-journal queries similarly suppress synchronized and
+  zero-change claims until their first local snapshots complete.
 - A lazy-persisted relation that was previously hydrated may render its cached rows offline. One that has never
   been hydrated must report that it is unavailable offline, not masquerade as an empty result.
 - First use still requires a network connection because no application or Canonical List cache exists yet.
 
-The provider consumes `client.localReady`. A compatibility fallback to `client.ready` may remain only while the
-minimum supported pgxsinkit release predates `localReady`; it should be removed when that minimum version is
-adopted.
+The provider must not await `client.ready`: a cold worker cannot reach that server-current milestone while
+offline even when its mapped PGlite store contains usable cached data.
 
 ## Writes and convergence
 

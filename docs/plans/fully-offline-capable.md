@@ -50,17 +50,15 @@ pgxsinkit currently resolves `client.ready` only after eager shapes have complet
 is correct for a server-current guarantee but prevents a returning offline user from opening a valid persistent
 cache.
 
-pgxsinkit will gain a separate local-readiness contract instead of weakening the existing guarantee:
+pgxsinkit exposes local readiness through successful worker attachment instead of weakening the existing
+`ready` guarantee:
 
-- `localReady` resolves after PGlite opens, local schema reconciliation completes, journal recovery completes,
-  and locally readable relations are available.
+- `attachSyncClient` resolves after PGlite opens, local schema reconciliation completes, journal recovery
+  completes, and locally readable relations are available.
 - `ready` continues to mean that all eager groups are synchronized to the server-current frontier.
 - Worker-attached and in-process clients expose equivalent readiness and status behavior.
-- GenreTV renders after `localReady`; it does not wait for `ready` when cached data is usable.
+- GenreTV renders after worker attachment; it does not wait for `ready` when cached data is usable.
 - Runtime status reports local readiness, connectivity, synchronization activity, and freshness independently.
-
-Exact public names should be settled in the upstream pgxsinkit ADR before implementation. The semantic split is
-the required contract.
 
 ### 2. Persistent cached reads are allowed while stale
 

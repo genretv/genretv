@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "./live-canonical-schedule";
+import { liveAggregateState } from "./live-query-readiness";
 import { buildManagementShows, type CanonicalSchedule, type ManagementShow } from "./schedule";
 
 const personalShow = genretvSyncRegistry.personal_show.view!;
@@ -47,10 +48,11 @@ export function useManagementShows(): LiveManagementShows {
       ),
     [canonical.schedule.allEntries, personalReady, personalShows.rows],
   );
+  const personalState = liveAggregateState([personalShows], shows.length > 0);
 
   return {
     error: canonical.error ?? (personalReady ? personalShows.error : null),
-    loading: canonical.loading || (personalReady && personalShows.loading),
+    loading: canonical.loading || (personalReady && personalState.loading),
     schedule: canonical.schedule,
     shows,
   };

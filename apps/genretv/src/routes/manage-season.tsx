@@ -67,12 +67,34 @@ export function ManageSeasonRoute() {
   const { showId, seasonId } = useParams({ from: "/manage/show/$showId/season/$seasonId" });
   const { roles, session } = useAuth();
   const navigate = useNavigate();
-  const { shows } = useManagementShows();
+  const { error, loading, shows } = useManagementShows();
   const show = shows.find((candidate) => candidate.id === showId) ?? null;
   const result =
     seasonId === newSeasonId && show != null
       ? { show, season: emptyManagementSeason(show) }
       : findManagementSeason(shows, showId, seasonId);
+
+  if (loading && result == null) {
+    return (
+      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Loading season</Title>
+        <Alert color="blue" variant="light">
+          Waiting for synchronized management data...
+        </Alert>
+      </Stack>
+    );
+  }
+
+  if (error != null && result == null) {
+    return (
+      <Stack className="schedule-panel" gap="md" maw={900} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Could not load season</Title>
+        <Alert color="red" variant="light">
+          {error.message}
+        </Alert>
+      </Stack>
+    );
+  }
 
   if (result == null) {
     return (

@@ -6,7 +6,7 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 import { useGenretvSyncStatus } from "../sync/sync-status";
 
 export function PwaStatus() {
-  const { summary } = useGenretvSyncStatus();
+  const { loading, summary } = useGenretvSyncStatus();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const {
     offlineReady: [offlineReady, setOfflineReady],
@@ -39,9 +39,11 @@ export function PwaStatus() {
           <>
             <Text fw={700}>A GenreTV update is ready</Text>
             <Text size="sm">
-              {summary.total === 0
-                ? "Install it now or postpone it until later."
-                : "Synchronize or resolve local changes before installing this update."}
+              {loading
+                ? "Checking for local changes before installing this update."
+                : summary.total === 0
+                  ? "Install it now or postpone it until later."
+                  : "Synchronize or resolve local changes before installing this update."}
             </Text>
             <Group gap="xs" justify="flex-end">
               {summary.total > 0 && (
@@ -52,7 +54,7 @@ export function PwaStatus() {
               <Button size="xs" variant="default" onClick={() => setNeedRefresh(false)}>
                 Later
               </Button>
-              <Button size="xs" disabled={summary.total > 0} onClick={() => void updateServiceWorker(true)}>
+              <Button size="xs" disabled={loading || summary.total > 0} onClick={() => void updateServiceWorker(true)}>
                 Update
               </Button>
             </Group>

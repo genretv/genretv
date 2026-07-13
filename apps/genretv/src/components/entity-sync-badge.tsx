@@ -5,8 +5,8 @@ import type { GenretvSyncTable, LocalMutationState } from "../sync/sync-status";
 import { useGenretvSyncStatus } from "../sync/sync-status";
 
 export function EntitySyncBadge({ entityId, table }: { entityId: string | null; table: GenretvSyncTable }) {
-  const { mutations, online } = useGenretvSyncStatus();
-  if (entityId == null) return null;
+  const { loading, mutations, online } = useGenretvSyncStatus();
+  if (entityId == null || loading) return null;
 
   const state = entityMutationState(mutations, table, entityId, online);
   if (state == null) return null;

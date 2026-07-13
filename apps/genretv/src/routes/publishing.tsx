@@ -22,6 +22,7 @@ import type { SyncTransaction } from "@pgxsinkit/client";
 
 import { useAuth } from "../auth/auth";
 import { useCanonicalSchedule } from "../domain/live-canonical-schedule";
+import { liveAggregateState } from "../domain/live-query-readiness";
 import { buildManagementShows } from "../domain/schedule";
 import { formatMicrosecondTimestamp } from "../domain/time";
 import { buildCanonicalProposalMergePlan } from "../features/management/canonical-merge";
@@ -236,6 +237,13 @@ export function PublishingRoute() {
   const hasApprovedApplication = hasApprovedPublishApplication(ownApplications);
   const hasOpenApplication = hasOpenPublishApplication(ownApplications);
   const canPublish = hasPublisherRole || hasApprovedApplication;
+  const workflowLoading = [
+    liveAggregateState([applications], applications.rows.length > 0).loading,
+    liveAggregateState([publishedLists], publishedLists.rows.length > 0).loading,
+    liveAggregateState([proposals], proposals.rows.length > 0).loading,
+    ...(isMaintainer ? [liveAggregateState([notifications], notifications.rows.length > 0).loading] : []),
+  ].some(Boolean);
+  const pageLoading = canonical.loading || workflowLoading;
   const snapshotSchedule = useMemo(
     () => filteredPublishedSnapshotSchedule(canonical.schedule, publishFilter),
     [canonical.schedule, publishFilter],
@@ -511,6 +519,42 @@ export function PublishingRoute() {
         <Title order={1}>Publishing</Title>
         <Alert color="yellow" variant="light">
           Sign in to apply to publish your list.
+        </Alert>
+      </Stack>
+    );
+  }
+
+  if (pageLoading) {
+    return (
+      <Stack className="schedule-panel" gap="lg" maw={1080} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Publishing</Title>
+        {applications.error != null && (
+          <Alert color="red" variant="light">
+            Could not load publish applications: {applications.error.message}
+          </Alert>
+        )}
+        {publishedLists.error != null && (
+          <Alert color="red" variant="light">
+            Could not load published lists: {publishedLists.error.message}
+          </Alert>
+        )}
+        {canonical.error != null && (
+          <Alert color="red" variant="light">
+            Could not load your current schedule for publishing: {canonical.error.message}
+          </Alert>
+        )}
+        {proposals.error != null && (
+          <Alert color="red" variant="light">
+            Could not load canonical proposals: {proposals.error.message}
+          </Alert>
+        )}
+        {notifications.error != null && (
+          <Alert color="red" variant="light">
+            Could not load maintainer notifications: {notifications.error.message}
+          </Alert>
+        )}
+        <Alert color="blue" variant="light">
+          Loading publishing workflows...
         </Alert>
       </Stack>
     );

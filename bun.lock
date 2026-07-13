@@ -5,7 +5,7 @@
     "": {
       "name": "genretv",
       "devDependencies": {
-        "@pgxsinkit/server": "0.1.46",
+        "@pgxsinkit/server": "0.1.48",
         "@playwright/test": "^1.61.1",
         "@tanstack/intent": "^0.3.5",
         "@types/node": "26.1.1",
@@ -38,9 +38,9 @@
         "@genretv/offline-data": "workspace:*",
         "@mantine/core": "9.4.1",
         "@mantine/hooks": "9.4.1",
-        "@pgxsinkit/client": "0.1.46",
-        "@pgxsinkit/contracts": "0.1.46",
-        "@pgxsinkit/react": "0.1.46",
+        "@pgxsinkit/client": "0.1.48",
+        "@pgxsinkit/contracts": "0.1.48",
+        "@pgxsinkit/react": "0.1.48",
         "@supabase/supabase-js": "2.110.2",
         "@tabler/icons-react": "^3.44.0",
         "@tanstack/react-router": "1.170.17",
@@ -60,8 +60,8 @@
       "name": "@genretv/genretv-api",
       "dependencies": {
         "@genretv/domain": "workspace:*",
-        "@pgxsinkit/contracts": "0.1.46",
-        "@pgxsinkit/server": "0.1.46",
+        "@pgxsinkit/contracts": "0.1.48",
+        "@pgxsinkit/server": "0.1.48",
         "drizzle-orm": "1.0.0-rc.4",
         "jose": "6.2.3",
         "postgres": "3.4.9",
@@ -71,7 +71,7 @@
     "packages/domain": {
       "name": "@genretv/domain",
       "dependencies": {
-        "@pgxsinkit/contracts": "0.1.46",
+        "@pgxsinkit/contracts": "0.1.48",
         "drizzle-orm": "1.0.0-rc.4",
       },
     },
@@ -79,9 +79,9 @@
       "name": "@genretv/offline-data",
       "dependencies": {
         "@genretv/domain": "workspace:*",
-        "@pgxsinkit/client": "0.1.46",
-        "@pgxsinkit/contracts": "0.1.46",
-        "@pgxsinkit/react": "0.1.46",
+        "@pgxsinkit/client": "0.1.48",
+        "@pgxsinkit/contracts": "0.1.48",
+        "@pgxsinkit/react": "0.1.48",
       },
     },
   },
@@ -620,13 +620,13 @@
 
     "@pagefind/windows-x64": ["@pagefind/windows-x64@1.5.2", "", { "os": "win32", "cpu": "x64" }, "sha512-Fa2Iyw7kaDRzGMfNYNUXNW2zbL5FQVDgSOcbDHdzBrDEdpqOqg8TcZ68F22ol6NJ9IGzvUdmeyZypLW5dyhqsg=="],
 
-    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.46", "", { "dependencies": { "@electric-sql/client": "^1.5.24", "@electric-sql/experimental": "^6.0.24", "@electric-sql/pglite-tools": "0.4.4", "@pgxsinkit/contracts": "0.1.46" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-EerUkqj5H48ceq0Bh98enxESkZe6/qLQMzZvG6ckSFT7Sn8ZWnKjBwjUszS6ipKY+bOvjNgWJnb2u9+4igRb3Q=="],
+    "@pgxsinkit/client": ["@pgxsinkit/client@0.1.48", "", { "dependencies": { "@electric-sql/client": "^1.5.24", "@electric-sql/experimental": "^6.0.24", "@electric-sql/pglite-tools": "0.4.4", "@pgxsinkit/contracts": "0.1.48" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-gsIVSe1TfSLJ7LGsznPiZpkfXVLwru4/RiXoubyAB2ugPnWX24sc4G3kDTgQNruEwRQ4u10Y6HVt/l0QETrUmw=="],
 
-    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.46", "", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-OXLDyiLRvnlmQlSXVkR0JjY9jbHGJf0/1EdFreMdONhssrxJs6zPsXlIKe+OYKu+T5SZLeH0+j8ICPZzbYFb9g=="],
+    "@pgxsinkit/contracts": ["@pgxsinkit/contracts@0.1.48", "", { "peerDependencies": { "drizzle-orm": "1.0.0-rc.4", "zod": "^4.4.3" } }, "sha512-5VFtJq9frwSBGg9t+1yTubnL4n4yq+V64b3HSqr5evxvkaxkDOwU+A5/IFHdD9gCqmJ61pC+nKeQgfBmySHcCA=="],
 
-    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.46", "", { "dependencies": { "@pgxsinkit/client": "0.1.46", "@pgxsinkit/contracts": "0.1.46" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-ZG14ZwRlWIBj51y1mXB3onAajsQ5LNYZQFF7ROfx9l3m6IHSewVB+c2WHMGLpqOK7s39I6Jxbs7fSs+/MLpXIA=="],
+    "@pgxsinkit/react": ["@pgxsinkit/react@0.1.48", "", { "dependencies": { "@pgxsinkit/client": "0.1.48", "@pgxsinkit/contracts": "0.1.48" }, "peerDependencies": { "@electric-sql/pglite": "0.5.4", "drizzle-orm": "1.0.0-rc.4", "react": ">=19.2.7" } }, "sha512-5fDoyfZ0/vOWc1ZGtIdZGCZYRZ96rb8c1QyfMyoaUl0jMho+X5NzMaW80SrIR8W1TixlA8v+7rElRNHnZzCagw=="],
 
-    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.46", "", { "dependencies": { "@pgxsinkit/contracts": "0.1.46" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-LWrWkFh9mb/plKnZZzhBdtiCbMJmlq031+zIlKRlNoY3C0CpeGl3gEPw132JlEE2bxf//fhL0bZRqIwPh4npEw=="],
+    "@pgxsinkit/server": ["@pgxsinkit/server@0.1.48", "", { "dependencies": { "@pgxsinkit/contracts": "0.1.48" }, "peerDependencies": { "drizzle-orm": "1.0.0-rc.4" }, "bin": { "pgxsinkit-generate": "bin/pgxsinkit-generate.mjs" } }, "sha512-xcT2ciTBwk8KCTyduo1/+bOcX+crIOZCEyVo4qFi3NBbr1a1KPQo4XqUjTopPI8T202lYHpZ7J/xVPrrle5gUw=="],
 
     "@playwright/test": ["@playwright/test@1.61.1", "", { "dependencies": { "playwright": "1.61.1" }, "bin": { "playwright": "cli.js" } }, "sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig=="],
 

@@ -30,6 +30,17 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   if (interactiveOrganization == null) throw new Error("Expected the selected schedule row to have an official link");
   const interactiveGenre = interactiveEntry.genres[0]!;
 
+  await page.addInitScript(() => {
+    const inspectedWindow = window as typeof window & { __genretvFalseEmptySchedule?: boolean };
+    inspectedWindow.__genretvFalseEmptySchedule = false;
+    const inspect = () => {
+      const synchronizing = document.body?.textContent?.includes("Synchronizing canonical schedule") ?? false;
+      const zeroCountTab = document.querySelector('[role="tab"][aria-label="Now Showing (0)"]') != null;
+      if (synchronizing && zeroCountTab) inspectedWindow.__genretvFalseEmptySchedule = true;
+    };
+    new MutationObserver(inspect).observe(document, { childList: true, subtree: true });
+  });
+
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /Fantasy\/Sci-Fi TV Show Start Dates/ })).toBeVisible();
@@ -47,6 +58,11 @@ test("anonymous visitors can browse the canonical schedule", async ({ page }) =>
   await expect(page.getByRole("table")).toBeVisible();
   await expect(page.getByRole("button", { name: /Show details for/ }).first()).toBeVisible();
   await expect(page.getByRole("columnheader", { name: /Sort by When/ })).toHaveAttribute("aria-sort", "ascending");
+  expect(
+    await page.evaluate(
+      () => (window as typeof window & { __genretvFalseEmptySchedule?: boolean }).__genretvFalseEmptySchedule,
+    ),
+  ).toBe(false);
 
   await page.getByRole("button", { name: "Language: All" }).click();
   await expectCheckboxOptions(page, currentOptions.languages);

@@ -11,7 +11,7 @@ import { type GenretvSyncTable, type LocalMutationState, useGenretvSyncStatus } 
 export function SyncRoute() {
   const { session } = useAuth();
   const client = useSyncClient();
-  const { mutations, online, runtime, summary } = useGenretvSyncStatus();
+  const { loading, mutations, online, runtime, summary } = useGenretvSyncStatus();
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -56,6 +56,17 @@ export function SyncRoute() {
       setWorkingKey(null);
     }
   };
+
+  if (loading) {
+    return (
+      <Stack className="schedule-panel" gap="lg" maw={1180} mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Title order={1}>Synchronization</Title>
+        <Alert color="blue" variant="light">
+          Loading local synchronization state...
+        </Alert>
+      </Stack>
+    );
+  }
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1180} mx="auto" p={{ base: "md", sm: "xl" }}>

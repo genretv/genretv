@@ -9,6 +9,7 @@ import {
   linkedPublishedSeasonId,
   linkedPublishedShowId,
 } from "../features/publishing/linked-imports";
+import { liveAggregateState, type LiveQueryReadiness } from "./live-query-readiness";
 import {
   buildScheduleFromRegistryRows,
   type CanonicalEpisodeSeedRow,
@@ -42,6 +43,24 @@ export interface LiveCanonicalSchedule {
   loading: boolean;
   personalLoading: boolean;
   schedule: CanonicalSchedule;
+}
+
+interface LiveRowsReadiness extends LiveQueryReadiness {
+  rows: readonly unknown[];
+}
+
+export function canonicalScheduleLoadState(
+  shows: LiveRowsReadiness,
+  seasons: LiveRowsReadiness,
+  episodes: LiveRowsReadiness,
+): Pick<LiveCanonicalSchedule, "canonicalEmpty" | "canonicalLoading"> {
+  const hasCanonicalSchedule = shows.rows.length > 0 && seasons.rows.length > 0;
+  const state = liveAggregateState([shows, seasons, episodes], hasCanonicalSchedule);
+
+  return {
+    canonicalLoading: state.loading,
+    canonicalEmpty: state.empty,
+  };
 }
 
 const canonicalMetadata = {
@@ -347,18 +366,25 @@ export function useCanonicalSchedule(): LiveCanonicalSchedule {
     publishedShows.rows,
   ]);
 
-  const canonicalLoading = shows.loading || seasons.loading || episodes.loading;
-  const canonicalEmpty = !canonicalLoading && (shows.rows.length === 0 || seasons.rows.length === 0);
+  const { canonicalEmpty, canonicalLoading } = canonicalScheduleLoadState(shows, seasons, episodes);
   const personalLoading =
     personalReady &&
     (personalShows.loading ||
+      personalShows.hydrating ||
       personalSeasons.loading ||
+      personalSeasons.hydrating ||
       personalEpisodes.loading ||
+      personalEpisodes.hydrating ||
       personalExclusions.loading ||
+      personalExclusions.hydrating ||
       listImports.loading ||
+      listImports.hydrating ||
       publishedShows.loading ||
+      publishedShows.hydrating ||
       publishedSeasons.loading ||
-      publishedEpisodes.loading);
+      publishedSeasons.hydrating ||
+      publishedEpisodes.loading ||
+      publishedEpisodes.hydrating);
 
   return {
     canonicalEmpty,
