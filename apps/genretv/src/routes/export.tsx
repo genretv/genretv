@@ -13,7 +13,8 @@ import { getCanonicalExportWorkerPort } from "../sync/worker-port";
 export function ExportRoute() {
   const { session } = useAuth();
   const syncClient = useSyncClient();
-  const { canonicalLoading, canonicalSchedule, error, personalLoading, schedule } = useCanonicalSchedule();
+  const { canonicalEmpty, canonicalLoading, canonicalSchedule, error, personalLoading, schedule } =
+    useCanonicalSchedule();
   const [canonicalDatabaseLoading, setCanonicalDatabaseLoading] = useState(false);
   const [localDatabaseLoading, setLocalDatabaseLoading] = useState(false);
   const [databaseError, setDatabaseError] = useState<Error | null>(null);
@@ -79,7 +80,7 @@ export function ExportRoute() {
         title="Canonical HTML"
         description="The complete canonical schedule as four unfiltered, original-style HTML tables."
       >
-        <Button loading={canonicalLoading} disabled={error != null} onClick={exportCanonicalHtml}>
+        <Button loading={canonicalLoading} disabled={error != null || canonicalEmpty} onClick={exportCanonicalHtml}>
           Download canonical HTML
         </Button>
       </ExportSection>

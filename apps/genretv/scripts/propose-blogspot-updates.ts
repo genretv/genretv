@@ -56,7 +56,7 @@ async function main(): Promise<void> {
   const parsed = parseSeed(html, sourceLabel);
   const sourceRows = buildCanonicalRegistrySeedRows(parsed);
   const supabase = createClient(supabaseUrl, publishableKey, {
-    auth: { persistSession: false, autoRefreshToken: true },
+    auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error != null) throw error;
@@ -86,6 +86,12 @@ async function main(): Promise<void> {
         client.drizzle.select({ sourceFingerprint: canonicalProposal.sourceFingerprint }).from(canonicalProposal),
       ),
     ]);
+    assertCanonicalBaseline({
+      canonicalShowCount: shows.length,
+      canonicalSeasonCount: seasons.length,
+      sourceShowCount: sourceRows.shows.length,
+      sourceSeasonCount: sourceRows.seasons.length,
+    });
     const observedAt = Date.parse(parsed.generatedAt);
     const plan = planBlogspotCanonicalProposals({
       source: {
@@ -133,6 +139,25 @@ async function main(): Promise<void> {
     await syncClient.stop();
     await supabase.auth.signOut();
   }
+}
+
+interface CanonicalBaselineCounts {
+  canonicalSeasonCount: number;
+  canonicalShowCount: number;
+  sourceSeasonCount: number;
+  sourceShowCount: number;
+}
+
+export function assertCanonicalBaseline(counts: CanonicalBaselineCounts): void {
+  const missingShows = counts.sourceShowCount > 0 && counts.canonicalShowCount === 0;
+  const missingSeasons = counts.sourceSeasonCount > 0 && counts.canonicalSeasonCount === 0;
+  if (!missingShows && !missingSeasons) return;
+
+  throw new Error(
+    "Refusing to propose Blogspot changes because the synchronized canonical baseline is empty " +
+      `(${counts.canonicalShowCount} Shows, ${counts.canonicalSeasonCount} Seasons). ` +
+      "Verify the target project and bootstrap its canonical data before running the proposer.",
+  );
 }
 
 function asCanonicalShowSnapshot(row: typeof canonicalShow.$inferSelect): CanonicalShowSnapshot {

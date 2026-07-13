@@ -13,6 +13,7 @@ const manifest = JSON.parse(readFileSync(new URL("manifest.webmanifest", dist), 
   start_url?: string;
 };
 const assetNames = readdirSync(assets);
+const canonicalSeedSentinel = "eeae5a93-886f-53d0-b672-27d86ed5cb66";
 
 assert(manifest.start_url === "/", "manifest start_url must be root");
 assert(manifest.scope === "/", "manifest scope must be root");
@@ -34,6 +35,14 @@ for (const expected of [
   const name = assetNames.find((candidate) => expected.test(candidate));
   assert(name != null, `build is missing essential PWA asset ${expected}`);
   assert(serviceWorker.includes(`assets/${name}`), `service worker does not precache ${name}`);
+}
+
+for (const assetName of assetNames.filter((name) => name.endsWith(".js"))) {
+  const contents = readFileSync(new URL(assetName, assets), "utf8");
+  assert(
+    !contents.includes(canonicalSeedSentinel),
+    `production asset ${assetName} contains bundled canonical seed rows`,
+  );
 }
 
 assert(serviceWorker.includes("docs(?:\\/|$)"), "service worker must exclude /docs from the app-shell fallback");

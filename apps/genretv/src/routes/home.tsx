@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Alert,
   Anchor,
   Badge,
   Box,
@@ -395,7 +396,7 @@ function LanguageBadges({ languages, ownerId }: { languages: readonly string[]; 
 }
 
 export function HomeRoute() {
-  const { schedule } = useCanonicalSchedule();
+  const { canonicalEmpty, canonicalLoading, error, schedule } = useCanonicalSchedule();
   const [preferences, setPreferences] = useStoredScheduleViewPreferences();
   const [page, setPage] = useState(1);
   const filterOptions = useMemo(
@@ -442,6 +443,24 @@ export function HomeRoute() {
           </Text>
         </div>
       </Group>
+
+      {error != null && (
+        <Alert color="red" title="Canonical schedule could not be synchronized">
+          {error.message}
+        </Alert>
+      )}
+
+      {canonicalEmpty && error == null && (
+        <Alert color="yellow" title="Canonical schedule is empty">
+          No canonical Shows or Seasons were received from the synchronized database.
+        </Alert>
+      )}
+
+      {canonicalLoading && schedule.entries.length === 0 && (
+        <Alert color="blue" title="Synchronizing canonical schedule">
+          Waiting for the canonical Shows and Seasons.
+        </Alert>
+      )}
 
       <Tabs
         value={preferences.section}

@@ -49,6 +49,10 @@ bun --env-file=genretv.cloud.env run canonical:propose:blogspot --source tmp/age
 Use `--json` for machine-readable output. Ambiguous matches and Seasons deferred behind a new Show proposal
 are reported but never submitted.
 
+The proposer fails closed when the synchronized canonical baseline has no Shows or Seasons. It will never
+turn an empty or misconfigured target into hundreds of "Add" proposals; verify the target project and run
+the explicit canonical bootstrap before retrying.
+
 ## Submit
 
 After inspecting the dry run:

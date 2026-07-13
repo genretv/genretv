@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseCommandOptions } from "./propose-blogspot-updates";
+import { assertCanonicalBaseline, parseCommandOptions } from "./propose-blogspot-updates";
 
 describe("Blogspot proposal command", () => {
   test("is a dry run by default", () => {
@@ -17,5 +17,27 @@ describe("Blogspot proposal command", () => {
       submit: true,
       json: true,
     });
+  });
+
+  test("refuses to propose every source row against an empty canonical baseline", () => {
+    expect(() =>
+      assertCanonicalBaseline({
+        canonicalShowCount: 0,
+        canonicalSeasonCount: 0,
+        sourceShowCount: 764,
+        sourceSeasonCount: 1663,
+      }),
+    ).toThrow("synchronized canonical baseline is empty (0 Shows, 0 Seasons)");
+  });
+
+  test("accepts a populated canonical baseline", () => {
+    expect(() =>
+      assertCanonicalBaseline({
+        canonicalShowCount: 764,
+        canonicalSeasonCount: 1663,
+        sourceShowCount: 764,
+        sourceSeasonCount: 1663,
+      }),
+    ).not.toThrow();
   });
 });
