@@ -1,13 +1,14 @@
-import { Alert, Badge, Button, Group, Stack, Text, Title } from "@mantine/core";
+import { Alert, Badge, Button, Group, ScrollArea, Stack, Table, Text, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
-import { PublishedListRowsTable, PublisherAttribution } from "../features/publishing/published-list-table";
-import { useImportPublishedSeason } from "../features/publishing/use-import-published-season";
-import { usePublishedListSummaries } from "../features/publishing/use-published-list-summaries";
+import { useAuth } from "../auth/auth";
+import { formatMicrosecondTimestamp } from "../domain/time";
+import { PublisherAttribution } from "../features/publishing/published-list-table";
+import { usePublishedListDirectory } from "../features/publishing/use-published-list-directory";
 
 export function PublishedRoute() {
-  const { error, loading, session, summaries } = usePublishedListSummaries();
-  const { actionError, importSeason, removeLinkedImport, savingKey } = useImportPublishedSeason();
+  const { session } = useAuth();
+  const { empty, error, lists, loading } = usePublishedListDirectory();
 
   return (
     <Stack className="schedule-panel" gap="lg" maw={1220} mx="auto" p={{ base: "md", sm: "xl" }}>
@@ -23,11 +24,6 @@ export function PublishedRoute() {
         )}
       </Group>
 
-      {actionError != null && (
-        <Alert color="red" variant="light">
-          Could not import season: {actionError}
-        </Alert>
-      )}
       {error != null && (
         <Alert color="red" variant="light">
           Could not load published lists.
@@ -38,48 +34,65 @@ export function PublishedRoute() {
           Loading published lists...
         </Alert>
       )}
-      {!loading && summaries.length === 0 && (
+      {empty && (
         <Alert color="yellow" variant="light">
           No public lists have been published yet.
         </Alert>
       )}
 
-      {summaries.map((list) => (
-        <Stack key={list.id} gap="sm">
-          <Group justify="space-between" align="flex-start">
-            <div>
-              <Group gap="xs">
-                <Title order={2}>
-                  <Link className="inline-link-button" to="/published/$slug" params={{ slug: list.slug }}>
-                    {list.title}
-                  </Link>
-                </Title>
-                <Badge variant="light">{list.slug}</Badge>
-                <Badge color="gray" variant="outline">
-                  v{list.snapshotVersion}
-                </Badge>
-              </Group>
-              {list.description != null && (
-                <Text size="sm" c="dimmed" mt={4}>
-                  {list.description}
-                </Text>
-              )}
-              <PublisherAttribution displayName={list.publisherDisplayName} publicSlug={list.publisherSlug} />
-            </div>
-            <Text size="sm" c="dimmed">
-              {list.seasons.length} rows
-            </Text>
-          </Group>
-
-          <PublishedListRowsTable
-            canImport={session != null}
-            list={list}
-            onImportSeason={(season, importMode) => void importSeason(season, importMode, list.seasons)}
-            onRemoveLinkedImport={(season) => void removeLinkedImport(season)}
-            savingKey={savingKey}
-          />
-        </Stack>
-      ))}
+      {lists.length > 0 && (
+        <ScrollArea>
+          <Table className="schedule-table" striped highlightOnHover verticalSpacing="sm" miw={760}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>List</Table.Th>
+                <Table.Th>Publisher</Table.Th>
+                <Table.Th>Rows</Table.Th>
+                <Table.Th>Updated</Table.Th>
+                <Table.Th />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {lists.map((list) => (
+                <Table.Tr key={list.id}>
+                  <Table.Td>
+                    <Stack gap={3}>
+                      <Group gap="xs">
+                        <Link className="inline-link-button" to="/published/$slug" params={{ slug: list.slug }}>
+                          <Text fw={700}>{list.title}</Text>
+                        </Link>
+                        <Badge variant="light">{list.slug}</Badge>
+                        <Badge color="gray" variant="outline">
+                          v{list.snapshotVersion}
+                        </Badge>
+                      </Group>
+                      {list.description != null && (
+                        <Text size="sm" c="dimmed">
+                          {list.description}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td>
+                    <PublisherAttribution displayName={list.publisherDisplayName} publicSlug={list.publisherSlug} />
+                  </Table.Td>
+                  <Table.Td>{list.rowCount}</Table.Td>
+                  <Table.Td>{formatMicrosecondTimestamp(list.updatedAtUs)}</Table.Td>
+                  <Table.Td>
+                    <Button
+                      renderRoot={(props) => <Link {...props} to="/published/$slug" params={{ slug: list.slug }} />}
+                      size="xs"
+                      variant="default"
+                    >
+                      Browse
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      )}
     </Stack>
   );
 }

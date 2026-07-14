@@ -152,6 +152,16 @@ describe("GenreTV cloud orchestration", () => {
     ).toThrow("must include http://localhost:5660");
   });
 
+  test("accepts any localhost port for cloud dev and preview", () => {
+    const env = {
+      ...validEnv,
+      GENRETV_ALLOWED_ORIGINS: "https://genretv.github.io,http://localhost:*",
+    };
+
+    expect(() => validateCloudEnv(env, "dev")).not.toThrow();
+    expect(() => validateCloudEnv(env, "preview")).not.toThrow();
+  });
+
   test("uses the cloud dev origin for production previews", () => {
     expect(() =>
       validateCloudEnv(

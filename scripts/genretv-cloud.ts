@@ -118,13 +118,14 @@ export function validateCloudEnv(env: Record<string, string>, command: CloudComm
     const configuredOrigins = env["GENRETV_ALLOWED_ORIGINS"];
     if (
       configuredOrigins &&
-      !configuredOrigins
-        .split(",")
-        .map((origin) => origin.trim())
-        .includes("http://localhost:5660")
+      !configuredOrigins.split(",").some((origin) => {
+        const value = origin.trim();
+        return value === "http://localhost:5660" || value === "http://localhost:*";
+      })
     ) {
       throw new Error(
-        `${cloudEnvFile} GENRETV_ALLOWED_ORIGINS must include http://localhost:5660 for cloud:${command}. ` +
+        `${cloudEnvFile} GENRETV_ALLOWED_ORIGINS must include http://localhost:5660 or http://localhost:* ` +
+          `for cloud:${command}. ` +
           "Update it, run `bun run cloud:secrets`, then retry.",
       );
     }

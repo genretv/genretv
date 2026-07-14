@@ -31,10 +31,10 @@ Before publishing the frontend, confirm all of the following:
 1. `bun run cloud:dev` works against the GenreTV Supabase and Electric Cloud projects.
 2. `bun run cloud:migrate`, `bun run cloud:secrets`, and `bun run cloud:functions` have completed.
 3. `bun run cloud:seed` has been run once if the cloud database does not yet contain canonical data.
-4. `GENRETV_ALLOWED_ORIGINS` in `genretv.cloud.env` contains these exact origins:
+4. `GENRETV_ALLOWED_ORIGINS` in `genretv.cloud.env` contains the deployed origin and local loopback patterns:
 
    ```text
-   https://genretv.github.io,http://localhost:5660,http://127.0.0.1:5660
+   https://genretv.github.io,http://localhost:*,http://127.0.0.1:*
    ```
 
 5. `bun run cloud:secrets` has been rerun after setting that CORS allow-list.

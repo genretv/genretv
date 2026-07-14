@@ -5,6 +5,8 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { useAuth } from "../auth/auth";
 import { PwaStatus } from "../components/pwa-status";
 import { SyncStatusButton } from "../components/sync-status-button";
+import { LiveCanonicalScheduleProvider } from "../domain/live-canonical-schedule";
+import { PublishedListDirectoryProvider } from "../features/publishing/use-published-list-directory";
 
 export function RootLayout() {
   const { session, signOut } = useAuth();
@@ -59,7 +61,11 @@ export function RootLayout() {
         </Group>
       </AppShell.Header>
       <AppShell.Main>
-        <Outlet />
+        <LiveCanonicalScheduleProvider>
+          <PublishedListDirectoryProvider>
+            <Outlet />
+          </PublishedListDirectoryProvider>
+        </LiveCanonicalScheduleProvider>
       </AppShell.Main>
       <PwaStatus />
     </AppShell>

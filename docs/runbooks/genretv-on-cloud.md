@@ -148,12 +148,15 @@ This builds the combined, hash-routed site artifact and serves it through Vite p
 
 ## CORS
 
-`GENRETV_ALLOWED_ORIGINS` is a comma-separated list of exact origins. Include:
+`GENRETV_ALLOWED_ORIGINS` is a comma-separated list of exact production origins plus the supported
+loopback patterns. Include:
 
-- `http://localhost:5660` and `http://127.0.0.1:5660` for `cloud:dev`; and
+- `http://localhost:*` and `http://127.0.0.1:*` for local development and previews on any port; and
 - `https://genretv.github.io` for the deployed site.
 
-Run `bun run cloud:secrets` after changing the allow-list. A URL path such as `/docs` does not belong in a CORS origin.
+The loopback patterns are configuration syntax, not literal CORS response values: the Edge Functions
+validate the loopback host and reflect the request's exact origin. Run `bun run cloud:secrets` after
+changing the allow-list. A URL path such as `/docs` does not belong in a CORS origin.
 
 ## Command Summary
 

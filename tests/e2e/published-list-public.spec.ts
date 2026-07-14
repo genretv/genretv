@@ -45,11 +45,12 @@ test("publisher can publish a snapshot that anonymous visitors can inspect", asy
   const anonymousPage = await anonymousContext.newPage();
   await anonymousPage.goto("/published");
 
-  const publicList = anonymousPage.getByRole("heading", { name: title });
+  const publicList = anonymousPage.getByRole("link", { name: title });
   await expect(publicList).toBeVisible({ timeout: 120_000 });
   await expect(anonymousPage.getByText(description)).toBeVisible();
-  await expect(anonymousPage.getByText(`${publishedSeasonCount} rows`)).toBeVisible();
-  await expect(anonymousPage.getByText("Alien: Earth")).toHaveCount(publishedSeasonCount);
+  const directoryRow = anonymousPage.getByRole("row").filter({ has: publicList });
+  await expect(directoryRow.getByRole("cell").nth(2)).toHaveText(String(publishedSeasonCount));
+  await expect(anonymousPage.getByText("Alien: Earth")).toHaveCount(0);
 
   await anonymousPage.getByRole("link", { name: title }).click();
   await expect(anonymousPage).toHaveURL(new RegExp(`/published/${slug}$`));

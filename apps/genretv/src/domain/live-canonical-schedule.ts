@@ -1,7 +1,7 @@
 import { genretvSyncRegistry } from "@genretv/domain/registry";
 import { useLiveDrizzleRows } from "@genretv/offline-data/hooks";
 import { inArray } from "drizzle-orm";
-import { useEffect, useMemo, useState } from "react";
+import { createContext, createElement, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import {
@@ -70,7 +70,22 @@ const canonicalMetadata = {
   generatedAt: "",
 } as const;
 
+const LiveCanonicalScheduleContext = createContext<LiveCanonicalSchedule | null>(null);
+
+export function LiveCanonicalScheduleProvider({ children }: { children: ReactNode }) {
+  const schedule = useCanonicalScheduleState();
+  return createElement(LiveCanonicalScheduleContext.Provider, { value: schedule }, children);
+}
+
 export function useCanonicalSchedule(): LiveCanonicalSchedule {
+  const schedule = useContext(LiveCanonicalScheduleContext);
+  if (schedule == null) {
+    throw new Error("useCanonicalSchedule must be used inside LiveCanonicalScheduleProvider.");
+  }
+  return schedule;
+}
+
+function useCanonicalScheduleState(): LiveCanonicalSchedule {
   const { session } = useAuth();
   const asOf = useLocalDateKey();
   const personalReady = session != null;

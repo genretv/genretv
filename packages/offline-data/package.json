@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@genretv/domain": "workspace:*",
-    "@pgxsinkit/client": "0.1.48",
-    "@pgxsinkit/contracts": "0.1.48",
-    "@pgxsinkit/react": "0.1.48"
+    "@pgxsinkit/client": "0.1.49",
+    "@pgxsinkit/contracts": "0.1.49",
+    "@pgxsinkit/react": "0.1.49"
   }
 }

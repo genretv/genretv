@@ -4,6 +4,7 @@ import type { JwtClaims, RegistryRelations } from "@pgxsinkit/contracts";
 import { createSyncServer, proxyElectricShapeRequest } from "@pgxsinkit/server";
 
 import { genretvSyncRegistry } from "../domain/registry";
+import { allowedOriginsForRequest, corsPreflightResponse, withAllowedOriginCors } from "./cors";
 import { routeToMutations } from "./routing";
 
 export type GenretvClaimsResolver = (request: Request) => Promise<JwtClaims | null> | JwtClaims | null;
@@ -33,10 +34,17 @@ export function createGenretvWriteHandler(options: GenretvWriteHandlerOptions): 
       operationsLog: "disabled",
     },
     logTimings: true,
-    allowedOrigins: options.allowedOrigins,
+    allowedOrigins: [],
   });
 
-  return (request) => server.fetch(routeToMutations(request, "genretv-write"));
+  return async (request) => {
+    if (request.method === "OPTIONS") {
+      return corsPreflightResponse(request, options.allowedOrigins);
+    }
+
+    const response = await server.fetch(routeToMutations(request, "genretv-write"));
+    return withAllowedOriginCors(request, response, options.allowedOrigins);
+  };
 }
 
 export function createGenretvSyncHandler(options: GenretvSyncHandlerOptions): FetchHandler {
@@ -45,7 +53,7 @@ export function createGenretvSyncHandler(options: GenretvSyncHandlerOptions): Fe
     const response = await proxyElectricShapeRequest(request, claims, {
       registry: genretvSyncRegistry,
       electricUrl: options.electricUrl,
-      cors: { origins: options.allowedOrigins },
+      cors: { origins: allowedOriginsForRequest(options.allowedOrigins, request) },
       logTimings: true,
     });
     const headers = new Headers(response.headers);

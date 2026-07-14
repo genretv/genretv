@@ -4,8 +4,8 @@ import { defaultAllowedOrigins, parseAllowedOrigins, requireEnv } from "./env";
 
 describe("GenreTV runtime environment", () => {
   test("allows the real local Vite origins by default", () => {
-    expect(defaultAllowedOrigins).toContain("http://localhost:5660");
-    expect(defaultAllowedOrigins).toContain("http://127.0.0.1:5660");
+    expect(defaultAllowedOrigins).toContain("http://localhost:*");
+    expect(defaultAllowedOrigins).toContain("http://127.0.0.1:*");
   });
 
   test("parses an explicit cloud CORS allow-list", () => {
