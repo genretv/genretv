@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { entityMutationState } from "../components/entity-sync-badge";
-import { parseEntityKey, summarizeMutations, type LocalMutationState } from "./sync-status";
+import { parseEntityKey, summarizeMutationCounts, summarizeMutations, type LocalMutationState } from "./sync-status";
 
 describe("synchronization status", () => {
   test("summarizes every durable journal state", () => {
@@ -24,6 +24,26 @@ describe("synchronization status", () => {
       rejected: 1,
       sending: 1,
       total: 7,
+    });
+  });
+
+  test("combines grouped status counts from every journal", () => {
+    expect(
+      summarizeMutationCounts([
+        { count: 2, status: "pending" },
+        { count: 3, status: "pending" },
+        { count: 1, status: "acked" },
+        { count: 4, status: "quarantined" },
+      ]),
+    ).toEqual({
+      acked: 1,
+      conflicted: 0,
+      failed: 0,
+      pending: 5,
+      quarantined: 4,
+      rejected: 0,
+      sending: 0,
+      total: 10,
     });
   });
 

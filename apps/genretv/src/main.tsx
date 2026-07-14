@@ -1,6 +1,6 @@
 import "@mantine/core/styles.css";
 import "./app.css";
-import { Center, Loader, MantineProvider, Stack, Text } from "@mantine/core";
+import { MantineProvider } from "@mantine/core";
 import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 
@@ -15,18 +15,8 @@ if (import.meta.env.DEV || import.meta.env["VITE_E2E"] === "1") {
 
 function AppRoot() {
   const { loading, session } = useAuth();
-  if (loading) {
-    return (
-      <Center h="100vh">
-        <Stack className="loading-panel loading-panel-compact" align="center" gap="xs">
-          <Loader />
-          <Text size="sm">Checking session...</Text>
-        </Stack>
-      </Center>
-    );
-  }
   return (
-    <GenretvSyncProvider session={session}>
+    <GenretvSyncProvider authReady={!loading} session={session}>
       <RouterProvider router={router} />
     </GenretvSyncProvider>
   );

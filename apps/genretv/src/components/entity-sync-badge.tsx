@@ -2,10 +2,11 @@ import { Badge } from "@mantine/core";
 import { IconAlertTriangle, IconCloudUp } from "@tabler/icons-react";
 
 import type { GenretvSyncTable, LocalMutationState } from "../sync/sync-status";
-import { useGenretvSyncStatus } from "../sync/sync-status";
+import { useGenretvSyncStatus, useMutationDetails } from "../sync/sync-status";
 
 export function EntitySyncBadge({ entityId, table }: { entityId: string | null; table: GenretvSyncTable }) {
-  const { loading, mutations, online } = useGenretvSyncStatus();
+  const { online } = useGenretvSyncStatus();
+  const { loading, mutations } = useMutationDetails(table, entityId != null);
   if (entityId == null || loading) return null;
 
   const state = entityMutationState(mutations, table, entityId, online);

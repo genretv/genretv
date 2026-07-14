@@ -1,30 +1,55 @@
 import { createGenretvWorkerClient, type GenretvSyncClient } from "@genretv/offline-data/client";
 import { SyncClientProvider } from "@genretv/offline-data/hooks";
 import { bindCurrentGenretvStoreToUser, mappedGenretvStoreId } from "@genretv/offline-data/store-registry";
-import { Center, Loader, Stack, Text } from "@mantine/core";
 import type { Session } from "@supabase/supabase-js";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AuthTokenSnapshot } from "@pgxsinkit/client";
 import { syncDebug } from "@pgxsinkit/client";
 import type { SyncRuntimeStatus } from "@pgxsinkit/contracts";
 
-import { LoadingSplash } from "../components/loading-splash";
 import { supabase } from "../lib/supabase";
 import { AuthenticatedWorkflowSync } from "./authenticated-workflow-sync";
 import { GenretvSyncStatusProvider } from "./sync-status";
 import { getGenretvWorkerPort } from "./worker-port";
 
-export function GenretvSyncProvider({ children, session }: { children: ReactNode; session: Session | null }) {
+interface GenretvSyncLifecycle {
+  error: Error | null;
+  ready: boolean;
+  showSplash: boolean;
+  status: SyncRuntimeStatus | null;
+}
+
+const GenretvSyncLifecycleContext = createContext<GenretvSyncLifecycle | null>(null);
+
+export function GenretvSyncProvider({
+  authReady,
+  children,
+  session,
+}: {
+  authReady: boolean;
+  children: ReactNode;
+  session: Session | null;
+}) {
   const [client, setClient] = useState<GenretvSyncClient | null>(null);
   const [status, setStatus] = useState<SyncRuntimeStatus | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [initialSyncReady, setInitialSyncReady] = useState(false);
   const userId = session?.user.id ?? null;
   const mappedUserId = useRef(userId);
-  const [storeSelection, setStoreSelection] = useState({ generation: 0, userId });
+  const [storeSelection, setStoreSelection] = useState<{ generation: number; userId: string | null | undefined }>(
+    () => ({ generation: 0, userId: authReady ? userId : undefined }),
+  );
 
   useEffect(() => {
+    if (!authReady || storeSelection.userId !== undefined) return;
+    mappedUserId.current = userId;
+    setStoreSelection((current) => ({ generation: current.generation + 1, userId }));
+  }, [authReady, storeSelection.userId, userId]);
+
+  useEffect(() => {
+    const selectedUserId = storeSelection.userId;
+    if (selectedUserId === undefined) return;
     let active = true;
     let created: GenretvSyncClient | undefined;
     setStatus(null);
@@ -35,9 +60,9 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
         if (typeof SharedWorker === "undefined") {
           throw new Error("This browser does not support SharedWorker, which GenreTV requires for local sync.");
         }
-        syncDebug("boot genretv worker client create start", { signedIn: storeSelection.userId != null });
+        syncDebug("boot genretv worker client create start", { signedIn: selectedUserId != null });
         const next = await createGenretvWorkerClient({
-          userId: storeSelection.userId,
+          userId: selectedUserId,
           getPort: getGenretvWorkerPort,
           getToken: currentTokenSnapshot,
           onStatusChange: (value) => {
@@ -97,47 +122,31 @@ export function GenretvSyncProvider({ children, session }: { children: ReactNode
     };
   }, [client]);
 
-  if (error != null) {
-    return (
-      <Center h="100vh">
-        <Stack className="loading-panel loading-panel-compact" align="center" gap="xs" maw={460}>
-          <Text c="red" fw={600}>
-            Could not start local sync
-          </Text>
-          <Text c="dimmed" size="sm" ta="center">
-            {error.message}
-          </Text>
-        </Stack>
-      </Center>
-    );
-  }
-
-  if (client == null) {
-    const showSplash = !initialSyncReady;
-    return (
-      <Center h="100vh">
-        <Stack className={showSplash ? "loading-panel" : "loading-panel loading-panel-compact"} align="center" gap="xs">
-          {showSplash && <LoadingSplash />}
-          <Loader />
-          <Text c="dimmed" size="sm">
-            {showSplash ? "Starting local database and canonical sync…" : "Updating local sync…"}
-          </Text>
-          {status != null && (
-            <Text c="dimmed" size="xs">
-              {status.phase}
-            </Text>
-          )}
-        </Stack>
-      </Center>
-    );
-  }
+  const lifecycle = useMemo(
+    () => ({ error, ready: client != null, showSplash: !initialSyncReady, status }),
+    [client, error, initialSyncReady, status],
+  );
 
   return (
-    <SyncClientProvider client={client}>
-      <AuthenticatedWorkflowSync active={session != null} />
-      <GenretvSyncStatusProvider runtime={status ?? client.status}>{children}</GenretvSyncStatusProvider>
-    </SyncClientProvider>
+    <GenretvSyncLifecycleContext.Provider value={lifecycle}>
+      {client == null ? (
+        children
+      ) : (
+        <SyncClientProvider client={client}>
+          <AuthenticatedWorkflowSync active={session != null} />
+          <GenretvSyncStatusProvider runtime={status ?? client.status} monitorMutations={session != null}>
+            {children}
+          </GenretvSyncStatusProvider>
+        </SyncClientProvider>
+      )}
+    </GenretvSyncLifecycleContext.Provider>
   );
+}
+
+export function useGenretvSyncLifecycle(): GenretvSyncLifecycle {
+  const value = useContext(GenretvSyncLifecycleContext);
+  if (value == null) throw new Error("useGenretvSyncLifecycle must be used within GenretvSyncProvider");
+  return value;
 }
 
 async function currentTokenSnapshot(): Promise<AuthTokenSnapshot | null> {

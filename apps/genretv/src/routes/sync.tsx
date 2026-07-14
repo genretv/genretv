@@ -6,12 +6,21 @@ import { useState } from "react";
 
 import { useAuth } from "../auth/auth";
 import { formatMicrosecondTimestamp } from "../domain/time";
-import { type GenretvSyncTable, type LocalMutationState, useGenretvSyncStatus } from "../sync/sync-status";
+import {
+  type GenretvSyncTable,
+  type LocalMutationState,
+  useAllMutationDetails,
+  useGenretvSyncStatus,
+} from "../sync/sync-status";
 
 export function SyncRoute() {
   const { session } = useAuth();
   const client = useSyncClient();
-  const { loading, mutations, online, runtime, summary } = useGenretvSyncStatus();
+  const status = useGenretvSyncStatus();
+  const details = useAllMutationDetails(session != null);
+  const { online, runtime, summary } = status;
+  const { mutations } = details;
+  const loading = status.loading || details.loading;
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
