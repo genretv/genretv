@@ -68,7 +68,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@pgxsinkit/server": "0.1.50",
+    "@pgxsinkit/server": "0.1.51",
     "@playwright/test": "^1.61.1",
     "@tanstack/intent": "^0.3.6",
     "@types/node": "26.1.1",
