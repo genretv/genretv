@@ -68,7 +68,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@pgxsinkit/server": "0.1.51",
+    "@pgxsinkit/server": "0.1.53",
     "@playwright/test": "^1.61.1",
     "@tanstack/intent": "^0.3.6",
     "@types/node": "26.1.1",
@@ -79,7 +79,7 @@
     "drizzle-orm": "1.0.0-rc.4",
     "oxfmt": "0.59.0",
     "oxlint": "1.74.0",
-    "oxlint-tsgolint": "0.24.0",
+    "oxlint-tsgolint": "0.25.0",
     "tsx": "4.23.1",
     "typescript": "^7.0.2"
   },

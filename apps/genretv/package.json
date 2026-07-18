@@ -15,11 +15,11 @@
     "@genretv/offline-data": "workspace:*",
     "@mantine/core": "9.4.1",
     "@mantine/hooks": "9.4.1",
-    "@pgxsinkit/client": "0.1.51",
-    "@pgxsinkit/contracts": "0.1.51",
-    "@pgxsinkit/react": "0.1.51",
-    "@supabase/supabase-js": "2.110.5",
-    "@tabler/icons-react": "^3.44.0",
+    "@pgxsinkit/client": "0.1.53",
+    "@pgxsinkit/contracts": "0.1.53",
+    "@pgxsinkit/react": "0.1.53",
+    "@supabase/supabase-js": "2.110.7",
+    "@tabler/icons-react": "^3.45.0",
     "@tanstack/react-router": "1.170.18",
     "react": "19.2.7",
     "react-dom": "19.2.7",
@@ -28,7 +28,7 @@
   "devDependencies": {
     "@vite-pwa/assets-generator": "1.0.2",
     "@vitejs/plugin-react": "6.0.3",
-    "vite": "8.1.4",
+    "vite": "8.1.5",
     "vite-plugin-pwa": "1.3.0",
     "workbox-window": "7.4.1"
   }
